@@ -4,7 +4,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meal_logging/main.dart';
 import 'package:meal_logging/user/log_meals.dart';
 import '../custom_styles.dart';
-import '../functions.dart';
 import 'meal_details.dart';
 
 class CustomMealPage extends StatefulWidget {
@@ -12,11 +11,11 @@ class CustomMealPage extends StatefulWidget {
   final String? mealId;
   final Map<String, dynamic>? initialData;
   final int initialTabIndex;
-  late final bool editMeal;
-  late final bool editRecipe;
+  final bool editMeal;
+  final bool editRecipe;
   final String logDate;
 
-  CustomMealPage({
+  const CustomMealPage({
     super.key,
     required this.defaultCategory,
     this.mealId,
@@ -44,10 +43,6 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
   void dispose() {
     _tabController.dispose();
     super.dispose();
-  }
-
-  void _switchToTab(int index) {
-    _tabController.animateTo(index);
   }
 
   @override
@@ -253,9 +248,37 @@ class _MealFormState extends State<MealForm> {
     _phosphorusController.dispose();
     _potassiumController.dispose();
     _sodiumController.dispose();
-    for (final c in servingNameControllers) c.dispose();
-    for (final c in servingGramControllers) c.dispose();
+    for (final c in servingNameControllers) {
+      c.dispose();
+    }
+    for (final c in servingGramControllers) {
+      c.dispose();
+    }
     super.dispose();
+  }
+
+  void clearFields() {
+    setState(() {
+      _mealNameController.clear();
+      _foodGroup = null;
+      _foodCategory = 'Lunch / Dinner';
+      _caloriesController.clear();
+      _proteinController.clear();
+      _carbsController.clear();
+      _fatController.clear();
+      _fibreController.clear();
+      _waterController.clear();
+      _ashController.clear();
+      _calciumController.clear();
+      _ironController.clear();
+      _phosphorusController.clear();
+      _potassiumController.clear();
+      _sodiumController.clear();
+      servingNameControllers.clear();
+      servingGramControllers.clear();
+      servingNameControllers.add(TextEditingController());
+      servingGramControllers.add(TextEditingController());
+    });
   }
 
   Future<void> _saveCustomMeal() async {
@@ -366,7 +389,7 @@ class _MealFormState extends State<MealForm> {
                   const SizedBox(height: 12),
 
                   DropdownButtonFormField<String>(
-                      value: _foodGroup,
+                      initialValue: _foodGroup,
                       decoration: InputDecoration(
                         labelText: 'Food Group',
                         labelStyle: TextStyle(fontSize: 15),
@@ -383,7 +406,7 @@ class _MealFormState extends State<MealForm> {
                   ),
                   const SizedBox(height: 12),
                   DropdownButtonFormField<String>(
-                      value: _foodCategory,
+                      initialValue: _foodCategory,
                       decoration: InputDecoration(
                         labelText: 'Food Category',
                         labelStyle: TextStyle(fontSize: 15),
@@ -521,9 +544,9 @@ class _MealFormState extends State<MealForm> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.cancel),
-              label: const Text('Cancel'),
+              onPressed: () => clearFields(),
+              icon: const Icon(Icons.clear),
+              label: const Text('Clear'),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: lightBlueTheme.colorScheme.secondary),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
@@ -815,7 +838,7 @@ class _RecipeFormState extends State<RecipeForm> {
                   ),
                   const SizedBox(height: 15),
                   DropdownButtonFormField<String>(
-                    value: _foodGroup,
+                    initialValue: _foodGroup,
                     decoration: InputDecoration(
                       labelText: 'Food Group',
                       labelStyle: TextStyle(fontSize: 15),
@@ -832,7 +855,7 @@ class _RecipeFormState extends State<RecipeForm> {
                   ),
                   const SizedBox(height: 15),
                   DropdownButtonFormField<String>(
-                    value: _foodCategory,
+                    initialValue: _foodCategory,
                     decoration: InputDecoration(
                       labelText: 'Food Category',
                       labelStyle: TextStyle(fontSize: 15),
@@ -952,25 +975,6 @@ class _RecipeFormState extends State<RecipeForm> {
           ],
         ),
       ],
-    );
-  }
-
-  Widget _nutritionRow(String label, double value, String unit) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(label, style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(
-            '${value.toStringAsFixed(1)} $unit',
-            style: TextStyle(
-              fontWeight: FontWeight.bold,
-              color: lightBlueTheme.colorScheme.primary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -1343,8 +1347,8 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
   Future<void> _selectIngredient(Map<String, dynamic> ingredient) async {
     final quantity = await _showQuantityDialog(ingredient);
 
-    if (quantity != null) {
-      Navigator.pop(context, {
+    if (quantity != null && mounted) {
+      Navigator.pop(context ,{
         ...ingredient,
         'quantity': quantity,
       });
