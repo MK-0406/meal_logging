@@ -596,7 +596,6 @@ class RecipeForm extends StatefulWidget {
 class _RecipeFormState extends State<RecipeForm> {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _recipeNameController = TextEditingController();
-  final TextEditingController _instructionsController = TextEditingController();
   final TextEditingController _servingSizeController = TextEditingController();
   final TextEditingController _totalGramsController = TextEditingController(text: "0");
 
@@ -656,10 +655,20 @@ class _RecipeFormState extends State<RecipeForm> {
   @override
   void dispose() {
     _recipeNameController.dispose();
-    _instructionsController.dispose();
     _servingSizeController.dispose();
     _totalGramsController.dispose();
     super.dispose();
+  }
+
+  void clearFields() {
+    setState(() {
+      _recipeNameController.clear();
+      _foodGroup = null;
+      _foodCategory = 'Lunch / Dinner';
+      _totalGramsController.text = "0";
+      _servingSizeController.clear();
+      _ingredients.clear();
+    });
   }
 
   Future<void> _showIngredientPicker() async {
@@ -952,9 +961,9 @@ class _RecipeFormState extends State<RecipeForm> {
           mainAxisAlignment: MainAxisAlignment.spaceEvenly,
           children: [
             OutlinedButton.icon(
-              onPressed: () => Navigator.pop(context),
-              icon: const Icon(Icons.cancel),
-              label: const Text('Cancel'),
+              onPressed: () => clearFields(),
+              icon: const Icon(Icons.clear),
+              label: const Text('Clear'),
               style: OutlinedButton.styleFrom(
                 side: BorderSide(color: lightBlueTheme.colorScheme.secondary),
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
