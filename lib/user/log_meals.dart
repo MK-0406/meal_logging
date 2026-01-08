@@ -48,7 +48,12 @@ class _MealLogPageState extends State<MealLogPage> {
 
   Future<void> _loadCustomMeals() async {
     setState(() => _isLoading = true);
-    QuerySnapshot snapshot = await FirebaseFirestore.instance.collection('custom_meal').doc(FirebaseAuth.instance.currentUser!.uid).collection('meals').get();
+    QuerySnapshot snapshot =
+    await FirebaseFirestore.instance.collection('custom_meal')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .collection('meals')
+        .where('deleted', isEqualTo: false)
+        .get();
     _allCustomMeals = snapshot.docs;
 
       if (_allCustomMeals.isNotEmpty) {
