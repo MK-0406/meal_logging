@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "928997185337",
+    "project_id": "mk-fyp-e4087",
+    "storage_bucket": "mk-fyp-e4087.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928997185337:android:7660c801ce4a9be48bfae8",
+        "android_client_info": {
+          "package_name": "com.example.meal_logging"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6-2gFJ80Eda1_ymYWRjXntJ3_jqJdzFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:928997185337:android:a75f1569d9ab86928bfae8",
+        "android_client_info": {
+          "package_name": "com.example.mobile_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD6-2gFJ80Eda1_ymYWRjXntJ3_jqJdzFU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
