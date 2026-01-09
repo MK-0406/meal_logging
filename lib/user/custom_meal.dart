@@ -431,49 +431,49 @@ class _MealFormState extends State<MealForm> {
 
                   Row(
                     children: [
-                      Expanded(child: InputTextField(label: 'Calories', controller: _caloriesController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Calories (g)', controller: _caloriesController, isNumber: true, isInt: false)),
                       const SizedBox(width: 12),
-                      Expanded(child: InputTextField(label: 'Water', controller: _waterController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Water (g)', controller: _waterController, isNumber: true, isInt: false)),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: InputTextField(label: 'Protein', controller: _proteinController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Protein (g)', controller: _proteinController, isNumber: true, isInt: false)),
                       const SizedBox(width: 12),
-                      Expanded(child: InputTextField(label: 'Carbs', controller: _carbsController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Carbs (g)', controller: _carbsController, isNumber: true, isInt: false)),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: InputTextField(label: 'Fat', controller: _fatController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Fat (g)', controller: _fatController, isNumber: true, isInt: false)),
                       const SizedBox(width: 12),
-                      Expanded(child: InputTextField(label: 'Fibre', controller: _fibreController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Fibre (g)', controller: _fibreController, isNumber: true, isInt: false)),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: InputTextField(label: 'Ash', controller: _ashController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Ash (g)', controller: _ashController, isNumber: true, isInt: false)),
                       const SizedBox(width: 12),
-                      Expanded(child: InputTextField(label: 'Calcium', controller: _calciumController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Calcium (mg)', controller: _calciumController, isNumber: true, isInt: false)),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: InputTextField(label: 'Iron', controller: _ironController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Iron (mg)', controller: _ironController, isNumber: true, isInt: false)),
                       const SizedBox(width: 12),
-                      Expanded(child: InputTextField(label: 'Phosphorus', controller: _phosphorusController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Phosphorus (mg)', controller: _phosphorusController, isNumber: true, isInt: false)),
                     ],
                   ),
                   const SizedBox(height: 14),
                   Row(
                     children: [
-                      Expanded(child: InputTextField(label: 'Potassium', controller: _potassiumController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Potassium (mg)', controller: _potassiumController, isNumber: true, isInt: false)),
                       const SizedBox(width: 12),
-                      Expanded(child: InputTextField(label: 'Sodium', controller: _sodiumController, isNumber: true, isInt: false)),
+                      Expanded(child: InputTextField(label: 'Sodium (mg)', controller: _sodiumController, isNumber: true, isInt: false)),
                     ],
                   ),
 
