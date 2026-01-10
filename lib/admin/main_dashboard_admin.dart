@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:meal_logging/main.dart';
 import 'manage_meals.dart';
+import 'manage_users.dart';
 import '../functions.dart';
 
 class MainDashboardAdmin extends StatelessWidget {
@@ -25,8 +26,7 @@ class _MainDashboardState extends State<_MainDashboard> {
 
   final List<Widget> _pages = const [
     _HomePage(),
-    /*_NotificationsPage(),
-    _MessagesPage(),*/
+    UsersPage(),
     MealsPage(),
   ];
 
@@ -51,15 +51,14 @@ class _MainDashboardState extends State<_MainDashboard> {
             label: 'Home',
           ),
           NavigationDestination(
-            icon: Icon(Icons.fastfood_outlined),
-            selectedIcon: Icon(Icons.fastfood),
-            label: 'Meals',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.people_alt_outlined),
             selectedIcon: Icon(Icons.people_alt),
             label: 'Users',
-            enabled: false,
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fastfood_outlined),
+            selectedIcon: Icon(Icons.fastfood),
+            label: 'Meals',
           ),
           NavigationDestination(
             icon: Icon(Icons.admin_panel_settings_outlined),
