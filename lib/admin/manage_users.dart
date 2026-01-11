@@ -815,7 +815,7 @@ class _UsersPageState extends State<UsersPage> {
         label: const Text('Add Meal'),
       ),*/
       body: StreamBuilder<QuerySnapshot>(
-        stream: users.orderBy('email').snapshots(),
+        stream: users.where('role', isEqualTo: 'user').orderBy('email').snapshots(),
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return const Center(child: Text('Error loading users'));

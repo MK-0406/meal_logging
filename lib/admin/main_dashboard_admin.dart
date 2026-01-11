@@ -1,9 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
-import 'package:meal_logging/main.dart';
 import 'manage_meals.dart';
 import 'manage_users.dart';
-import '../functions.dart';
+import 'manage_admins.dart';
 
 class MainDashboardAdmin extends StatelessWidget {
   const MainDashboardAdmin({super.key});
@@ -27,6 +26,7 @@ class _MainDashboardState extends State<_MainDashboard> {
   final List<Widget> _pages = const [
     _HomePage(),
     UsersPage(),
+    AdminRegPage(),
     MealsPage(),
   ];
 
@@ -56,15 +56,14 @@ class _MainDashboardState extends State<_MainDashboard> {
             label: 'Users',
           ),
           NavigationDestination(
-            icon: Icon(Icons.fastfood_outlined),
-            selectedIcon: Icon(Icons.fastfood),
-            label: 'Meals',
-          ),
-          NavigationDestination(
             icon: Icon(Icons.admin_panel_settings_outlined),
             selectedIcon: Icon(Icons.admin_panel_settings),
             label: 'Admins',
-            enabled: false,
+          ),
+          NavigationDestination(
+            icon: Icon(Icons.fastfood_outlined),
+            selectedIcon: Icon(Icons.fastfood),
+            label: 'Meals',
           ),
         ],
       ),
@@ -151,12 +150,6 @@ class _HomePage extends StatelessWidget {
                 iconColor: Colors.orange.shade600,
                 title: 'Total Meals',
                 value: '${stats['meals']}',
-                onTap: () {
-                  final dashboardState = context.findAncestorStateOfType<_MainDashboardState>();
-                  dashboardState?.setState(() {
-                    dashboardState.currentPageIndex = 1; // go to Meals tab
-                  });
-                }
               ),
 
               const SizedBox(height: 12),
@@ -195,7 +188,7 @@ class _HomePage extends StatelessWidget {
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.05),
+            color: Colors.black.withValues(alpha: 0.05),
             blurRadius: 8,
             offset: const Offset(2, 3),
           ),
@@ -203,7 +196,7 @@ class _HomePage extends StatelessWidget {
       ),
       child: ListTile(
         leading: CircleAvatar(
-          backgroundColor: iconColor.withOpacity(0.18),
+          backgroundColor: iconColor.withValues(alpha: 0.18),
           radius: 22,
           child: Icon(icon, size: 26, color: iconColor),
         ),
