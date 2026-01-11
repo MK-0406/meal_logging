@@ -770,10 +770,17 @@ class _UsersPageState extends State<UsersPage> {
             },
           ),
           TextButton.icon(
-            icon: const Icon(Icons.delete, color: Colors.red),
-            label: const Text('Delete', style: TextStyle(color: Colors.red)),
+            icon: const Icon(Icons.block_outlined, color: Colors.red),
+            label: const Text('Ban/Unban', style: TextStyle(color: Colors.red)),
             onPressed: () async {
-              //await _deleteMeal(data['id']);
+              await Database.setItems(
+                'usersInfo',
+                data['id'],
+                {
+                  'ban': (userInfo['ban'] == true) ? false : true,
+                  'updatedAt': FieldValue.serverTimestamp(),
+                },
+              );
               if (context.mounted) Navigator.pop(context);
             },
           ),

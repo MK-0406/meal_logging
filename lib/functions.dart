@@ -21,7 +21,7 @@ class Database {
 
       CollectionReference collectionRef =
       FirebaseFirestore.instance.collection(collectionName);
-      await collectionRef.doc(documentId).set(data);
+      await collectionRef.doc(documentId).set(data, SetOptions(merge: true));
     } catch(e){
       print('Error setting item in collection $collectionName: $e');
     }
