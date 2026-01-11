@@ -113,7 +113,9 @@ class _MealsPageState extends State<MealsPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
       _clearForm();
-      Navigator.pop(context);
+      if (mounted){
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -152,7 +154,9 @@ class _MealsPageState extends State<MealsPage> {
         'updatedAt': FieldValue.serverTimestamp(),
       });
       _clearForm();
-      Navigator.pop(context);
+      if (mounted){
+        Navigator.pop(context);
+      }
     }
   }
 
@@ -199,7 +203,7 @@ class _MealsPageState extends State<MealsPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Container(
+            child: SizedBox(
               height:
                   MediaQuery.of(context).size.height *
                   0.85, // Fixed height for sticky behavior
@@ -249,7 +253,7 @@ class _MealsPageState extends State<MealsPage> {
                             _buildTextField('Meal Name', _mealNameController),
 
                             DropdownButtonFormField<String>(
-                              value: _foodGroup,
+                              initialValue: _foodGroup,
                               items: foodGroupItems
                                   .map(
                                     (e) => DropdownMenuItem(
@@ -272,7 +276,7 @@ class _MealsPageState extends State<MealsPage> {
                             const SizedBox(height: 12),
 
                             DropdownButtonFormField<String>(
-                              value: _foodCategory,
+                              initialValue: _foodCategory,
                               items: foodCategoryItems
                                   .map(
                                     (e) => DropdownMenuItem(

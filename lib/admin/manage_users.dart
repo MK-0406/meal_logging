@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+import '../functions.dart';
 import '../main.dart';
 
 class UsersPage extends StatefulWidget {
@@ -15,180 +16,282 @@ class _UsersPageState extends State<UsersPage> {
     'users',
   );
 
-  List<TextEditingController> servingNameControllers = [];
-  List<TextEditingController> servingGramControllers = [];
+  String? _selectedUserId;
 
-  late final foodGroupItems = [
-    'Cooked Food / Dishes',
-    'Ingredients / Raw Foods',
-    'Vegetables',
-    'Processed Foods',
-    'Snacks',
-    'Beverages',
-    'Condiments / Sauces',
-    'Fast Food',
-    'Desserts / Sweets',
-    'Soups / Stews',
-    'Salads / Cold Dishes',
-    'Fish and shellfish',
-    'Fruits',
-    'Other',
-  ];
-
-  late final foodCategoryItems = [
-    'Breakfast',
-    'Lunch / Dinner',
-    'Snack',
-    'Dessert',
-    'Anytime',
-    'Not Applicable',
-  ];
-
-  final _formKey = GlobalKey<FormState>();
-
-  final TextEditingController _mealNameController = TextEditingController();
-  String? _foodGroup;
-  String? _foodCategory;
-  final TextEditingController _waterController = TextEditingController();
-  final TextEditingController _caloriesController = TextEditingController();
-  final TextEditingController _proteinController = TextEditingController();
-  final TextEditingController _fatController = TextEditingController();
-  final TextEditingController _carbsController = TextEditingController();
-  final TextEditingController _fibreController = TextEditingController();
-  final TextEditingController _ashController = TextEditingController();
-  final TextEditingController _calciumController = TextEditingController();
-  final TextEditingController _ironController = TextEditingController();
-  final TextEditingController _phosphorusController = TextEditingController();
-  final TextEditingController _potassiumController = TextEditingController();
-  final TextEditingController _sodiumController = TextEditingController();
-
-  String? _selectedMealId;
-
-  void _clearForm() {
-    _mealNameController.clear();
-    _waterController.clear();
-    _caloriesController.clear();
-    _proteinController.clear();
-    _carbsController.clear();
-    _fatController.clear();
-    _fibreController.clear();
-    _waterController.clear();
-    _ashController.clear();
-    _calciumController.clear();
-    _ironController.clear();
-    _phosphorusController.clear();
-    _potassiumController.clear();
-    _sodiumController.clear();
-    _foodGroup = null;
-    _foodCategory = null;
-    _selectedMealId = null;
-    _clearServingRows();
-  }
-
-/*  Future<void> _addMeal() async {
-    if (_formKey.currentState!.validate()) {
-      await meals.add({
-        'name': _mealNameController.text,
-        'calorie': _caloriesController.text,
-        'protein': _proteinController.text,
-        'carb': _carbsController.text,
-        'fat': _fatController.text,
-        'fibre': _fibreController.text,
-        'water': _waterController.text,
-        'ash': _ashController.text,
-        'calcium': _calciumController.text,
-        'iron': _ironController.text,
-        'phosphorus': _phosphorusController.text,
-        'potassium': _potassiumController.text,
-        'sodium': _sodiumController.text,
-        'foodGroup': _foodGroup,
-        'foodCategory': _foodCategory,
-        'servings': List.generate(
-          servingNameControllers.length,
-              (i) => {
-            'name': servingNameControllers[i].text,
-            'grams': servingGramControllers[i].text,
-          },
-        ),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      _clearForm();
-      Navigator.pop(context);
-    }
-  }
-
-  Future<void> _updateMeal() async {
-    if (_formKey.currentState!.validate() && _selectedMealId != null) {
-      for(var i = 0; i < servingNameControllers.length; i++){
-        if(servingNameControllers[i].text.isEmpty || servingGramControllers[i].text.isEmpty){
-          servingGramControllers.removeAt(i);
-          servingNameControllers.removeAt(i);
-          i--;
+  Widget _buildTextField(
+    String label,
+    TextEditingController controller, {
+    bool isNumber = false,
+    void Function(String)? onChanged,
+  }) {
+    return TextFormField(
+      controller: controller,
+      onChanged: onChanged,
+      keyboardType: isNumber ? TextInputType.number : TextInputType.text,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+      ),
+      validator: (value) {
+        if (value == null || value.isEmpty) {
+          return 'Please enter $label';
+        } else if (isNumber) {
+          if (double.tryParse(value) == null) {
+            return '$label must be a number';
+          } else if (double.parse(value) < 0) {
+            return '$label must be greater than 0';
+          }
         }
-      }
-      await meals.doc(_selectedMealId).update({
-        'name': _mealNameController.text,
-        'calorie': double.parse(_caloriesController.text),
-        'protein': double.parse(_proteinController.text),
-        'carb': double.parse(_carbsController.text),
-        'fat': double.parse(_fatController.text),
-        'fibre': double.parse(_fibreController.text),
-        'water': double.parse(_waterController.text),
-        'ash': double.parse(_ashController.text),
-        'calcium': double.parse(_calciumController.text),
-        'iron': double.parse(_ironController.text),
-        'phosphorus': double.parse(_phosphorusController.text),
-        'potassium': double.parse(_potassiumController.text),
-        'sodium': double.parse(_sodiumController.text),
-        'foodGroup': _foodGroup,
-        'foodCategory': _foodCategory,
-        'servings': List.generate(
-          servingNameControllers.length,
-              (i) => {
-            'name': servingNameControllers[i].text,
-            'grams': servingGramControllers[i].text,
-          },
-        ),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-      _clearForm();
-      Navigator.pop(context);
-    }
+        return null;
+      },
+    );
   }
 
-  Future<void> _deleteMeal(String id) async {
-    await meals.doc(id).delete();
-  }*/
+  void _showUserDialog(Map<String, dynamic>? data) {
+    final nameController = TextEditingController();
+    final ageController = TextEditingController();
+    final heightController = TextEditingController();
+    final weightController = TextEditingController();
+    final bmiController = TextEditingController();
+    final bloodPressureSystolicController = TextEditingController();
+    final bloodPressureDiastolicController = TextEditingController();
+    final cholesterolLevelController = TextEditingController();
+    final bloodSugarLevelController = TextEditingController();
 
-/*
-  void _showMealDialog({bool isEditing = false, Map<String, dynamic>? data}) {
-    if (isEditing && data != null) {
-      _selectedMealId = data['id'];
-      _mealNameController.text = data['name'] ?? '';
-      _caloriesController.text = data['calorie'].toString();
-      _proteinController.text = data['protein'].toString();
-      _carbsController.text = data['carb'].toString();
-      _fatController.text = data['fat'].toString();
-      _fibreController.text = data['fibre'].toString();
-      _waterController.text = data['water'].toString();
-      _ashController.text = data['ash'].toString();
-      _calciumController.text = data['calcium'].toString();
-      _ironController.text = data['iron'].toString();
-      _phosphorusController.text = data['phosphorus'].toString();
-      _potassiumController.text = data['potassium'].toString();
-      _sodiumController.text = data['sodium'].toString();
-      _foodGroup = data['foodGroup'] ?? '';
-      _foodCategory = data['foodCategory'] ?? '';
+    final formKey = GlobalKey<FormState>();
 
-      if (data['servings'] != null) {
-        for (var serving in data['servings']) {
-          servingNameControllers.add(TextEditingController(text: serving['name']));
-          servingGramControllers.add(TextEditingController(text: serving['grams']));
+    String? gender;
+    double? bmi;
+
+    String heightUnit = 'cm';
+    String weightUnit = 'kg';
+    String cholesterolUnit = 'mmol/L';
+    String bloodSugarUnit = 'mmol/L';
+
+    double heightM = 0;
+    double weightKg = 0;
+    double cholesterolMmoll = 0;
+    double bloodSugarMmoll = 0;
+
+    void changeUnit() {
+      if (double.tryParse(cholesterolLevelController.text) != null) {
+        switch (cholesterolUnit) {
+          case 'mg/dL':
+            cholesterolMmoll =
+                double.parse(cholesterolLevelController.text) * 0.02586;
+            break;
+          case 'mmol/L':
+            cholesterolMmoll = double.parse(cholesterolLevelController.text);
+            break;
         }
+        switch (bloodSugarUnit) {
+          case 'mg/dL':
+            bloodSugarMmoll =
+                double.parse(bloodSugarLevelController.text) * 0.05556;
+            break;
+          case 'mmol/L':
+            bloodSugarMmoll = double.parse(bloodSugarLevelController.text);
+            break;
+        }
+        cholesterolMmoll = double.parse(cholesterolMmoll.toStringAsFixed(1));
+        bloodSugarMmoll = double.parse(bloodSugarMmoll.toStringAsFixed(1));
+        heightM = double.parse(heightM.toStringAsFixed(1));
+        weightKg = double.parse(weightKg.toStringAsFixed(1));
       }
-    } else {
-      _clearForm();
     }
+
+    void onHeightUnitChanged(String changedUnit) {
+      final previousUnit = heightUnit;
+      if (previousUnit == changedUnit) return;
+
+      double height = double.parse(heightController.text);
+
+      switch (previousUnit) {
+
+        case 'cm':
+          switch (changedUnit) {
+            case 'm':
+              height = height / 100;
+              break;
+            case 'ft':
+              height = height / 30.48;
+              break;
+          }
+          break;
+
+        case 'm':
+          switch (changedUnit) {
+            case 'cm':
+              height = height * 100.roundToDouble();
+              break;
+            case 'ft':
+              height = (height / 0.305);
+              break;
+          }
+          break;
+
+        case 'ft':
+          switch (changedUnit) {
+            case 'cm':
+              height = (height * 30.48).roundToDouble();
+              break;
+            case 'm':
+              height = height * 0.305;
+              break;
+          }
+          break;
+      }
+      heightController.text = height.toStringAsFixed(2);
+      heightUnit = changedUnit;
+    }
+
+    void onWeightUnitChanged(String changedUnit) {
+      final previousUnit = weightUnit;
+      if (previousUnit == changedUnit) return;
+
+      double weight = double.parse(weightController.text);
+
+      switch (previousUnit) {
+
+        case 'kg':
+          weight = weight * 2.205;
+          break;
+
+        case 'lb':
+          weight = weight / 2.205;
+          break;
+      }
+      weightController.text = weight.toStringAsFixed(1);
+      weightUnit = changedUnit;
+    }
+
+    void onCholesterolUnitChanged(String changedUnit) {
+      final previousUnit = cholesterolUnit;
+      if (previousUnit == changedUnit) return;
+
+      double cholesterol = double.parse(cholesterolLevelController.text);
+
+      switch (previousUnit) {
+
+        case 'mmol/L':
+          cholesterol = cholesterol / 0.02586;
+          break;
+
+        case 'mg/dL':
+          cholesterol = cholesterol * 0.02586;
+          break;
+      }
+      cholesterolLevelController.text = cholesterol.toStringAsFixed(1);
+      cholesterolUnit = changedUnit;
+    }
+
+    void onBloodSugarUnitChanged(String changedUnit) {
+      final previousUnit = bloodSugarUnit;
+      if (previousUnit == changedUnit) return;
+
+      double bloodSugar = double.parse(bloodSugarLevelController.text);
+
+      switch (previousUnit) {
+
+        case 'mmol/L':
+          bloodSugar = bloodSugar / 0.05556;
+          break;
+
+        case 'mg/dL':
+          bloodSugar = bloodSugar * 0.05556;
+          break;
+      }
+      bloodSugarLevelController.text = bloodSugar.toStringAsFixed(1);
+      bloodSugarUnit = changedUnit;
+    }
+
+    void calculateBMI() {
+      final heightValue = double.tryParse(heightController.text);
+      final weightValue = double.tryParse(weightController.text);
+
+      if (heightValue == null ||
+          weightValue == null ||
+          heightValue <= 0 ||
+          weightValue <= 0) {
+        bmi = null;
+        return;
+      }
+
+      switch (heightUnit) {
+        case 'cm':
+          heightM = heightValue / 100;
+          break;
+        case 'ft':
+          heightM = heightValue * 0.3048;
+          break;
+        case 'm':
+          heightM = heightValue;
+          break;
+      }
+
+      switch (weightUnit) {
+        case 'kg':
+          weightKg = weightValue;
+          break;
+        case 'lb':
+          weightKg = weightValue * 0.453592;
+          break;
+      }
+
+      bmi = weightKg / (heightM * heightM);
+      bmi = double.parse(bmi!.toStringAsFixed(2));
+    }
+
+    void onHeightOrWeightChanged({
+      required void Function(void Function()) dialogSetState,
+    }) {
+      if (!mounted) return;
+
+      calculateBMI();
+
+      if (bmi == null) {
+        dialogSetState(() {
+          bmiController.text = '';
+        });
+        return;
+      }
+
+      dialogSetState(() {
+        bmiController.text = bmi!.toStringAsFixed(2);
+      });
+    }
+
+    _selectedUserId = data?['id'];
+    nameController.text = data?['name'];
+    ageController.text = data!['age'].toString();
+    gender = data['gender'];
+
+    // Reset units to default
+    heightUnit = 'cm';
+    weightUnit = 'kg';
+    cholesterolUnit = 'mmol/L';
+    bloodSugarUnit = 'mmol/L';
+
+    // Initialize variables
+    heightM = (data['height_m'] is num) ? data['height_m'].toDouble() : 0.0;
+    weightKg = (data['weight_kg'] is num) ? data['weight_kg'].toDouble() : 0.0;
+    bmi = (data['bmi'] is num) ? data['bmi'].toDouble() : null;
+    cholesterolMmoll = (data['cholesterol_mmolL'] is num)
+        ? data['cholesterol_mmolL'].toDouble()
+        : 0.0;
+    bloodSugarMmoll = (data['bloodSugar_mmolL'] is num)
+        ? data['bloodSugar_mmolL'].toDouble()
+        : 0.0;
+
+    heightController.text = (heightM * 100).toStringAsFixed(2);
+    weightController.text = weightKg.toString();
+    bmiController.text = bmi?.toString() ?? '';
+    bloodPressureSystolicController.text = data['bloodPressureSystolic']
+        .toString();
+    bloodPressureDiastolicController.text = data['bloodPressureDiastolic']
+        .toString();
+    cholesterolLevelController.text = cholesterolMmoll.toString();
+    bloodSugarLevelController.text = bloodSugarMmoll.toString();
 
     showDialog(
       context: context,
@@ -200,9 +303,9 @@ class _UsersPageState extends State<UsersPage> {
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(20),
             ),
-            child: Container(
+            child: SizedBox(
               height:
-              MediaQuery.of(context).size.height *
+                  MediaQuery.of(context).size.height *
                   0.85, // Fixed height for sticky behavior
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -227,7 +330,7 @@ class _UsersPageState extends State<UsersPage> {
                       ],
                     ),
                     child: Text(
-                      isEditing ? 'Update Meal' : 'Add Meal',
+                      'Update User',
                       style: TextStyle(
                         fontSize: 22,
                         fontWeight: FontWeight.bold,
@@ -242,200 +345,247 @@ class _UsersPageState extends State<UsersPage> {
                     child: SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(horizontal: 20),
                       child: Form(
-                        key: _formKey,
+                        key: formKey,
                         child: Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
                             const SizedBox(height: 20),
-                            _buildTextField('Meal Name', _mealNameController),
-
-                            DropdownButtonFormField<String>(
-                              value: _foodGroup,
-                              items: foodGroupItems
-                                  .map(
-                                    (e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Text(e),
-                                ),
-                              )
-                                  .toList(),
-                              onChanged: (v) => setDialogState(() => _foodGroup = v),
-                              decoration: InputDecoration(
-                                labelText: 'Food Group', // Fixed label
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              validator: (value) => value == null
-                                  ? 'Please select the food group'
-                                  : null,
-                            ),
-                            const SizedBox(height: 12),
-
-                            DropdownButtonFormField<String>(
-                              value: _foodCategory,
-                              items: foodCategoryItems
-                                  .map(
-                                    (e) => DropdownMenuItem(
-                                  value: e,
-                                  child: Text(e),
-                                ),
-                              )
-                                  .toList(),
-                              onChanged: (v) =>
-                                  setDialogState(() => _foodCategory = v),
-                              decoration: InputDecoration(
-                                labelText: 'Food Category',
-                                border: OutlineInputBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                              ),
-                              validator: (value) => value == null
-                                  ? 'Please select the food category'
-                                  : null,
-                            ),
-                            const SizedBox(height: 15),
-
                             Text(
-                              'Per 100 g',
+                              'Personal Information',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
+                            const SizedBox(height: 20),
+                            _buildTextField('Name', nameController),
                             const SizedBox(height: 12),
-                            _buildTextField(
-                              'Water (g)',
-                              _waterController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Calories (kcal)',
-                              _caloriesController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Protein (g)',
-                              _proteinController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Fat (g)',
-                              _fatController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Carbohydrates (g)',
-                              _carbsController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Fibre (g)',
-                              _fibreController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Ash (g)',
-                              _ashController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Calcium (mg)',
-                              _calciumController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Iron (mg)',
-                              _ironController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Phosphorus (mg)',
-                              _phosphorusController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Potassium (mg)',
-                              _potassiumController,
-                              isNumber: true,
-                            ),
-                            _buildTextField(
-                              'Sodium (mg)',
-                              _sodiumController,
-                              isNumber: true,
-                            ),
 
-                            const SizedBox(height: 15),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: gender,
+                                    items: ['Male', 'Female']
+                                        .map(
+                                          (e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Text(e),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) =>
+                                        setDialogState(() => gender = v),
+                                    decoration: InputDecoration(
+                                      labelText: 'Gender', // Fixed label
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                    validator: (value) => value == null
+                                        ? 'Please select the gender'
+                                        : null,
+                                  ),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  child: _buildTextField('Age', ageController),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: _buildTextField(
+                                    'Height',
+                                    heightController,
+                                    onChanged: (_) => onHeightOrWeightChanged(
+                                      dialogSetState: setDialogState,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: heightUnit,
+                                    items: ['cm', 'm', 'ft']
+                                        .map(
+                                          (e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Text(e),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) =>
+                                        setDialogState(() => onHeightUnitChanged(v!)),
+                                    decoration: InputDecoration(
+                                      labelText: 'Unit', // Fixed label
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: _buildTextField(
+                                    'Weight',
+                                    weightController,
+                                    onChanged: (_) => onHeightOrWeightChanged(
+                                      dialogSetState: setDialogState,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: weightUnit,
+                                    items: ['kg', 'lb']
+                                        .map(
+                                          (e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Text(e),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) =>
+                                        setDialogState(() => onWeightUnitChanged(v!)),
+                                    decoration: InputDecoration(
+                                      labelText: 'Unit', // Fixed label
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(height: 12),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+
+                            TextFormField(
+                              controller: bmiController,
+                              readOnly: true,
+                              decoration: InputDecoration(
+                                labelText: 'BMI',
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(15),
+                                ),
+                                labelStyle: TextStyle(fontSize: 15),
+                                contentPadding: EdgeInsets.symmetric(
+                                  vertical: 13,
+                                  horizontal: 16,
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+
                             Text(
-                              "Serving Options",
+                              'Health Information',
                               style: TextStyle(
                                 fontSize: 18,
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 20),
 
-                            Column(
-                              children: List.generate(
-                                servingNameControllers.length,
-                                    (index) {
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(
-                                      vertical: 6,
-                                    ),
-                                    child: Row(
-                                      children: [
-                                        Expanded(
-                                          flex: 2,
-                                          child: TextFormField(
-                                            controller:
-                                            servingNameControllers[index],
-                                            decoration: InputDecoration(
-                                              labelText:
-                                              'Serving Name',
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(12),
-                                              ),
-                                            ),
+                            _buildTextField(
+                              'Blood Pressure Systolic',
+                              bloodPressureSystolicController,
+                              isNumber: true,
+                            ),
+                            const SizedBox(height: 12),
+                            _buildTextField(
+                              'Blood Pressure Diastolic',
+                              bloodPressureDiastolicController,
+                              isNumber: true,
+                            ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: _buildTextField(
+                                    'Cholesterol Level',
+                                    cholesterolLevelController,
+                                  ),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: cholesterolUnit,
+                                    items: ['mg/dL', 'mmol/L']
+                                        .map(
+                                          (e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Text(e),
                                           ),
-                                        ),
-                                        SizedBox(width: 10),
-                                        Expanded(
-                                          flex: 1,
-                                          child: TextFormField(
-                                            controller:
-                                            servingGramControllers[index],
-                                            keyboardType: TextInputType.number,
-                                            decoration: InputDecoration(
-                                              labelText: 'Grams',
-                                              border: OutlineInputBorder(
-                                                borderRadius:
-                                                BorderRadius.circular(12),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
-                                      ],
+                                        )
+                                        .toList(),
+                                    onChanged: (v) => setDialogState(
+                                      () => onCholesterolUnitChanged(v!),
                                     ),
-                                  );
-                                },
-                              ),
+                                    decoration: InputDecoration(
+                                      labelText: 'Unit', // Fixed label
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
 
-                            Align(
-                              alignment: Alignment.centerLeft,
-                              child: TextButton.icon(
-                                onPressed: () {
-                                  setDialogState(() {
-                                    servingNameControllers.add(TextEditingController());
-                                    servingGramControllers.add(TextEditingController());
-                                  });
-                                },
-                                icon: Icon(Icons.add),
-                                label: Text("Add Serving Option"),
-                              ),
+                            const SizedBox(height: 12),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: 3,
+                                  child: _buildTextField(
+                                    'Blood Sugar Level',
+                                    bloodSugarLevelController,
+                                  ),
+                                ),
+                                const SizedBox(width: 15),
+                                Expanded(
+                                  flex: 2,
+                                  child: DropdownButtonFormField<String>(
+                                    initialValue: bloodSugarUnit,
+                                    items: ['mg/dL', 'mmol/L']
+                                        .map(
+                                          (e) => DropdownMenuItem(
+                                            value: e,
+                                            child: Text(e),
+                                          ),
+                                        )
+                                        .toList(),
+                                    onChanged: (v) => setDialogState(
+                                      () => onBloodSugarUnitChanged(v!),
+                                    ),
+                                    decoration: InputDecoration(
+                                      labelText: 'Unit', // Fixed label
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
+
                             const SizedBox(height: 30),
                           ],
                         ),
@@ -467,7 +617,6 @@ class _UsersPageState extends State<UsersPage> {
                         TextButton.icon(
                           onPressed: () {
                             Navigator.pop(context);
-                            _clearForm();
                           },
                           icon: const Icon(Icons.cancel),
                           label: const Text('Cancel'),
@@ -486,9 +635,48 @@ class _UsersPageState extends State<UsersPage> {
                           ),
                         ),
                         ElevatedButton.icon(
-                          onPressed: isEditing ? _updateMeal : _addMeal,
-                          icon: Icon(isEditing ? Icons.update : Icons.add),
-                          label: Text(isEditing ? 'Update' : 'Add'),
+                          onPressed: () async {
+                            changeUnit();
+                            if (formKey.currentState!.validate()) {
+                              await Database.setItems(
+                                'usersInfo',
+                                _selectedUserId,
+                                {
+                                  'name': nameController.text.trim(),
+                                  'age': int.parse(ageController.text),
+                                  'gender': gender,
+                                  'height_m': heightM,
+                                  'weight_kg': weightKg,
+                                  'bmi': bmi,
+                                  'bloodPressureSystolic': double.parse(
+                                    double.tryParse(
+                                      bloodPressureSystolicController.text,
+                                    )!.toStringAsFixed(2),
+                                  ),
+                                  'bloodPressureDiastolic': double.parse(
+                                    double.tryParse(
+                                      bloodPressureDiastolicController.text,
+                                    )!.toStringAsFixed(2),
+                                  ),
+                                  'cholesterol_mmolL': cholesterolMmoll,
+                                  'bloodSugar_mmolL': bloodSugarMmoll,
+                                  'createdAt': FieldValue.serverTimestamp(),
+                                  'updatedAt': FieldValue.serverTimestamp(),
+                                },
+                              );
+                              if (context.mounted) {
+                                Navigator.pop(context);
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('User updated successfully'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            }
+                          },
+                          icon: Icon(Icons.update),
+                          label: Text('Update'),
                           style: ElevatedButton.styleFrom(
                             //backgroundColor: Colors.deepOrange,
                             //foregroundColor: Colors.white,
@@ -512,11 +700,17 @@ class _UsersPageState extends State<UsersPage> {
       ),
     );
   }
-*/
 
   Future<void> _showUserDetails(Map<String, dynamic> data) async {
-    final userInfoData = FirebaseFirestore.instance.collection('usersInfo').doc(data['id']).snapshots();
-    final userInfo = await userInfoData.first.then((value) => value.data() as Map<String, dynamic>);
+    final userInfoData = FirebaseFirestore.instance
+        .collection('usersInfo')
+        .doc(data['id'])
+        .snapshots();
+    final userInfo = await userInfoData.first.then(
+      (value) => value.data() as Map<String, dynamic>,
+    );
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -538,6 +732,29 @@ class _UsersPageState extends State<UsersPage> {
             Divider(color: lightBlueTheme.colorScheme.primary, thickness: 2),
             const SizedBox(height: 12),
             _buildInfoRow('Name', userInfo['name']),
+            _buildInfoRow('Email', data['email']),
+            _buildInfoRow('Role', data['role']),
+            _buildInfoRow('Gender', userInfo['gender']),
+            _buildInfoRow('Age', '${userInfo['age']} years'),
+            _buildInfoRow('Height', '${userInfo['height_m']} m'),
+            _buildInfoRow('Weight', '${userInfo['weight_kg']} kg'),
+            _buildInfoRow('BMI', '${userInfo['bmi']} kg/m²'),
+            _buildInfoRow(
+              'Blood Pressure',
+              '${userInfo['bloodPressureDiastolic']}/${userInfo['bloodPressureSystolic']} mmHg',
+            ),
+            _buildInfoRow(
+              'Blood Sugar',
+              '${userInfo['bloodSugar_mmolL']} mmol/L',
+            ),
+            _buildInfoRow(
+              'Cholesterol',
+              '${userInfo['cholesterol_mmolL']} mmol/L',
+            ),
+            _buildInfoRow(
+              'Status',
+              (userInfo['ban'] == true) ? 'Banned' : 'Not Banned',
+            ),
           ],
         ),
         actions: [
@@ -549,7 +766,7 @@ class _UsersPageState extends State<UsersPage> {
             ),
             onPressed: () {
               Navigator.pop(context);
-              //_showMealDialog(isEditing: true, data: data);
+              _showUserDialog({...data, ...userInfo});
             },
           ),
           TextButton.icon(
@@ -567,11 +784,6 @@ class _UsersPageState extends State<UsersPage> {
         ],
       ),
     );
-  }
-
-  void _clearServingRows() {
-    servingNameControllers.clear();
-    servingGramControllers.clear();
   }
 
   @override
@@ -651,36 +863,6 @@ class _UsersPageState extends State<UsersPage> {
   }
 
   /// Helper UI widgets
-  Widget _buildTextField(
-      String label,
-      TextEditingController controller, {
-        bool isNumber = false,
-      }) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 15),
-      child: TextFormField(
-          controller: controller,
-          keyboardType: isNumber ? TextInputType.number : TextInputType.text,
-          decoration: InputDecoration(
-            labelText: label,
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-          validator: (value) {
-            if (value == null || value.isEmpty){
-              return 'Please enter $label';
-            } else if (isNumber){
-              if (double.tryParse(value) == null) {
-                return '$label must be a number';
-              } else if (double.parse(value) < 0) {
-                return '$label must be greater than 0';
-              }
-            }
-            return null;
-          }
-      ),
-    );
-  }
-
   Widget _buildInfoRow(String label, dynamic value) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
