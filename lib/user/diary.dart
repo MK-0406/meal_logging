@@ -2,9 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:firebase_ml_model_downloader/firebase_ml_model_downloader.dart';
-import 'package:meal_logging/main.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
 import 'log_meals.dart';
 import 'meal_details.dart';
 import '../functions.dart';
@@ -25,13 +22,12 @@ class _MealDiaryState extends State<MealDiary> {
   bool _isLoadingModel = true;
   Map<String, double>? _dailyIntake;
   bool _isLoadingIntake = false;
-  bool _previousDayAvailable = true;
+  final bool _previousDayAvailable = true;
   bool includeSnacks = true;
   bool includeSnacksFromDatabase = false;
   late DocumentSnapshot diaryDoc;
 
   late var results = <String, dynamic>{};
-
   late var mealRatios = {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.10};
 
   final CollectionReference userInfo = FirebaseFirestore.instance.collection('usersInfo');
@@ -53,16 +49,11 @@ class _MealDiaryState extends State<MealDiary> {
 
   Future<void> regenerateTomorrowRecommendation() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    // Calculate tomorrow's date
     final tomorrow = selectedDate.add(const Duration(days: 1));
     final tomorrowDate = DateFormat('EEEE, dd MMM yyyy').format(tomorrow);
-
-    // Get today's user and intake data
     final userDetails = await Database.getDocument('usersInfo', null);
     final userData = userDetails.data() as Map<String, dynamic>;
 
-    // Get today's meal data
     final List<Map<String, dynamic>> todayMealData = await Database.getItemsWithConditions(
       'mealLogs', 'uid',
       conditions: {
@@ -96,7 +87,6 @@ class _MealDiaryState extends State<MealDiary> {
       return;
     }
 
-    // Call your API
     final url = Uri.parse("https://meal-recommender-model.onrender.com/predict");
     final bodyData = {
       "features": [
@@ -124,9 +114,7 @@ class _MealDiaryState extends State<MealDiary> {
 
     final data = jsonDecode(response.body);
     final prediction = data['prediction'][0];
-
     final nutrients = ['Protein_g', 'Carbs_g', 'Fats_g'];
-
     final results = <String, dynamic>{};
 
     for (int i = 0; i < nutrients.length; i++) {
@@ -135,7 +123,6 @@ class _MealDiaryState extends State<MealDiary> {
 
     results['Calories'] = (4 * (prediction[0] + prediction[1]) + 9 * prediction[2]).round();
 
-    // Save to Firestore under tomorrow
     await FirebaseFirestore.instance
         .collection('recommendations')
         .doc(uid)
@@ -143,7 +130,6 @@ class _MealDiaryState extends State<MealDiary> {
         .doc(tomorrowDate)
         .set(results);
 
-    print("Tomorrow's recommendation regenerated!");
     setState(() {
       _isLoadingModel = false;
     });
@@ -163,13 +149,8 @@ class _MealDiaryState extends State<MealDiary> {
           .doc(dateStr)
           .get();
 
-      print(dateStr);
-
-      print('docSnapshot ${docSnapshot.exists}');
-
       if (docSnapshot.exists) {
         final data = docSnapshot.data() as Map<String, dynamic>;
-        print(data);
 
         setState(() {
           results = Map<String, dynamic>.from(data);
@@ -177,7 +158,6 @@ class _MealDiaryState extends State<MealDiary> {
         });
       }
     } catch (e) {
-      print('Error fetching recommendation: $e');
       setState(() => _isLoadingModel = false);
     }
   }
@@ -192,19 +172,15 @@ class _MealDiaryState extends State<MealDiary> {
   }
 
   void calculateRecommendationForEachMealPeriod(){
-    //final mealRatios = {'Breakfast': 0.2, 'Lunch': 0.3, 'Dinner': 0.3, 'Snack': 0.2};
     final targets = <String, Map<String, dynamic>>{};
 
     mealRatios.forEach((meal, ratio) {
       final mealValues = <String, dynamic>{};
-      print('results $results');
       results.forEach((nutrient, data) {
         mealValues[nutrient] = data * ratio;
       });
       targets[meal] = mealValues;
     });
-
-    print(' $targets');
 
     setState(() {
       mealTargets = targets;
@@ -214,11 +190,10 @@ class _MealDiaryState extends State<MealDiary> {
 
   Future<void> _checkAndPromptMissingMeals(bool needChecking) async {
     final missing = <String>[];
-    print('checking $needChecking');
     if (!needChecking) return;
 
     final querySnapshot = await FirebaseFirestore.instance.collection('mealLogs')
-    .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid).get();
+        .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid).get();
 
     final List<Map<String, dynamic>> todayMealData = await Database.getItemsWithConditions(
       'mealLogs', 'uid',
@@ -226,8 +201,6 @@ class _MealDiaryState extends State<MealDiary> {
         'date': DateFormat('EEEE, dd MMM yyyy').format(selectedDate.subtract(const Duration(days: 1))),
       },
     );
-
-    print('today $todayMealData');
 
     bool hasBreakfast = false, hasLunch = false, hasDinner = false;
 
@@ -249,10 +222,29 @@ class _MealDiaryState extends State<MealDiary> {
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
-              title: const Text("First Time Logging Meals", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
-              content: Text("To generate accurate meal recommendations, we need your meals from yesterday.\n"
-                  "Would you like to log yesterday’s meals now or use common intakes instead?",
-                style: const TextStyle(fontSize: 14),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Icon(Icons.restaurant_menu, color: Colors.blue.shade700, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      "First Time Logging Meals",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                    ),
+                  ),
+                ],
+              ),
+              content: const Text(
+                "To generate accurate meal recommendations, we need your meals from yesterday.\n\nWould you like to log yesterday's meals now or use common intakes instead?",
+                style: TextStyle(fontSize: 14, height: 1.5),
               ),
               actions: [
                 TextButton(
@@ -269,15 +261,19 @@ class _MealDiaryState extends State<MealDiary> {
                         .doc(DateFormat('EEEE, dd MMM yyyy').format(selectedDate))
                         .set(results);
                   },
-                  child: const Text("Use Default", style: TextStyle(color: Colors.grey)),
+                  child: const Text("Use Default", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
                 ),
                 ElevatedButton(
-                  style: ElevatedButton.styleFrom(backgroundColor: Color(0xFF009688)),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF42A5F5),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
                   onPressed: () {
                     Navigator.pop(context);
                     _previousDay(false);
                   },
-                  child: const Text("Log Now", style: TextStyle(color: Colors.white)),
+                  child: const Text("Log Now", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
                 ),
               ],
             ),
@@ -285,37 +281,52 @@ class _MealDiaryState extends State<MealDiary> {
         } else {
           showDialog(
             context: context,
-            builder: (_) =>
-                AlertDialog(
-                  title: const Text("Missing Meals", style: TextStyle(fontWeight: FontWeight.bold)),
-                  content: Text(
-                      "You haven't logged these meals for yesterday:\n${missing
-                          .join(", ")}"),
-                  actions: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text(
-                          "Later", style: TextStyle(color: Colors.grey)),
+            builder: (_) => AlertDialog(
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              title: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(10),
                     ),
-                    ElevatedButton(
-                      onPressed: () {
-                        Navigator.pop(context);
-                        _previousDay(false);
-                      },
-                      child: const Text(
-                          "Log Now", style: TextStyle(color: Colors.white)),
-                    ),
-                  ],
+                    child: Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 24),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text("Missing Meals", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                ],
+              ),
+              content: Text(
+                "You haven't logged these meals for yesterday:\n${missing.join(", ")}",
+                style: const TextStyle(fontSize: 14, height: 1.5),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Later", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
                 ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF42A5F5),
+                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context);
+                    _previousDay(false);
+                  },
+                  child: const Text("Log Now", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                ),
+              ],
+            ),
           );
         }
       }
-
     });
   }
 
   Future<void> saveIncludeSnacksIntoDatabase() async {
-    print('save $includeSnacksFromDatabase');
     if (includeSnacksFromDatabase) {
       Database.updateItems('diary', diaryDoc.id, {
         'includeSnacks': includeSnacks,
@@ -337,16 +348,11 @@ class _MealDiaryState extends State<MealDiary> {
         .where('userId', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
         .where('date', isEqualTo: DateFormat('EEEE, dd MMM yyyy').format(selectedDate)).get();
     bool include = true;
-    print('here ${doc.docs.isNotEmpty}');
     if (doc.docs.isNotEmpty) {
       diaryDoc = doc.docs.first;
       final data = diaryDoc.data() as Map<String, dynamic>;
-      include = (data['includeSnacks'] == null)
-          ? true
-          : data['includeSnacks'];
-      print('include $include');
-      includeSnacksFromDatabase =
-      (data['includeSnacks'] == null) ? false : true;
+      include = (data['includeSnacks'] == null) ? true : data['includeSnacks'];
+      includeSnacksFromDatabase = (data['includeSnacks'] == null) ? false : true;
     } else {
       includeSnacksFromDatabase = false;
     }
@@ -386,6 +392,19 @@ class _MealDiaryState extends State<MealDiary> {
       initialDate: selectedDate,
       firstDate: DateTime(2020),
       lastDate: DateTime.now(),
+      builder: (context, child) {
+        return Theme(
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: const Color(0xFF42A5F5),
+              onPrimary: Colors.white,
+              surface: Colors.white,
+              onSurface: Colors.black,
+            ),
+          ),
+          child: child!,
+        );
+      },
     );
     if (picked != null) {
       setState(() => selectedDate = picked);
@@ -419,83 +438,106 @@ class _MealDiaryState extends State<MealDiary> {
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF5F9FF), Color(0xFFE8F4FF)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
         child: SafeArea(
           child: Column(
             children: [
-              // Header with Date
+              // Enhanced Header
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [lightBlueTheme.colorScheme.primary, lightBlueTheme.colorScheme.secondary],
+                  gradient: const LinearGradient(
+                    colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
                     begin: Alignment.topLeft,
                     end: Alignment.bottomRight,
                   ),
                   borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
+                    bottomLeft: Radius.circular(28),
+                    bottomRight: Radius.circular(28),
                   ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.blue.shade300.withValues(alpha: 0.4),
+                      blurRadius: 20,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
                 ),
-                child: Column(
+                child: Row(
                   children: [
-                    GestureDetector(
-                      onTap: _selectDate,
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.calendar_today, color: Colors.white, size: 20),
-                          const SizedBox(width: 8),
-                          Text(
-                            day.isNotEmpty ? day : formattedDate,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
+                    Expanded(
+                      flex: 1,
+                      child: IconButton(
+                        onPressed: () => _previousDay(true),
+                        icon: const Icon(Icons.arrow_back_ios, size: 16),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF42A5F5),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
-                        ],
+                        ),
                       ),
                     ),
-                    const SizedBox(height: 10),
-                    // Navigation Buttons
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        ElevatedButton.icon(
-                          onPressed: () => _previousDay(true),
-                          icon: const Icon(Icons.arrow_back_ios, size: 14),
-                          label: const Text('Previous'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: lightBlueTheme.colorScheme.secondary,
-                            elevation: 2,
-                            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 25),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 3,
+                      child: GestureDetector(
+                        onTap: _selectDate,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: Colors.white.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(16),
+                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                          ),
+                          child: Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(Icons.calendar_today, color: Colors.white, size: 20),
+                              const SizedBox(width: 10),
+                              Text(
+                                day.isNotEmpty ? day : formattedDate,
+                                style: const TextStyle(
+                                  color: Colors.white,
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                  letterSpacing: -0.3,
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              const Icon(Icons.expand_more, color: Colors.white, size: 20),
+                            ],
                           ),
                         ),
-                        ElevatedButton.icon(
-                          onPressed: selectedDate.isBefore(today) ? _nextDay : null,
-                          icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                          label: const Text('Next'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.white,
-                            foregroundColor: lightBlueTheme.colorScheme.secondary,
-                            elevation: 2,
-                            padding: const EdgeInsets.symmetric(vertical: 11, horizontal: 25),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(15),
-                            ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      flex: 1,
+                      child: IconButton(
+                        onPressed: selectedDate.isBefore(today) ? _nextDay : null,
+                        icon: const Icon(Icons.arrow_forward_ios, size: 16),
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.white,
+                          foregroundColor: const Color(0xFF42A5F5),
+                          disabledBackgroundColor: Colors.white.withValues(alpha: 0.5),
+                          disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
+                          elevation: 0,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
                           ),
                         ),
-                      ],
+                      ),
                     ),
                   ],
                 ),
@@ -507,11 +549,18 @@ class _MealDiaryState extends State<MealDiary> {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      CircularProgressIndicator(color: lightBlueTheme.colorScheme.secondary),
-                      const SizedBox(height: 16),
-                      Text(
+                      CircularProgressIndicator(
+                        color: const Color(0xFF42A5F5),
+                        strokeWidth: 3,
+                      ),
+                      const SizedBox(height: 20),
+                      const Text(
                         'Analyzing your nutrition...',
-                        style: TextStyle(color: lightBlueTheme.colorScheme.secondary, fontSize: 16),
+                        style: TextStyle(
+                          color: Color(0xFF42A5F5),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
                       ),
                     ],
                   ),
@@ -520,44 +569,68 @@ class _MealDiaryState extends State<MealDiary> {
                   padding: const EdgeInsets.all(16),
                   children: [
                     // Daily Summary Card
-                    Card(
-                      elevation: 4,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
+                    Container(
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.white, Colors.blue.shade50.withValues(alpha: 0.3)],
+                          begin: Alignment.topLeft,
+                          end: Alignment.bottomRight,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: 0.08),
+                            blurRadius: 20,
+                            offset: const Offset(0, 4),
+                          ),
+                        ],
                       ),
                       child: Padding(
-                        padding: const EdgeInsets.all(16),
+                        padding: const EdgeInsets.all(20),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Row(
                               children: [
-                                Icon(Icons.insights, color: lightBlueTheme.colorScheme.secondary, size: 22),
-                                const SizedBox(width: 8),
-                                Text(
-                                  "Daily Nutrients Recommendation",
-                                  style: TextStyle(
-                                    fontSize: 17,
-                                    fontWeight: FontWeight.bold,
-                                    color: lightBlueTheme.colorScheme.secondary,
+                                Container(
+                                  padding: const EdgeInsets.all(10),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: const Icon(Icons.insights, color: Color(0xFF42A5F5), size: 24),
+                                ),
+                                const SizedBox(width: 12),
+                                const Expanded(
+                                  child: Text(
+                                    "Daily Nutrients Recommendation",
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.bold,
+                                      color: Color(0xFF42A5F5),
+                                      letterSpacing: -0.3,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 18),
                             Center(
                               child: SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.7,
+                                width: MediaQuery.of(context).size.width * 0.85,
                                 child: _buildNutrientSummary(),
                               ),
                             ),
-                            const SizedBox(height: 14),
+                            const SizedBox(height: 18),
 
                             if (_isLoadingIntake)
                               Center(
                                 child: Padding(
-                                  padding: const EdgeInsets.all(16.0),
-                                  child: CircularProgressIndicator(color: lightBlueTheme.colorScheme.secondary),
+                                  padding: const EdgeInsets.all(20.0),
+                                  child: CircularProgressIndicator(
+                                    color: const Color(0xFF42A5F5),
+                                    strokeWidth: 3,
+                                  ),
                                 ),
                               )
                             else if (_dailyIntake != null)
@@ -570,47 +643,66 @@ class _MealDiaryState extends State<MealDiary> {
                             else
                               const SizedBox.shrink(),
 
-                            const SizedBox(height: 10),
+                            const SizedBox(height: 16),
 
-                            Row(
-                              children: [
-                                Expanded(
-                                  child: Text(
-                                    "Include Snacks for Recommendation",
-                                    style: TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.bold,
-                                      color: lightBlueTheme.colorScheme.secondary,
+                            Container(
+                              padding: const EdgeInsets.all(14),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF42A5F5).withValues(alpha: 0.08),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: const Color(0xFF42A5F5).withValues(alpha: 0.2),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Expanded(
+                                    child: Text(
+                                      "Include Snacks for Recommendation",
+                                      style: TextStyle(
+                                        fontSize: 15,
+                                        fontWeight: FontWeight.w600,
+                                        color: Color(0xFF42A5F5),
+                                      ),
                                     ),
                                   ),
-                                ),
-                                Checkbox(
-                                  value: includeSnacks,
-                                  onChanged: (value) {
-                                    setState(() {
-                                      includeSnacks = value!;
-                                      mealRatios = includeSnacks
-                                          ? {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.1}
-                                          : {'Breakfast': 0.22, 'Lunch': 0.33, 'Dinner': 0.45, 'Snack': 0.0};
-                                      calculateRecommendationForEachMealPeriod();
-                                      saveIncludeSnacksIntoDatabase();
-                                    });
-                                  },
-                                ),
-                              ],
+                                  Transform.scale(
+                                    scale: 1.1,
+                                    child: Checkbox(
+                                      value: includeSnacks,
+                                      activeColor: const Color(0xFF42A5F5),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      onChanged: (value) {
+                                        setState(() {
+                                          includeSnacks = value!;
+                                          mealRatios = includeSnacks
+                                              ? {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.1}
+                                              : {'Breakfast': 0.22, 'Lunch': 0.33, 'Dinner': 0.45, 'Snack': 0.0};
+                                          calculateRecommendationForEachMealPeriod();
+                                          saveIncludeSnacksIntoDatabase();
+                                        });
+                                      },
+                                    ),
+                                  ),
+                                ],
+                              ),
                             )
                           ],
                         ),
                       ),
                     ),
 
-                    const SizedBox(height: 15),
+                    const SizedBox(height: 20),
 
                     // Meal Sections
                     ...mealCategories.map((mealType) {
                       final mealTarget = mealTargets?[mealType];
                       return _buildMealSection(mealType, mealTarget);
                     }),
+
+                    const SizedBox(height: 80), // Bottom padding
                   ],
                 ),
               ),
@@ -631,189 +723,249 @@ class _MealDiaryState extends State<MealDiary> {
       builder: (context, snapshot) {
         final meals = snapshot.data?.docs ?? [];
 
-        return Card(
-          elevation: 3,
-          margin: const EdgeInsets.only(bottom: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        return Container(
+          margin: const EdgeInsets.only(bottom: 14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.white, _getMealColor(mealType).withValues(alpha: 0.05)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.06),
+                blurRadius: 15,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
           child: Theme(
             data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ExpansionTile(
-              initiallyExpanded: expandedMeals.contains(mealType),
-              onExpansionChanged: (expanded) {
-                setState(() {
-                  if (expanded) {
-                    expandedMeals.add(mealType);
-                  } else {
-                    expandedMeals.remove(mealType);
-                  }
-                });
-              },
-              leading: Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: lightBlueTheme.colorScheme.secondary.withOpacity(0.1),
-                  shape: BoxShape.circle,
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(20),
+              child: ExpansionTile(
+                initiallyExpanded: expandedMeals.contains(mealType),
+                onExpansionChanged: (expanded) {
+                  setState(() {
+                    if (expanded) {
+                      expandedMeals.add(mealType);
+                    } else {
+                      expandedMeals.remove(mealType);
+                    }
+                  });
+                },
+                leading: Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: _getMealColor(mealType).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Icon(
+                    _getMealIcon(mealType),
+                    color: _getMealColor(mealType),
+                    size: 24,
+                  ),
                 ),
-                child: Icon(
-                  _getMealIcon(mealType),
-                  color: lightBlueTheme.colorScheme.secondary,
-                  size: 24,
+                title: Text(
+                  mealType,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                    letterSpacing: -0.3,
+                  ),
                 ),
-              ),
-              title: Text(
-                mealType,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black87,
+                subtitle: Padding(
+                  padding: const EdgeInsets.only(top: 4.0),
+                  child: Text(
+                    '${meals.length} meal${meals.length != 1 ? 's' : ''} logged',
+                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                  ),
                 ),
-              ),
-              subtitle: Text(
-                '${meals.length} meal${meals.length != 1 ? 's' : ''} logged',
-                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-              ),
-              trailing: Container(
-                padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: lightBlueTheme.colorScheme.secondary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(12),
+                trailing: Container(
+                  padding: const EdgeInsets.all(6),
+                  decoration: BoxDecoration(
+                    color: _getMealColor(mealType).withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(
+                    expandedMeals.contains(mealType) ? Icons.expand_less : Icons.expand_more,
+                    color: _getMealColor(mealType),
+                  ),
                 ),
-                child: Icon(
-                  expandedMeals.contains(mealType) ? Icons.expand_less : Icons.expand_more,
-                  color: lightBlueTheme.colorScheme.secondary,
-                ),
-              ),
-              childrenPadding: const EdgeInsets.symmetric(horizontal: 14),
-              children: [
-                if (meals.isEmpty)
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    child: Column(
-                      children: [
-                        Icon(Icons.fastfood_outlined, size: 48, color: Colors.grey[400]),
-                        const SizedBox(height: 8),
-                        Text(
-                          "No meals logged yet",
-                          style: TextStyle(color: Colors.grey[600], fontSize: 14),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          "Start by adding your first meal!",
-                          style: TextStyle(color: Colors.grey[500], fontSize: 12),
-                        ),
-                      ],
-                    ),
-                  )
-                else
-                  FutureBuilder(
-                    future: Future.wait(meals.map((m) async {
-                      var mealDoc = await mealsCol.doc(m['mealID']).get();
-                      if (!mealDoc.exists) {
-                        mealDoc = await customMealsCol.doc(m['mealID']).get();
-                      }
-
-                      return {
-                        'log': m,
-                        'mealData': mealDoc.exists ? mealDoc.data() : {},
-                      };
-                    })),
-                    builder: (context, snapshot) {
-                      if (!snapshot.hasData) {
-                        return const Padding(
-                          padding: EdgeInsets.all(12),
-                          child: Center(child: CircularProgressIndicator()),
-                        );
-                      }
-
-                      final items = snapshot.data as List<Map<String, dynamic>>;
-
-                      return Column(
-                        children: items.map((item) {
-                          final m = item['log'];
-                          final mealData = item['mealData'];
-                          final mealName = mealData['name'] ?? 'Unnamed Meal';
-                          final servingSize = m['servingSize'] ?? 0;
-
-                          return Container(
-                            margin: const EdgeInsets.only(bottom: 8),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[50],
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(color: Colors.grey[200]!),
+                childrenPadding: const EdgeInsets.all(16),
+                children: [
+                  if (meals.isEmpty)
+                    Container(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        children: [
+                          Icon(Icons.fastfood_outlined, size: 56, color: Colors.grey[350]),
+                          const SizedBox(height: 12),
+                          Text(
+                            "No meals logged yet",
+                            style: TextStyle(
+                              color: Colors.grey[700],
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
                             ),
-                            child: ListTile(
-                              leading: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: BoxDecoration(
-                                  color: lightBlueTheme.colorScheme.secondary.withOpacity(0.1),
-                                  shape: BoxShape.circle,
-                                ),
-                                child: Icon(Icons.restaurant_menu, color: lightBlueTheme.colorScheme.secondary, size: 20),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            "Start by adding your first meal!",
+                            style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    FutureBuilder(
+                      future: Future.wait(meals.map((m) async {
+                        var mealDoc = await mealsCol.doc(m['mealID']).get();
+                        if (!mealDoc.exists) {
+                          mealDoc = await customMealsCol.doc(m['mealID']).get();
+                        }
+
+                        return {
+                          'log': m,
+                          'mealData': mealDoc.exists ? mealDoc.data() : {},
+                        };
+                      })),
+                      builder: (context, snapshot) {
+                        if (!snapshot.hasData) {
+                          return Padding(
+                            padding: const EdgeInsets.all(16),
+                            child: Center(
+                              child: CircularProgressIndicator(
+                                color: const Color(0xFF42A5F5),
+                                strokeWidth: 3,
                               ),
-                              title: Text(
-                                mealName,
-                                style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
-                              ),
-                              subtitle: Text(
-                                'Serving: ${servingSize}g',
-                                style: TextStyle(color: Colors.grey[600], fontSize: 12),
-                              ),
-                              trailing: IconButton(
-                                icon: Icon(Icons.delete_outline, color: Colors.redAccent, size: 20),
-                                onPressed: () async {
-                                  await mealLogs.doc(m.id).delete();
-                                  _refreshData();
-                                  regenerateTomorrowRecommendation();
-                                },
-                              ),
-                              onTap: () async {
-                                var mealDoc = await mealsCol.doc(m['mealID']).get();
-                                if (!mealDoc.exists) {
-                                  mealDoc = await customMealsCol.doc(m['mealID']).get();
-                                }
-                                if (mealDoc.exists) {
-                                  final mealData = mealDoc.data() as Map<String, dynamic>;
-                                  Navigator.push(
-                                    context,
-                                    MaterialPageRoute(builder: (_) => MealDetailsPage(data: mealData)),
-                                  );
-                                }
-                              },
                             ),
                           );
-                        }).toList(),
-                      );
-                    },
-                  ),
+                        }
 
-                const SizedBox(height: 8),
-                ElevatedButton.icon(
-                  onPressed: () async {
-                    await Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (_) => MealLogPage(
-                          mealType: mealType,
-                          logDate: DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
-                          nutritionalTargets: mealTarget,
-                        ),
+                        final items = snapshot.data as List<Map<String, dynamic>>;
+
+                        return Column(
+                          children: items.map((item) {
+                            final m = item['log'];
+                            final mealData = item['mealData'];
+                            final mealName = mealData['name'] ?? 'Unnamed Meal';
+                            final servingSize = m['servingSize'] ?? 0;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.white,
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(color: Colors.grey[200]!),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(alpha: 0.03),
+                                    blurRadius: 8,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
+                                  decoration: BoxDecoration(
+                                    color: _getMealColor(mealType).withValues(alpha: 0.12),
+                                    borderRadius: BorderRadius.circular(10),
+                                  ),
+                                  child: Icon(
+                                    Icons.restaurant_menu,
+                                    color: _getMealColor(mealType),
+                                    size: 22,
+                                  ),
+                                ),
+                                title: Text(
+                                  mealName,
+                                  style: const TextStyle(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w600,
+                                    letterSpacing: -0.2,
+                                  ),
+                                ),
+                                subtitle: Padding(
+                                  padding: const EdgeInsets.only(top: 4.0),
+                                  child: Text(
+                                    'Serving: ${servingSize}g',
+                                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                                  ),
+                                ),
+                                trailing: Container(
+                                  decoration: BoxDecoration(
+                                    color: Colors.red.shade50,
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: IconButton(
+                                    icon: Icon(Icons.delete_outline, color: Colors.red.shade600, size: 22),
+                                    onPressed: () async {
+                                      await mealLogs.doc(m.id).delete();
+                                      _refreshData();
+                                      regenerateTomorrowRecommendation();
+                                    },
+                                  ),
+                                ),
+                                onTap: () async {
+                                  var mealDoc = await mealsCol.doc(m['mealID']).get();
+                                  if (!mealDoc.exists) {
+                                    mealDoc = await customMealsCol.doc(m['mealID']).get();
+                                  }
+                                  if (mealDoc.exists) {
+                                    final mealData = mealDoc.data() as Map<String, dynamic>;
+                                    if (!context.mounted) return;
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(builder: (_) => MealDetailsPage(data: mealData)),
+                                    );
+                                  }
+                                },
+                              ),
+                            );
+                          }).toList(),
+                        );
+                      },
+                    ),
+
+                  const SizedBox(height: 12),
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        await Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => MealLogPage(
+                              mealType: mealType,
+                              logDate: DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
+                              nutritionalTargets: mealTarget,
+                            ),
+                          ),
+                        );
+                        _refreshData();
+                        regenerateTomorrowRecommendation();
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: _getMealColor(mealType),
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
                       ),
-                    );
-                    _refreshData();
-                    regenerateTomorrowRecommendation();
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: lightBlueTheme.colorScheme.secondary,
-                    foregroundColor: Colors.white,
-                    elevation: 2,
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 26),
+                      icon: const Icon(Icons.add_circle_outline, size: 20),
+                      label: const Text(
+                        'Add Meal',
+                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                      ),
+                    ),
                   ),
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add Meal', style: TextStyle(fontSize: 14)),
-                ),
-                const SizedBox(height: 10),
-              ],
+                ],
+              ),
             ),
           ),
         );
@@ -821,16 +973,35 @@ class _MealDiaryState extends State<MealDiary> {
     );
   }
 
+  Color _getMealColor(String mealType) {
+    switch (mealType) {
+      case 'Breakfast':
+        return const Color(0xFFFF9800);
+      case 'Lunch':
+        return const Color(0xFF4CAF50);
+      case 'Dinner':
+        return const Color(0xFF9C27B0);
+      case 'Snack':
+        return const Color(0xFFE91E63);
+      default:
+        return const Color(0xFF42A5F5);
+    }
+  }
+
   Widget _buildNutrientSummary() {
     if (mealTargets == null || !_previousDayAvailable) return const SizedBox.shrink();
     double totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFats = 0;
 
     mealTargets!.forEach((_, t) {
-      totalCal += t['Calories'];
-      totalProtein += t['Protein_g'];
-      totalCarbs += t['Carbs_g'];
-      totalFats += t['Fats_g'];
+        if (t.isNotEmpty){
+          totalCal += t['Calories'];
+          totalProtein += t['Protein_g'];
+          totalCarbs += t['Carbs_g'];
+          totalFats += t['Fats_g'];
+        }
     });
+
+    if (totalCal == 0) return const SizedBox.shrink();
 
     return Column(
       children: [
@@ -855,18 +1026,34 @@ class _MealDiaryState extends State<MealDiary> {
 
   Widget _buildNutrientCard(String label, String value, Color color) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withOpacity(0.1),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.3)),
+        color: color.withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Text(label, style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: color)),
-          const SizedBox(height: 4),
-          Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
+          Text(
+            label,
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: color.withValues(alpha: 0.9),
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            value,
+            style: TextStyle(
+              fontSize: 15,
+              fontWeight: FontWeight.bold,
+              color: color,
+              letterSpacing: -0.3,
+            ),
+          ),
         ],
       ),
     );
@@ -882,27 +1069,36 @@ class _MealDiaryState extends State<MealDiary> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w500)),
+            Text(
+              label,
+              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: -0.2),
+            ),
             Text(
               '${actual.toStringAsFixed(0)} / ${target.toStringAsFixed(0)} $unit',
               style: TextStyle(
-                fontSize: 12,
+                fontSize: 13,
                 fontWeight: FontWeight.bold,
-                color: isOver ? Colors.red : Colors.grey[700],
+                color: isOver ? Colors.red.shade600 : Colors.grey[700],
               ),
             ),
           ],
         ),
-        const SizedBox(height: 6),
-        LinearProgressIndicator(
-          value: percentage / 100,
-          backgroundColor: color.withOpacity(0.2),
-          valueColor: AlwaysStoppedAnimation<Color>(isOver ? Colors.red : color),
-          minHeight: 6,
-          semanticsLabel: label,
+        const SizedBox(height: 8),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(10),
+          child: LinearProgressIndicator(
+            value: percentage / 100,
+            backgroundColor: color.withValues(alpha: 0.15),
+            valueColor: AlwaysStoppedAnimation<Color>(isOver ? Colors.red.shade400 : color),
+            minHeight: 8,
+            semanticsLabel: label,
+          ),
         ),
-        const SizedBox(height: 4),
-        Text('${percentage.toStringAsFixed(1)}% of target', style: TextStyle(fontSize: 10, color: Colors.grey[600])),
+        const SizedBox(height: 6),
+        Text(
+          '${percentage.toStringAsFixed(1)}% of target',
+          style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500),
+        ),
       ],
     );
   }
@@ -913,10 +1109,7 @@ class _MealDiaryState extends State<MealDiary> {
 
       final QuerySnapshot mealDataQuery = await mealLogs
           .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
-          .where(
-        'date',
-        isEqualTo: DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
-      )
+          .where('date', isEqualTo: DateFormat('EEEE, dd MMM yyyy').format(selectedDate))
           .get();
 
       for (final doc in mealDataQuery.docs) {
@@ -942,7 +1135,6 @@ class _MealDiaryState extends State<MealDiary> {
         'fats': totalFatsIntake,
       };
     } catch (e) {
-      print('Error calculating daily intake: $e');
       return {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0};
     }
   }
@@ -953,32 +1145,37 @@ class _MealDiaryState extends State<MealDiary> {
       double totalCarbsIntake,
       double totalFatsIntake,
       ) {
-    //if (mealTargets == null) return const SizedBox.shrink();
-
     double totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFats = 0;
     if (_previousDayAvailable && mealTargets != null) {
       mealTargets!.forEach((meal, targets) {
-        totalCal += targets['Calories'];
-        totalProtein += targets['Protein_g'];
-        totalCarbs += targets['Carbs_g'];
-        totalFats += targets['Fats_g'];
+        if (targets.isNotEmpty) {
+          totalCal += targets['Calories'];
+          totalProtein += targets['Protein_g'];
+          totalCarbs += targets['Carbs_g'];
+          totalFats += targets['Fats_g'];
+        }
       });
     }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
+        const Text(
           'Today\'s Progress',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: lightBlueTheme.colorScheme.secondary),
+          style: TextStyle(
+            fontSize: 17,
+            fontWeight: FontWeight.bold,
+            color: Color(0xFF42A5F5),
+            letterSpacing: -0.3,
+          ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 14),
         _buildProgressRow('🔥 Calories', totalCalIntake, totalCal, 'kcal', Colors.orange),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         _buildProgressRow('🥩 Protein', totalProteinIntake, totalProtein, 'g', Colors.blue),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         _buildProgressRow('🍞 Carbs', totalCarbsIntake, totalCarbs, 'g', Colors.brown),
-        const SizedBox(height: 10),
+        const SizedBox(height: 12),
         _buildProgressRow('🥑 Fats', totalFatsIntake, totalFats, 'g', Colors.green),
       ],
     );
