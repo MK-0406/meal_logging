@@ -222,29 +222,29 @@ class _MealDiaryState extends State<MealDiary> {
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Colors.blue.shade50,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.restaurant_menu, color: Colors.blue.shade700, size: 24),
+                    child: Icon(Icons.restaurant_menu, color: Colors.blue.shade700, size: 28),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 16),
                   const Expanded(
                     child: Text(
-                      "First Time Logging Meals",
-                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18),
+                      "First Log",
+                      style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20),
                     ),
                   ),
                 ],
               ),
               content: const Text(
-                "To generate accurate meal recommendations, we need your meals from yesterday.\n\nWould you like to log yesterday's meals now or use common intakes instead?",
-                style: TextStyle(fontSize: 14, height: 1.5),
+                "To personalize your recommendations, we need yesterday's meal data. Would you like to log it now?",
+                style: TextStyle(fontSize: 15, height: 1.6, color: Colors.black87),
               ),
               actions: [
                 TextButton(
@@ -261,19 +261,21 @@ class _MealDiaryState extends State<MealDiary> {
                         .doc(DateFormat('EEEE, dd MMM yyyy').format(selectedDate))
                         .set(results);
                   },
-                  child: const Text("Use Default", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                  child: Text("Use Defaults", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF42A5F5),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
                   ),
                   onPressed: () {
                     Navigator.pop(context);
                     _previousDay(false);
                   },
-                  child: const Text("Log Now", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  child: const Text("Log Now", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -282,41 +284,43 @@ class _MealDiaryState extends State<MealDiary> {
           showDialog(
             context: context,
             builder: (_) => AlertDialog(
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(10),
                     decoration: BoxDecoration(
                       color: Colors.orange.shade50,
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 24),
+                    child: Icon(Icons.warning_amber_rounded, color: Colors.orange.shade700, size: 28),
                   ),
-                  const SizedBox(width: 12),
-                  const Text("Missing Meals", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18)),
+                  const SizedBox(width: 16),
+                  const Text("Missing Data", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 20)),
                 ],
               ),
               content: Text(
-                "You haven't logged these meals for yesterday:\n${missing.join(", ")}",
-                style: const TextStyle(fontSize: 14, height: 1.5),
+                "Yesterday's logs are incomplete:\n${missing.join(", ")}",
+                style: const TextStyle(fontSize: 15, height: 1.6, color: Colors.black87),
               ),
               actions: [
                 TextButton(
                   onPressed: () => Navigator.pop(context),
-                  child: const Text("Later", style: TextStyle(color: Colors.grey, fontWeight: FontWeight.w600)),
+                  child: Text("Later", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF42A5F5),
-                    padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                    elevation: 0,
                   ),
                   onPressed: () {
                     Navigator.pop(context);
                     _previousDay(false);
                   },
-                  child: const Text("Log Now", style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+                  child: const Text("Log Now", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
               ],
             ),
@@ -395,8 +399,8 @@ class _MealDiaryState extends State<MealDiary> {
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
-            colorScheme: ColorScheme.light(
-              primary: const Color(0xFF42A5F5),
+            colorScheme: const ColorScheme.light(
+              primary: Color(0xFF42A5F5),
               onPrimary: Colors.white,
               surface: Colors.white,
               onSurface: Colors.black,
@@ -427,288 +431,295 @@ class _MealDiaryState extends State<MealDiary> {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selected = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
-    String day = selected == today
+    String dayText = selected == today
         ? 'Today'
         : selected == today.subtract(const Duration(days: 1))
         ? 'Yesterday'
-        : '';
+        : formattedDate;
 
     return Scaffold(
-      key: const ValueKey('diary'),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFF5F9FF), Color(0xFFE8F4FF)],
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-          ),
+      backgroundColor: const Color(0xFFF8FBFF),
+      body: SafeArea(
+        child: Column(
+          children: [
+            // Header
+            _buildHeader(dayText, today),
+
+            Expanded(
+              child: _isLoadingModel
+                  ? _buildLoadingState()
+                  : ListView(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+                children: [
+                  _buildDailyDashboard(),
+                  const SizedBox(height: 24),
+                  ...mealCategories.map((mealType) {
+                    final mealTarget = mealTargets?[mealType];
+                    return _buildMealSection(mealType, mealTarget);
+                  }),
+                ],
+              ),
+            ),
+          ],
         ),
-        child: SafeArea(
-          child: Column(
+      ),
+    );
+  }
+
+  Widget _buildHeader(String dayText, DateTime today) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Column(
+        children: [
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              // Enhanced Header
+              _headerNavButton(Icons.chevron_left, () => _previousDay(true)),
+              const SizedBox(width: 20),
               Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(20),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(28),
-                    bottomRight: Radius.circular(28),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.blue.shade300.withValues(alpha: 0.4),
-                      blurRadius: 20,
-                      offset: const Offset(0, 8),
-                    ),
-                  ],
+                  color: Colors.white.withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                child: Row(
+                child: TextButton(
+                    onPressed: _selectDate,
+                    child: Text(
+                      dayText,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                )
+              ),
+              const SizedBox(width: 20),
+              _headerNavButton(
+                Icons.chevron_right,
+                selectedDate.isBefore(today) ? _nextDay : null,
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _headerNavButton(IconData icon, VoidCallback? onPressed) {
+    return IconButton(
+      onPressed: onPressed,
+      icon: Icon(icon, color: onPressed != null ? Colors.white : Colors.white38, size: 28),
+      padding: EdgeInsets.zero,
+      constraints: const BoxConstraints(),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(color: Color(0xFF42A5F5), strokeWidth: 3),
+          const SizedBox(height: 20),
+          Text(
+            'Analyzing nutrition goals...',
+            style: TextStyle(color: Colors.blue.shade700, fontSize: 15, fontWeight: FontWeight.w500),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDailyDashboard() {
+    if (_isLoadingIntake || _dailyIntake == null) {
+      return Container(
+        height: 180,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(24),
+        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
+
+    double tCal = 0, tProt = 0, tCarb = 0, tFat = 0;
+    if (_previousDayAvailable && mealTargets != null) {
+      mealTargets!.forEach((_, t) {
+        if (t.isNotEmpty) {
+          tCal += t['Calories'] ?? 0;
+          tProt += t['Protein_g'] ?? 0;
+          tCarb += t['Carbs_g'] ?? 0;
+          tFat += t['Fats_g'] ?? 0;
+        }
+      });
+    }
+
+    final cCal = _dailyIntake!['calories'] ?? 0;
+    final cProt = _dailyIntake!['protein'] ?? 0;
+    final cCarb = _dailyIntake!['carbs'] ?? 0;
+    final cFat = _dailyIntake!['fats'] ?? 0;
+
+    final calPercent = tCal > 0 ? (cCal / tCal).clamp(0.0, 1.0) : 0.0;
+    final calRemaining = (tCal - cCal).clamp(0.0, tCal);
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.blue.shade900.withValues(alpha: 0.06),
+            blurRadius: 24,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              SizedBox(
+                height: 110,
+                width: 110,
+                child: Stack(
                   children: [
-                    Expanded(
-                      flex: 1,
-                      child: IconButton(
-                        onPressed: () => _previousDay(true),
-                        icon: const Icon(Icons.arrow_back_ios, size: 16),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF42A5F5),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
+                    Center(
+                      child: SizedBox(
+                        height: 100,
+                        width: 100,
+                        child: CircularProgressIndicator(
+                          value: calPercent,
+                          strokeWidth: 10,
+                          backgroundColor: Colors.grey.shade100,
+                          valueColor: AlwaysStoppedAnimation<Color>(
+                            cCal > tCal ? Colors.red.shade400 : const Color(0xFF42A5F5)
                           ),
                         ),
                       ),
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 3,
-                      child: GestureDetector(
-                        onTap: _selectDate,
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(16),
-                            border: Border.all(color: Colors.white.withValues(alpha: 0.3)),
+                    Center(
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            calRemaining.toStringAsFixed(0),
+                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
                           ),
-                          child: Row(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              const Icon(Icons.calendar_today, color: Colors.white, size: 20),
-                              const SizedBox(width: 10),
-                              Text(
-                                day.isNotEmpty ? day : formattedDate,
-                                style: const TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                  letterSpacing: -0.3,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Icon(Icons.expand_more, color: Colors.white, size: 20),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      flex: 1,
-                      child: IconButton(
-                        onPressed: selectedDate.isBefore(today) ? _nextDay : null,
-                        icon: const Icon(Icons.arrow_forward_ios, size: 16),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.white,
-                          foregroundColor: const Color(0xFF42A5F5),
-                          disabledBackgroundColor: Colors.white.withValues(alpha: 0.5),
-                          disabledForegroundColor: Colors.white.withValues(alpha: 0.7),
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(14),
-                          ),
-                        ),
+                          Text('kcal left', style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                        ],
                       ),
                     ),
                   ],
                 ),
               ),
-
+              const SizedBox(width: 28),
               Expanded(
-                child: _isLoadingModel
-                    ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        color: const Color(0xFF42A5F5),
-                        strokeWidth: 3,
-                      ),
-                      const SizedBox(height: 20),
-                      const Text(
-                        'Analyzing your nutrition...',
-                        style: TextStyle(
-                          color: Color(0xFF42A5F5),
-                          fontSize: 16,
-                          fontWeight: FontWeight.w500,
-                        ),
-                      ),
-                    ],
-                  ),
-                )
-                    : ListView(
-                  padding: const EdgeInsets.all(16),
+                child: Column(
                   children: [
-                    // Daily Summary Card
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Colors.white, Colors.blue.shade50.withValues(alpha: 0.3)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(20),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.08),
-                            blurRadius: 20,
-                            offset: const Offset(0, 4),
-                          ),
-                        ],
-                      ),
-                      child: Padding(
-                        padding: const EdgeInsets.all(20),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    color: const Color(0xFF42A5F5).withValues(alpha: 0.15),
-                                    borderRadius: BorderRadius.circular(12),
-                                  ),
-                                  child: const Icon(Icons.insights, color: Color(0xFF42A5F5), size: 24),
-                                ),
-                                const SizedBox(width: 12),
-                                const Expanded(
-                                  child: Text(
-                                    "Daily Nutrients Recommendation",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: Color(0xFF42A5F5),
-                                      letterSpacing: -0.3,
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 18),
-                            Center(
-                              child: SizedBox(
-                                width: MediaQuery.of(context).size.width * 0.85,
-                                child: _buildNutrientSummary(),
-                              ),
-                            ),
-                            const SizedBox(height: 18),
-
-                            if (_isLoadingIntake)
-                              Center(
-                                child: Padding(
-                                  padding: const EdgeInsets.all(20.0),
-                                  child: CircularProgressIndicator(
-                                    color: const Color(0xFF42A5F5),
-                                    strokeWidth: 3,
-                                  ),
-                                ),
-                              )
-                            else if (_dailyIntake != null)
-                              _buildIntakeComparison(
-                                _dailyIntake!['calories']!,
-                                _dailyIntake!['protein']!,
-                                _dailyIntake!['carbs']!,
-                                _dailyIntake!['fats']!,
-                              )
-                            else
-                              const SizedBox.shrink(),
-
-                            const SizedBox(height: 16),
-
-                            Container(
-                              padding: const EdgeInsets.all(14),
-                              decoration: BoxDecoration(
-                                color: const Color(0xFF42A5F5).withValues(alpha: 0.08),
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(
-                                  color: const Color(0xFF42A5F5).withValues(alpha: 0.2),
-                                ),
-                              ),
-                              child: Row(
-                                children: [
-                                  const Expanded(
-                                    child: Text(
-                                      "Include Snacks for Recommendation",
-                                      style: TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w600,
-                                        color: Color(0xFF42A5F5),
-                                      ),
-                                    ),
-                                  ),
-                                  Transform.scale(
-                                    scale: 1.1,
-                                    child: Checkbox(
-                                      value: includeSnacks,
-                                      activeColor: const Color(0xFF42A5F5),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(4),
-                                      ),
-                                      onChanged: (value) {
-                                        setState(() {
-                                          includeSnacks = value!;
-                                          mealRatios = includeSnacks
-                                              ? {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.1}
-                                              : {'Breakfast': 0.22, 'Lunch': 0.33, 'Dinner': 0.45, 'Snack': 0.0};
-                                          calculateRecommendationForEachMealPeriod();
-                                          saveIncludeSnacksIntoDatabase();
-                                        });
-                                      },
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            )
-                          ],
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(height: 20),
-
-                    // Meal Sections
-                    ...mealCategories.map((mealType) {
-                      final mealTarget = mealTargets?[mealType];
-                      return _buildMealSection(mealType, mealTarget);
-                    }),
-
-                    const SizedBox(height: 80), // Bottom padding
+                    _buildCompactMacro('Protein', cProt, tProt, Colors.blue),
+                    const SizedBox(height: 14),
+                    _buildCompactMacro('Carbs', cCarb, tCarb, Colors.orange),
+                    const SizedBox(height: 14),
+                    _buildCompactMacro('Fats', cFat, tFat, Colors.green),
                   ],
                 ),
               ),
             ],
           ),
+          const SizedBox(height: 24),
+          _buildSnackToggle(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCompactMacro(String label, double current, double target, Color color) {
+    final percent = target > 0 ? (current / target).clamp(0.0, 1.0) : 0.0;
+    final remaining = target - current;
+    final isOver = remaining < 0;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+            Text(
+              isOver
+                  ? '+${(-remaining).toStringAsFixed(0)}g over'
+                  : '${remaining.toStringAsFixed(0)}g left',
+              style: TextStyle(
+                fontSize: 11,
+                color: isOver ? Colors.red.shade400 : Colors.grey.shade500,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ],
         ),
+        const SizedBox(height: 6),
+        ClipRRect(
+          borderRadius: BorderRadius.circular(4),
+          child: LinearProgressIndicator(
+            value: percent,
+            minHeight: 6,
+            backgroundColor: color.withValues(alpha: 0.1),
+            valueColor: AlwaysStoppedAnimation<Color>(isOver ? Colors.red.shade400 : color),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSnackToggle() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+      decoration: BoxDecoration(
+        color: const Color(0xFF42A5F5).withValues(alpha: 0.05),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: const Color(0xFF42A5F5).withValues(alpha: 0.1)),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.cookie_outlined, size: 18, color: Color(0xFF1E88E5)),
+          const SizedBox(width: 12),
+          const Expanded(
+            child: Text(
+              "Include Snacks in Goals",
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF1E88E5)),
+            ),
+          ),
+          Switch(
+            value: includeSnacks,
+            activeThumbColor: const Color(0xFF42A5F5),
+            onChanged: (value) {
+              setState(() {
+                includeSnacks = value;
+                mealRatios = includeSnacks
+                    ? {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.1}
+                    : {'Breakfast': 0.22, 'Lunch': 0.33, 'Dinner': 0.45, 'Snack': 0.0};
+                calculateRecommendationForEachMealPeriod();
+                saveIncludeSnacksIntoDatabase();
+              });
+            },
+          ),
+        ],
       ),
     );
   }
@@ -724,475 +735,278 @@ class _MealDiaryState extends State<MealDiary> {
         final meals = snapshot.data?.docs ?? [];
 
         return Container(
-          margin: const EdgeInsets.only(bottom: 14),
+          margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            gradient: LinearGradient(
-              colors: [Colors.white, _getMealColor(mealType).withValues(alpha: 0.05)],
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-            ),
-            borderRadius: BorderRadius.circular(20),
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withValues(alpha: 0.06),
-                blurRadius: 15,
-                offset: const Offset(0, 3),
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
               ),
             ],
           ),
-          child: Theme(
-            data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(20),
-              child: ExpansionTile(
-                initiallyExpanded: expandedMeals.contains(mealType),
-                onExpansionChanged: (expanded) {
-                  setState(() {
-                    if (expanded) {
-                      expandedMeals.add(mealType);
-                    } else {
-                      expandedMeals.remove(mealType);
-                    }
-                  });
-                },
-                leading: Container(
-                  padding: const EdgeInsets.all(10),
-                  decoration: BoxDecoration(
-                    color: _getMealColor(mealType).withValues(alpha: 0.15),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(
-                    _getMealIcon(mealType),
-                    color: _getMealColor(mealType),
-                    size: 24,
-                  ),
-                ),
-                title: Text(
-                  mealType,
-                  style: const TextStyle(
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.black87,
-                    letterSpacing: -0.3,
-                  ),
-                ),
-                subtitle: Padding(
-                  padding: const EdgeInsets.only(top: 4.0),
-                  child: Text(
-                    '${meals.length} meal${meals.length != 1 ? 's' : ''} logged',
-                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                  ),
-                ),
-                trailing: Container(
-                  padding: const EdgeInsets.all(6),
-                  decoration: BoxDecoration(
-                    color: _getMealColor(mealType).withValues(alpha: 0.1),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(
-                    expandedMeals.contains(mealType) ? Icons.expand_less : Icons.expand_more,
-                    color: _getMealColor(mealType),
-                  ),
-                ),
-                childrenPadding: const EdgeInsets.all(16),
-                children: [
-                  if (meals.isEmpty)
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          Icon(Icons.fastfood_outlined, size: 56, color: Colors.grey[350]),
-                          const SizedBox(height: 12),
-                          Text(
-                            "No meals logged yet",
-                            style: TextStyle(
-                              color: Colors.grey[700],
-                              fontSize: 16,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            "Start by adding your first meal!",
-                            style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    )
-                  else
-                    FutureBuilder(
-                      future: Future.wait(meals.map((m) async {
-                        var mealDoc = await mealsCol.doc(m['mealID']).get();
-                        if (!mealDoc.exists) {
-                          mealDoc = await customMealsCol.doc(m['mealID']).get();
-                        }
-
-                        return {
-                          'log': m,
-                          'mealData': mealDoc.exists ? mealDoc.data() : {},
-                        };
-                      })),
-                      builder: (context, snapshot) {
-                        if (!snapshot.hasData) {
-                          return Padding(
-                            padding: const EdgeInsets.all(16),
-                            child: Center(
-                              child: CircularProgressIndicator(
-                                color: const Color(0xFF42A5F5),
-                                strokeWidth: 3,
-                              ),
-                            ),
-                          );
-                        }
-
-                        final items = snapshot.data as List<Map<String, dynamic>>;
-
-                        return Column(
-                          children: items.map((item) {
-                            final m = item['log'];
-                            final mealData = item['mealData'];
-                            final mealName = mealData['name'] ?? 'Unnamed Meal';
-                            final servingSize = m['servingSize'] ?? 0;
-
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 10),
-                              decoration: BoxDecoration(
-                                color: Colors.white,
-                                borderRadius: BorderRadius.circular(14),
-                                border: Border.all(color: Colors.grey[200]!),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.03),
-                                    blurRadius: 8,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ],
-                              ),
-                              child: ListTile(
-                                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-                                leading: Container(
-                                  padding: const EdgeInsets.all(8),
-                                  decoration: BoxDecoration(
-                                    color: _getMealColor(mealType).withValues(alpha: 0.12),
-                                    borderRadius: BorderRadius.circular(10),
-                                  ),
-                                  child: Icon(
-                                    Icons.restaurant_menu,
-                                    color: _getMealColor(mealType),
-                                    size: 22,
-                                  ),
-                                ),
-                                title: Text(
-                                  mealName,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                    letterSpacing: -0.2,
-                                  ),
-                                ),
-                                subtitle: Padding(
-                                  padding: const EdgeInsets.only(top: 4.0),
-                                  child: Text(
-                                    'Serving: ${servingSize}g',
-                                    style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                                  ),
-                                ),
-                                trailing: Container(
-                                  decoration: BoxDecoration(
-                                    color: Colors.red.shade50,
-                                    borderRadius: BorderRadius.circular(8),
-                                  ),
-                                  child: IconButton(
-                                    icon: Icon(Icons.delete_outline, color: Colors.red.shade600, size: 22),
-                                    onPressed: () async {
-                                      await mealLogs.doc(m.id).delete();
-                                      _refreshData();
-                                      regenerateTomorrowRecommendation();
-                                    },
-                                  ),
-                                ),
-                                onTap: () async {
-                                  var mealDoc = await mealsCol.doc(m['mealID']).get();
-                                  if (!mealDoc.exists) {
-                                    mealDoc = await customMealsCol.doc(m['mealID']).get();
-                                  }
-                                  if (mealDoc.exists) {
-                                    final mealData = mealDoc.data() as Map<String, dynamic>;
-                                    if (!context.mounted) return;
-                                    Navigator.push(
-                                      context,
-                                      MaterialPageRoute(builder: (_) => MealDetailsPage(data: mealData)),
-                                    );
-                                  }
-                                },
-                              ),
-                            );
-                          }).toList(),
-                        );
-                      },
-                    ),
-
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        await Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) => MealLogPage(
-                              mealType: mealType,
-                              logDate: DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
-                              nutritionalTargets: mealTarget,
-                            ),
-                          ),
-                        );
-                        _refreshData();
-                        regenerateTomorrowRecommendation();
-                      },
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: _getMealColor(mealType),
-                        foregroundColor: Colors.white,
-                        elevation: 0,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                      ),
-                      icon: const Icon(Icons.add_circle_outline, size: 20),
-                      label: const Text(
-                        'Add Meal',
-                        style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ),
-                ],
+          child: ExpansionTile(
+            initiallyExpanded: expandedMeals.contains(mealType),
+            onExpansionChanged: (expanded) {
+              setState(() {
+                if (expanded) {
+                  expandedMeals.add(mealType);
+                }
+                else {
+                  expandedMeals.remove(mealType);
+                }
+              });
+            },
+            shape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+            collapsedShape: const RoundedRectangleBorder(borderRadius: BorderRadius.all(Radius.circular(24))),
+            backgroundColor: Colors.white,
+            collapsedBackgroundColor: Colors.white,
+            leading: Container(
+              padding: const EdgeInsets.all(10),
+              decoration: BoxDecoration(
+                color: _getMealColor(mealType).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(14),
               ),
+              child: Icon(_getMealIcon(mealType), color: _getMealColor(mealType), size: 24),
             ),
+            title: Text(
+              mealType,
+              style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
+            ),
+            subtitle: meals.isEmpty
+              ? Text('Not logged', style: TextStyle(color: Colors.grey.shade400, fontSize: 13))
+              : FutureBuilder<Map<String, double>>(
+                  future: _calculateMealTypeNutrients(meals),
+                  builder: (context, nSnapshot) {
+                    if (!nSnapshot.hasData) return const Text('...');
+                    final data = nSnapshot.data!;
+                    return Text(
+                      '${data['calories']!.toStringAsFixed(0)} kcal • P:${data['protein']!.toStringAsFixed(0)}g C:${data['carbs']!.toStringAsFixed(0)}g F:${data['fats']!.toStringAsFixed(0)}g',
+                      style: TextStyle(color: Colors.grey.shade600, fontSize: 12, fontWeight: FontWeight.w500),
+                    );
+                  },
+                ),
+            childrenPadding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+            children: [
+              if (meals.isEmpty)
+                _buildEmptyMealState()
+              else
+                _buildMealList(meals),
+              const SizedBox(height: 16),
+              _buildAddMealButton(mealType, mealTarget),
+            ],
           ),
         );
       },
     );
   }
 
-  Color _getMealColor(String mealType) {
-    switch (mealType) {
-      case 'Breakfast':
-        return const Color(0xFFFF9800);
-      case 'Lunch':
-        return const Color(0xFF4CAF50);
-      case 'Dinner':
-        return const Color(0xFF9C27B0);
-      case 'Snack':
-        return const Color(0xFFE91E63);
-      default:
-        return const Color(0xFF42A5F5);
-    }
-  }
-
-  Widget _buildNutrientSummary() {
-    if (mealTargets == null || !_previousDayAvailable) return const SizedBox.shrink();
-    double totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFats = 0;
-
-    mealTargets!.forEach((_, t) {
-        if (t.isNotEmpty){
-          totalCal += t['Calories'];
-          totalProtein += t['Protein_g'];
-          totalCarbs += t['Carbs_g'];
-          totalFats += t['Fats_g'];
-        }
-    });
-
-    if (totalCal == 0) return const SizedBox.shrink();
-
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(child: _buildNutrientCard('🔥 Calories', '${totalCal.toStringAsFixed(0)} kcal', Colors.orange)),
-            const SizedBox(width: 10),
-            Expanded(child: _buildNutrientCard('🥩 Protein', '${totalProtein.toStringAsFixed(0)} g', Colors.blue)),
-          ],
-        ),
-        const SizedBox(height: 10),
-        Row(
-          children: [
-            Expanded(child: _buildNutrientCard('🍞 Carbs', '${totalCarbs.toStringAsFixed(0)} g', Colors.brown)),
-            const SizedBox(width: 10),
-            Expanded(child: _buildNutrientCard('🥑 Fats', '${totalFats.toStringAsFixed(0)} g', Colors.green)),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNutrientCard(String label, String value, Color color) {
-    return Container(
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.12),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.3), width: 1.5),
-      ),
+  Widget _buildEmptyMealState() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 24),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.center,
         children: [
+          Icon(Icons.no_food_outlined, size: 48, color: Colors.grey.shade200),
+          const SizedBox(height: 12),
           Text(
-            label,
-            style: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: color.withValues(alpha: 0.9),
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 15,
-              fontWeight: FontWeight.bold,
-              color: color,
-              letterSpacing: -0.3,
-            ),
+            "Nothing logged yet",
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 14, fontWeight: FontWeight.w500),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProgressRow(String label, double actual, double target, String unit, Color color) {
-    final percentage = target > 0 ? (actual / target * 100).clamp(0, 100) : 0;
-    final isOver = actual > target;
+  Widget _buildMealList(List<QueryDocumentSnapshot> meals) {
+    return FutureBuilder(
+      future: Future.wait(meals.map((m) async {
+        var mealDoc = await mealsCol.doc(m['mealID']).get();
+        if (!mealDoc.exists) {
+          mealDoc = await customMealsCol.doc(m['mealID']).get();
+        }
+        return {'log': m, 'mealData': mealDoc.exists ? mealDoc.data() : {}};
+      })),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2));
+        final items = snapshot.data as List<Map<String, dynamic>>;
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, letterSpacing: -0.2),
-            ),
-            Text(
-              '${actual.toStringAsFixed(0)} / ${target.toStringAsFixed(0)} $unit',
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.bold,
-                color: isOver ? Colors.red.shade600 : Colors.grey[700],
+        return Column(
+          children: items.map((item) {
+            final m = item['log'];
+            final mealData = item['mealData'];
+            final name = mealData['name'] ?? 'Unnamed';
+            final serving = m['servingSize'] ?? 0;
+            final cal = (mealData['calorie'] ?? 0) * serving / 100;
+            final p = (mealData['protein'] ?? 0) * serving / 100;
+            final c = (mealData['carb'] ?? 0) * serving / 100;
+            final f = (mealData['fat'] ?? 0) * serving / 100;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: Colors.grey.shade100),
               ),
-            ),
-          ],
+              child: InkWell(
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: mealData))),
+                borderRadius: BorderRadius.circular(16),
+                child: Padding(
+                  padding: const EdgeInsets.all(12),
+                  child: Column(
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                const SizedBox(height: 2),
+                                Text('${serving}g • ${cal.toStringAsFixed(0)} kcal', style: TextStyle(color: Colors.grey.shade600, fontSize: 12)),
+                              ],
+                            ),
+                          ),
+                          IconButton(
+                            icon: Icon(Icons.close, color: Colors.grey.shade400, size: 20),
+                            onPressed: () async {
+                              await mealLogs.doc(m.id).delete();
+                              _refreshData();
+                              regenerateTomorrowRecommendation();
+                            },
+                          ),
+                        ],
+                      ),
+                      const Divider(height: 16),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          _miniNutrient('P', '${p.toStringAsFixed(1)}g', Colors.blue),
+                          _miniNutrient('C', '${c.toStringAsFixed(1)}g', Colors.orange),
+                          _miniNutrient('F', '${f.toStringAsFixed(1)}g', Colors.green),
+                        ],
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _miniNutrient(String label, String value, Color color) {
+    return Row(
+      children: [
+        Container(
+          width: 14,
+          height: 14,
+          decoration: BoxDecoration(color: color.withValues(alpha: 0.2), shape: BoxShape.circle),
+          child: Center(child: Text(label, style: TextStyle(fontSize: 8, fontWeight: FontWeight.bold, color: color))),
         ),
-        const SizedBox(height: 8),
-        ClipRRect(
-          borderRadius: BorderRadius.circular(10),
-          child: LinearProgressIndicator(
-            value: percentage / 100,
-            backgroundColor: color.withValues(alpha: 0.15),
-            valueColor: AlwaysStoppedAnimation<Color>(isOver ? Colors.red.shade400 : color),
-            minHeight: 8,
-            semanticsLabel: label,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Text(
-          '${percentage.toStringAsFixed(1)}% of target',
-          style: TextStyle(fontSize: 11, color: Colors.grey[600], fontWeight: FontWeight.w500),
-        ),
+        const SizedBox(width: 4),
+        Text(value, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
       ],
     );
+  }
+
+  Widget _buildAddMealButton(String mealType, Map<String, dynamic>? mealTarget) {
+    return SizedBox(
+      width: double.infinity,
+      child: TextButton.icon(
+        onPressed: () async {
+          await Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (_) => MealLogPage(
+                mealType: mealType,
+                logDate: DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
+                nutritionalTargets: mealTarget,
+              ),
+            ),
+          );
+          _refreshData();
+          regenerateTomorrowRecommendation();
+        },
+        style: TextButton.styleFrom(
+          backgroundColor: _getMealColor(mealType).withValues(alpha: 0.1),
+          foregroundColor: _getMealColor(mealType),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+          padding: const EdgeInsets.symmetric(vertical: 12),
+        ),
+        icon: const Icon(Icons.add, size: 20),
+        label: const Text('Add Food', style: TextStyle(fontWeight: FontWeight.bold)),
+      ),
+    );
+  }
+
+  Future<Map<String, double>> _calculateMealTypeNutrients(List<QueryDocumentSnapshot> meals) async {
+    double calories = 0, protein = 0, carbs = 0, fats = 0;
+    for (var m in meals) {
+      final data = m.data() as Map<String, dynamic>;
+      var mealDoc = await mealsCol.doc(data['mealID']).get();
+      if (!mealDoc.exists) mealDoc = await customMealsCol.doc(data['mealID']).get();
+      if (mealDoc.exists) {
+        final mealData = mealDoc.data() as Map<String, dynamic>;
+        final ratio = (data['servingSize'] ?? 0) / 100;
+        calories += (mealData['calorie'] ?? 0) * ratio;
+        protein += (mealData['protein'] ?? 0) * ratio;
+        carbs += (mealData['carb'] ?? 0) * ratio;
+        fats += (mealData['fat'] ?? 0) * ratio;
+      }
+    }
+    return {'calories': calories, 'protein': protein, 'carbs': carbs, 'fats': fats};
+  }
+
+  Color _getMealColor(String type) {
+    switch (type) {
+      case 'Breakfast': return Colors.orange;
+      case 'Lunch': return Colors.green;
+      case 'Dinner': return Colors.deepPurple;
+      case 'Snack': return Colors.pink;
+      default: return Colors.blue;
+    }
+  }
+
+  IconData _getMealIcon(String type) {
+    switch (type) {
+      case 'Breakfast': return Icons.wb_sunny_outlined;
+      case 'Lunch': return Icons.lunch_dining_outlined;
+      case 'Dinner': return Icons.dark_mode_outlined;
+      case 'Snack': return Icons.cookie_outlined;
+      default: return Icons.restaurant_menu;
+    }
   }
 
   Future<Map<String, double>> _calculateDailyIntake() async {
     try {
-      double totalCalIntake = 0, totalProteinIntake = 0, totalCarbsIntake = 0, totalFatsIntake = 0;
-
-      final QuerySnapshot mealDataQuery = await mealLogs
+      double tCal = 0, tProt = 0, tCarb = 0, tFat = 0;
+      final query = await mealLogs
           .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
           .where('date', isEqualTo: DateFormat('EEEE, dd MMM yyyy').format(selectedDate))
           .get();
 
-      for (final doc in mealDataQuery.docs) {
+      for (final doc in query.docs) {
         final data = doc.data() as Map<String, dynamic>;
-        DocumentSnapshot mealQuery = await mealsCol.doc(data['mealID']).get();
-        if (!mealQuery.exists) {
-          mealQuery = await customMealsCol.doc(data['mealID']).get();
-        }
-        if (mealQuery.exists) {
-          final mealData = mealQuery.data() as Map<String, dynamic>;
-          final servingSize = data['servingSize'];
-          totalCalIntake += (mealData['calorie']) * servingSize / 100;
-          totalProteinIntake += (mealData['protein']) * servingSize / 100;
-          totalCarbsIntake += (mealData['carb']) * servingSize / 100;
-          totalFatsIntake += (mealData['fat']) * servingSize / 100;
+        DocumentSnapshot mDoc = await mealsCol.doc(data['mealID']).get();
+        if (!mDoc.exists) mDoc = await customMealsCol.doc(data['mealID']).get();
+        if (mDoc.exists) {
+          final mData = mDoc.data() as Map<String, dynamic>;
+          final ratio = (data['servingSize'] ?? 0) / 100;
+          tCal += (mData['calorie'] ?? 0) * ratio;
+          tProt += (mData['protein'] ?? 0) * ratio;
+          tCarb += (mData['carb'] ?? 0) * ratio;
+          tFat += (mData['fat'] ?? 0) * ratio;
         }
       }
-
-      return {
-        'calories': totalCalIntake,
-        'protein': totalProteinIntake,
-        'carbs': totalCarbsIntake,
-        'fats': totalFatsIntake,
-      };
+      return {'calories': tCal, 'protein': tProt, 'carbs': tCarb, 'fats': tFat};
     } catch (e) {
       return {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0};
-    }
-  }
-
-  Widget _buildIntakeComparison(
-      double totalCalIntake,
-      double totalProteinIntake,
-      double totalCarbsIntake,
-      double totalFatsIntake,
-      ) {
-    double totalCal = 0, totalProtein = 0, totalCarbs = 0, totalFats = 0;
-    if (_previousDayAvailable && mealTargets != null) {
-      mealTargets!.forEach((meal, targets) {
-        if (targets.isNotEmpty) {
-          totalCal += targets['Calories'];
-          totalProtein += targets['Protein_g'];
-          totalCarbs += targets['Carbs_g'];
-          totalFats += targets['Fats_g'];
-        }
-      });
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Today\'s Progress',
-          style: TextStyle(
-            fontSize: 17,
-            fontWeight: FontWeight.bold,
-            color: Color(0xFF42A5F5),
-            letterSpacing: -0.3,
-          ),
-        ),
-        const SizedBox(height: 14),
-        _buildProgressRow('🔥 Calories', totalCalIntake, totalCal, 'kcal', Colors.orange),
-        const SizedBox(height: 12),
-        _buildProgressRow('🥩 Protein', totalProteinIntake, totalProtein, 'g', Colors.blue),
-        const SizedBox(height: 12),
-        _buildProgressRow('🍞 Carbs', totalCarbsIntake, totalCarbs, 'g', Colors.brown),
-        const SizedBox(height: 12),
-        _buildProgressRow('🥑 Fats', totalFatsIntake, totalFats, 'g', Colors.green),
-      ],
-    );
-  }
-
-  IconData _getMealIcon(String mealType) {
-    switch (mealType) {
-      case 'Breakfast':
-        return Icons.breakfast_dining;
-      case 'Lunch':
-        return Icons.lunch_dining;
-      case 'Dinner':
-        return Icons.dinner_dining;
-      case 'Snack':
-        return Icons.local_cafe;
-      default:
-        return Icons.restaurant_menu;
     }
   }
 }
