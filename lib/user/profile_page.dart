@@ -33,8 +33,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // Replace your existing ProfileScreen build body with this:
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -50,10 +48,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
         child: SafeArea(
           child: Column(
             children: [
-              // HEADER
+              // HEADER with Back Arrow
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
@@ -69,17 +67,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       offset: const Offset(0, 3),
                       blurRadius: 6,
                     ),
                   ],
                 ),
-                child: const Row(
+                child: Row(
                   children: [
-                    Icon(Icons.person, color: Colors.white, size: 28),
-                    SizedBox(width: 12),
-                    Text(
+                    const SizedBox(width: 5),
+                    IconButton(
+                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const SizedBox(width: 4),
+                    const Icon(Icons.person, color: Colors.white, size: 28),
+                    const SizedBox(width: 12),
+                    const Text(
                       'Profile',
                       style: TextStyle(
                         color: Colors.white,
@@ -130,7 +134,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(0.15),
+                              color: Colors.black.withValues(alpha: 0.15),
                               blurRadius: 8,
                               offset: const Offset(0, 4),
                             ),
@@ -161,7 +165,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                         decoration: BoxDecoration(
-                          color: lightBlueTheme.colorScheme.primary.withOpacity(0.1),
+                          color: lightBlueTheme.colorScheme.primary.withValues(alpha: 0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -393,8 +397,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         children: [
-          //Icon(icon, color: Colors.deepOrange, size: 20),
-          //const SizedBox(width: 12),
           Expanded(
             child: Text(
               label,

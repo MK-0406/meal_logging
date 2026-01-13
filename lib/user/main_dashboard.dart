@@ -35,12 +35,11 @@ class _MainDashboardState extends State<_MainDashboard> {
   int currentPageIndex = 0;
 
   final List<Widget> _pages = [
-    HomePage(),
-    MealDiary(),
-    NutritionChat(), // Added ChatBot page here
-    ForumPage(),
-    ReminderPage(),
-    ProfileScreen(),
+    const HomePage(),
+    const MealDiary(),
+    const NutritionChat(),
+    const ForumPage(),
+    const ReminderPage(),
   ];
 
   void _onDestinationSelected(int index) {
@@ -92,15 +91,48 @@ class _MainDashboardState extends State<_MainDashboard> {
               ),
             ),
           ),
+          // Global Profile Button (except for pages where it might overlap or not be needed)
+          Positioned(
+            top: MediaQuery.of(context).padding.top + 15,
+            right: 20,
+            child: _buildProfileButton(),
+          ),
         ],
       ),
       bottomNavigationBar: _buildFloatingNavigationBar(),
     );
   }
 
+  Widget _buildProfileButton() {
+    return GestureDetector(
+      onTap: () {
+        Navigator.push(
+          context,
+          MaterialPageRoute(builder: (context) => const ProfileScreen()),
+        );
+      },
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          color: const Color(0xFF42A5F5), // Solid blue for high contrast
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF42A5F5).withValues(alpha: 0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
+            ),
+          ],
+          border: Border.all(color: Colors.white, width: 2), // White border to pop out
+        ),
+        child: const Icon(Icons.person_rounded, color: Colors.white, size: 24),
+      ),
+    );
+  }
+
   Widget _buildFloatingNavigationBar() {
     return Container(
-      margin: const EdgeInsets.fromLTRB(10, 0, 10, 10), // Slightly adjusted margin for 6 items
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
       height: 72,
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.8),
@@ -127,12 +159,12 @@ class _MainDashboardState extends State<_MainDashboard> {
               labelTextStyle: WidgetStateProperty.resolveWith((states) {
                 if (states.contains(WidgetState.selected)) {
                   return const TextStyle(
-                    fontSize: 10, // Slightly smaller font for 6 items
+                    fontSize: 11,
                     fontWeight: FontWeight.bold,
                     color: Color(0xFF42A5F5),
                   );
                 }
-                return const TextStyle(fontSize: 10, color: Colors.grey);
+                return const TextStyle(fontSize: 11, color: Colors.grey);
               }),
             ),
             child: NavigationBar(
@@ -155,7 +187,7 @@ class _MainDashboardState extends State<_MainDashboard> {
                 NavigationDestination(
                   selectedIcon: Icon(Icons.chat_bubble_rounded, color: Color(0xFF42A5F5)),
                   icon: Icon(Icons.chat_bubble_outline_rounded, color: Colors.grey),
-                  label: 'Bot', // Chat Bot tab
+                  label: 'Bot',
                 ),
                 NavigationDestination(
                   selectedIcon: Icon(Icons.forum_rounded, color: Color(0xFF42A5F5)),
@@ -166,11 +198,6 @@ class _MainDashboardState extends State<_MainDashboard> {
                   selectedIcon: Icon(Icons.notifications_rounded, color: Color(0xFF42A5F5)),
                   icon: Icon(Icons.notifications_none_rounded, color: Colors.grey),
                   label: 'Reminder',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.person_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.person_outline_rounded, color: Colors.grey),
-                  label: 'Profile',
                 ),
               ],
             ),

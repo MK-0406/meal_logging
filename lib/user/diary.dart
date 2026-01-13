@@ -485,12 +485,11 @@ class _MealDiaryState extends State<MealDiary> {
         children: [
           const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
               _headerNavButton(Icons.chevron_left, () => _previousDay(true)),
-              const SizedBox(width: 20),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                 decoration: BoxDecoration(
                   color: Colors.white.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(20),
@@ -507,7 +506,6 @@ class _MealDiaryState extends State<MealDiary> {
                     ),
                 )
               ),
-              const SizedBox(width: 20),
               _headerNavButton(
                 Icons.chevron_right,
                 selectedDate.isBefore(today) ? _nextDay : null,
