@@ -20,7 +20,6 @@ class _NutritionChatState extends State<NutritionChat> {
   final List<Map<String, dynamic>> _messages = [];
   bool _isLoading = false;
 
-  // Updated with VALID Google AI Model identifiers
   final List<String> _availableModels = [
     'gemini-2.5-flash',
     'gemini-2.5-flash-lite',
@@ -47,13 +46,13 @@ class _NutritionChatState extends State<NutritionChat> {
           maxOutputTokens: 4096,
         ),
         systemInstruction: Content.system(
-            'You are a expert nutrition assistant. Your goal is to provide feedback on logged meals and recommend meals ONLY from the provided database list. '
-                'IMPORTANT: You CANNOT change the user\'s information (like weight, height, or age). If asked to do so, politely explain that you are an assistant and cannot modify their profile data. '
-                'Use the provided [SYSTEM CONTEXT] regarding meal logs and health data only when relevant to the user\'s query. For general nutrition questions, answer directly. '
-                'Always be encouraging, professional, and practical.'),
+            'You are a expert nutrition assistant integrated into a meal logging app. '
+            'Your goal is to provide feedback on logged meals and recommend meals ONLY from the provided database list. '
+            'IMPORTANT: You CANNOT change the user\'s information (like weight, height, or age). If asked to do so, politely explain that you are an assistant and cannot modify their profile data. '
+            'Use the provided [SYSTEM CONTEXT] regarding meal logs and health data only when relevant to the user\'s query. For general nutrition questions, answer directly. '
+            'Always be encouraging, professional, and practical.'),
       );
       _chat = _model!.startChat();
-      debugPrint('Active Model: ${_availableModels[_currentModelIndex]}');
     } catch (e) {
       debugPrint('Error initializing model: $e');
     }
@@ -101,6 +100,10 @@ class _NutritionChatState extends State<NutritionChat> {
         });
       }
     });
+
+    if (_messages.isEmpty) {
+      _sendTodaySummary();
+    }
     _scrollToBottom();
   }
 
@@ -150,6 +153,26 @@ $availableMeals
 """;
   }
 
+  Future<void> _sendTodaySummary() async {
+    if (_chat == null) return;
+    setState(() => _isLoading = true);
+    final now = DateTime.now();
+    final dateStr = DateFormat('EEEE, dd MMM yyyy').format(now);
+
+    setState(() {
+      _messages.add({
+        'role': 'model',
+        'text': "Hello! Let me take a look at your logs for today...",
+        'time': DateTime.now(),
+        'isStatus': true,
+      });
+    });
+
+    await _callAiWithRetry(now, dateStr: dateStr, isSummary: true);
+    setState(() => _isLoading = false);
+    _scrollToBottom();
+  }
+
   Future<void> _sendMessage() async {
     if (_chat == null) return;
     final text = _textController.text.trim();
@@ -172,7 +195,6 @@ $availableMeals
     _scrollToBottom();
   }
 
-  // Core logic to handle AI calls with automatic model fallback and improved error catching
   Future<void> _callAiWithRetry(DateTime date, {String? dateStr, String? manualText, bool isSummary = false}) async {
     try {
       final contextData = await _getAppContext(date);
@@ -193,18 +215,14 @@ $availableMeals
       await _saveMessage('model', botMsg);
     } catch (e) {
       String errorStr = e.toString().toLowerCase();
-      // Added 503 and 'overloaded' to the switching logic
       if (errorStr.contains('429') || errorStr.contains('quota') || errorStr.contains('limit') || errorStr.contains('503') || errorStr.contains('overloaded')) {
-        debugPrint("Model ${_availableModels[_currentModelIndex]} busy or limit reached. Switching...");
         if (_switchToNextModel()) {
-          // Retry with next model
           await _callAiWithRetry(date, dateStr: dateStr, manualText: manualText, isSummary: isSummary);
         } else {
-          _addErrorMessage("All available AI models are currently at their capacity. Please wait a few minutes and try again.");
+          _addErrorMessage("All models are busy. Please try again later.");
         }
       } else {
-        _addErrorMessage("Sorry, I encountered an unexpected error. Please check your connection and try again.");
-        debugPrint("AI Error Details: $e");
+        _addErrorMessage("Sorry, I encountered an error. Please try again.");
       }
     }
   }
@@ -252,14 +270,13 @@ $availableMeals
 
       if (mealDoc.exists) {
         final mData = mealDoc.data()!;
-        final name = mData['name'] ?? 'Unknown';
         final ratio = serving / 100;
         final cal = (mData['calorie'] ?? 0) * ratio;
         final p = (mData['protein'] ?? 0) * ratio;
         final c = (mData['carb'] ?? 0) * ratio;
         final f = (mData['fat'] ?? 0) * ratio;
 
-        summary += "- $type: $name (${serving}g) - ${cal.toStringAsFixed(0)}kcal (P:${p.toStringAsFixed(1)}g, C:${c.toStringAsFixed(1)}g, F:${f.toStringAsFixed(1)}g)\n";
+        summary += "- $type: ${mData['name']} (${serving}g) - ${cal.toStringAsFixed(0)}kcal (P:${p.toStringAsFixed(1)}g, C:${c.toStringAsFixed(1)}g, F:${f.toStringAsFixed(1)}g)\n";
         totalCal += cal; totalP += p; totalC += c; totalF += f;
       }
     }
@@ -288,14 +305,20 @@ $availableMeals
           children: [
             _buildHeader(),
             Expanded(
-              child: _messages.isEmpty ? _buildEmptyState() : ListView.builder(
+              child: ListView.builder(
                 controller: _scrollController,
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 itemCount: _messages.length,
-                itemBuilder: (context, index) => _buildChatBubble(_messages[index]),
+                itemBuilder: (context, index) {
+                  final msg = _messages[index];
+                  if (msg['isStatus'] == true) {
+                    return _buildStatusMessage(msg['text']);
+                  }
+                  return _buildChatBubble(msg);
+                },
               ),
             ),
-            if (_isLoading) const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF42A5F5))),
+            if (_isLoading) _buildLoadingIndicator(),
             _buildInputArea(),
           ],
         ),
@@ -308,15 +331,64 @@ $availableMeals
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
       ),
       child: Column(
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              const Text("NutriBot", style: TextStyle(color: Colors.white, fontSize: 30, fontWeight: FontWeight.bold)),
+              const Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "NutriBot",
+                    style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                  ),
+                  Text(
+                    "Your AI Nutritionist",
+                    style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                  ),
+                ],
+              ),
+              IconButton(
+                icon: const Icon(Icons.history_rounded, color: Colors.white, size: 24),
+                onPressed: () async {
+                  final confirm = await showDialog<bool>(
+                    context: context,
+                    builder: (context) => AlertDialog(
+                      title: const Text("Clear Chat?"),
+                      content: const Text("This will delete your conversation history."),
+                      actions: [
+                        TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel")),
+                        TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Clear", style: TextStyle(color: Colors.red))),
+                      ],
+                    ),
+                  );
+                  if (confirm == true) {
+                    final uid = FirebaseAuth.instance.currentUser!.uid;
+                    await FirebaseFirestore.instance.collection('chats').doc(uid).collection('chat').get().then((s) {
+                      for (var d in s.docs) {
+                        d.reference.delete();
+                      }
+                    });
+                    setState(() { _messages.clear(); if (_model != null) _chat = _model!.startChat(); });
+                    _sendTodaySummary();
+                  }
+                },
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
             ],
           ),
         ],
@@ -324,49 +396,169 @@ $availableMeals
     );
   }
 
-  Widget _buildEmptyState() {
-    return Center(child: Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Icon(Icons.chat_bubble_outline, size: 64, color: Colors.grey.shade200),
-        const SizedBox(height: 16),
-        const Text("Hello! I'm your Nutrition Assistant.", style: TextStyle(fontWeight: FontWeight.bold)),
-      ],
-    ));
+  Widget _buildStatusMessage(String text) {
+    return Center(
+      child: Container(
+        margin: const EdgeInsets.symmetric(vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+        decoration: BoxDecoration(
+          color: Colors.blue.shade50,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          text,
+          style: TextStyle(color: Colors.blue.shade700, fontSize: 12, fontWeight: FontWeight.w600),
+        ),
+      ),
+    );
   }
 
   Widget _buildChatBubble(Map<String, dynamic> msg) {
     final isUser = msg['role'] == 'user';
-    return Align(
-      alignment: isUser ? Alignment.centerRight : Alignment.centerLeft,
-      child: Container(
-        margin: const EdgeInsets.symmetric(vertical: 8),
-        padding: const EdgeInsets.all(16),
-        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        decoration: BoxDecoration(
-          color: isUser ? const Color(0xFF42A5F5) : Colors.white,
-          borderRadius: BorderRadius.circular(20),
-        ),
-        child: isUser ? Text(msg['text'], style: const TextStyle(color: Colors.white)) : MarkdownBody(
-          data: msg['text'],
-          styleSheet: MarkdownStyleSheet(p: const TextStyle(color: Colors.black87)),
-        ),
+    final timeStr = DateFormat('hh:mm a').format(msg['time'] ?? DateTime.now());
+
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Column(
+        crossAxisAlignment: isUser ? CrossAxisAlignment.end : CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: isUser ? MainAxisAlignment.end : MainAxisAlignment.start,
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              if (!isUser)
+                Container(
+                  margin: const EdgeInsets.only(right: 8, bottom: 4),
+                  child: CircleAvatar(
+                    radius: 16,
+                    backgroundColor: const Color(0xFF42A5F5).withValues(alpha: 0.1),
+                    child: const Icon(Icons.smart_toy_rounded, size: 18, color: Color(0xFF1E88E5)),
+                  ),
+                ),
+              Flexible(
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
+                  decoration: BoxDecoration(
+                    color: isUser ? const Color(0xFF42A5F5) : Colors.white,
+                    borderRadius: BorderRadius.only(
+                      topLeft: const Radius.circular(20),
+                      topRight: const Radius.circular(20),
+                      bottomLeft: Radius.circular(isUser ? 20 : 4),
+                      bottomRight: Radius.circular(isUser ? 4 : 20),
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: 0.04),
+                        blurRadius: 10,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
+                  ),
+                  child: isUser
+                      ? Text(
+                          msg['text'],
+                          style: const TextStyle(color: Colors.white, fontSize: 15, height: 1.4),
+                        )
+                      : MarkdownBody(
+                          data: msg['text'],
+                          styleSheet: MarkdownStyleSheet(
+                            p: const TextStyle(color: Colors.black87, fontSize: 15, height: 1.4),
+                            strong: const TextStyle(fontWeight: FontWeight.bold, color: Colors.black),
+                          ),
+                        ),
+                ),
+              ),
+            ],
+          ),
+          Padding(
+            padding: EdgeInsets.only(top: 4, left: isUser ? 0 : 44, right: isUser ? 4 : 0),
+            child: Text(
+              timeStr,
+              style: TextStyle(color: Colors.grey.shade400, fontSize: 10, fontWeight: FontWeight.w500),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingIndicator() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 12,
+            backgroundColor: const Color(0xFF42A5F5).withValues(alpha: 0.1),
+            child: const SizedBox(
+              width: 12,
+              height: 12,
+              child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFF42A5F5)),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            "NutriBot is typing...",
+            style: TextStyle(color: Colors.grey.shade500, fontSize: 13, fontStyle: FontStyle.italic),
+          ),
+        ],
       ),
     );
   }
 
   Widget _buildInputArea() {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, -5)),
+        ],
+      ),
       child: Row(
         children: [
-          Expanded(child: TextField(
-            controller: _textController,
-            decoration: InputDecoration(hintText: "Ask about nutrition...", filled: true, fillColor: Colors.grey.shade50, border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none)),
-            onSubmitted: (_) => _sendMessage(),
-          )),
-          const SizedBox(width: 8),
-          CircleAvatar(backgroundColor: const Color(0xFF42A5F5), child: IconButton(icon: const Icon(Icons.send, color: Colors.white), onPressed: _sendMessage)),
+          Expanded(
+            child: TextField(
+              controller: _textController,
+              decoration: InputDecoration(
+                hintText: "Ask about your diet...",
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(28),
+                  borderSide: BorderSide.none,
+                ),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              ),
+              onSubmitted: (_) => _sendMessage(),
+            ),
+          ),
+          const SizedBox(width: 10),
+          GestureDetector(
+            onTap: _sendMessage,
+            child: Container(
+              height: 48,
+              width: 48,
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                ),
+                shape: BoxShape.circle,
+                boxShadow: [
+                  BoxShadow(
+                    color: Color(0xFF42A5F5),
+                    blurRadius: 8,
+                    offset: Offset(0, 3),
+                    spreadRadius: -2,
+                  ),
+                ],
+              ),
+              child: const Icon(Icons.send_rounded, color: Colors.white, size: 22),
+            ),
+          ),
         ],
       ),
     );
