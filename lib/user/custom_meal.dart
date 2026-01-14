@@ -14,6 +14,7 @@ class CustomMealPage extends StatefulWidget {
   final bool editMeal;
   final bool editRecipe;
   final String logDate;
+  final Map<String, dynamic>? nutritionalTargets;
 
   const CustomMealPage({
     super.key,
@@ -24,6 +25,7 @@ class CustomMealPage extends StatefulWidget {
     required this.editMeal,
     required this.editRecipe,
     required this.logDate,
+    this.nutritionalTargets,
   });
 
   @override
@@ -55,7 +57,7 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
             Navigator.pushReplacement(
               context,
               MaterialPageRoute(
-                builder: (_) => MealLogPage(mealType: widget.defaultCategory, logDate: widget.logDate),
+                builder: (_) => MealLogPage(mealType: widget.defaultCategory, logDate: widget.logDate, nutritionalTargets: widget.nutritionalTargets),
               ),
             );
           },
