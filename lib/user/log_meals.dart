@@ -197,7 +197,7 @@ class _MealLogPageState extends State<MealLogPage> {
   }
 
   Widget _buildTargetSummary() {
-    final t = widget.nutritionalTargets![widget.mealType];
+    final t = widget.nutritionalTargets;
     if (t == null) return const SizedBox.shrink();
 
     return Container(
@@ -377,6 +377,7 @@ class _MealLogPageState extends State<MealLogPage> {
 
   Future<void> _logMeal(String mealID, String mealName, String mealType, String uid, String logDate, Map<String, dynamic> mealNutrients, {List<dynamic>? servings}) async {
     String? selectedServingName;
+    _sizeController.text = '100';
     await showDialog(
       context: context,
       builder: (logContext) => StatefulBuilder(
@@ -424,7 +425,7 @@ class _MealLogPageState extends State<MealLogPage> {
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
                 final size = double.tryParse(_sizeController.text) ?? 100.0;
-                final exceeds = _checkIfMealExceedsTarget(mealNutrients, size, widget.nutritionalTargets?[widget.mealType]);
+                final exceeds = _checkIfMealExceedsTarget(mealNutrients, size, widget.nutritionalTargets);
                 if (exceeds['exceeds']) {
                   await _showExceedConfirmationDialog(logContext, exceeds, mealName, size, mealID, uid, logDate);
                 } else {
