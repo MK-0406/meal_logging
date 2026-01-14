@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:meal_logging/main.dart';
 
 class MealDetailsPage extends StatelessWidget {
   final Map<String, dynamic> data;
@@ -9,317 +8,197 @@ class MealDetailsPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      backgroundColor: const Color(0xFFF8FBFF),
+      body: Column(
+        children: [
+          _buildHeader(context),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 40),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _buildMealTitleSection(),
+                  const SizedBox(height: 28),
+                  _buildSectionTitle("Nutrition Highlights (per 100g)"),
+                  const SizedBox(height: 16),
+                  _buildQuickNutritionGrid(),
+                  const SizedBox(height: 32),
+                  _buildSectionTitle("Detailed Nutritional Profile"),
+                  const SizedBox(height: 16),
+                  _buildDetailedNutrientsCard(),
+                ],
+              ),
+            ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
         ),
-        child: SafeArea(
-          child: Column(
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 26),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Meal Details',
+            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMealTitleSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        children: [
+          Text(
+            data['name'] ?? 'Unnamed Meal',
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50), height: 1.2),
+          ),
+          const SizedBox(height: 16),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            alignment: WrapAlignment.center,
             children: [
-              // Header with Back Button
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [lightBlueTheme.colorScheme.primary, lightBlueTheme.colorScheme.secondary],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                ),
-                child: Row(
-                  children: [
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const SizedBox(width: 8),
-                    Expanded(
-                      child: Text(
-                        'Meal Details',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      // Title Section
-                      Container(
-                        width: double.infinity,
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.1),
-                              blurRadius: 8,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          children: [
-                            Text(
-                              data['name'] ?? 'Unnamed Meal',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 28,
-                                fontWeight: FontWeight.bold,
-                                color: lightBlueTheme.colorScheme.primary,
-                              ),
-                            ),
-                            const SizedBox(height: 12),
-                            Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                _buildCategoryChip(
-                                  'Category: ${data['foodCategory'] ?? 'Unknown'}',
-                                  Colors.orange,
-                                ),
-                                const SizedBox(height: 8),
-                                _buildCategoryChip(
-                                  'Group: ${data['foodGroup'] ?? 'Unknown'}',
-                                  Colors.deepOrange,
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-
-                      // Quick Nutrition Overview
-                      Text(
-                        "Nutrition Overview (per 100g)",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: lightBlueTheme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-                      _buildQuickNutrition(),
-                      const SizedBox(height: 24),
-
-                      // Detailed Nutrition Info Section
-                      Text(
-                        "Detailed Nutritional Information",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: lightBlueTheme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 12),
-
-                      Card(
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 4,
-                        child: Padding(
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            children: [
-                              _nutrientTile("Calories", "${data['calorie'] ?? '0'} kcal", Colors.orange),
-                              _divider(),
-                              _nutrientTile("Water", "${data['water'] ?? '0'} g", Colors.blue),
-                              _divider(),
-                              _nutrientTile("Protein", "${data['protein'] ?? '0'} g", Colors.red),
-                              _divider(),
-                              _nutrientTile("Carbohydrates", "${data['carb'] ?? '0'} g", Colors.brown),
-                              _divider(),
-                              _nutrientTile("Fat", "${data['fat'] ?? '0'} g", Colors.green),
-                              _divider(),
-                              _nutrientTile("Fibre", "${data['fibre'] ?? '0'} g", Colors.purple),
-                              _divider(),
-                              _nutrientTile("Ash", "${data['ash'] ?? '0'} g", Colors.pinkAccent),
-                              _divider(),
-                              _nutrientTile("Calcium", "${data['calcium'] ?? '0'} mg", Colors.teal),
-                              _divider(),
-                              _nutrientTile("Iron", "${data['iron'] ?? '0'} mg", Colors.deepOrange),
-                              _divider(),
-                              _nutrientTile("Phosphorus", "${data['phosphorus'] ?? '0'} mg", Colors.indigo),
-                              _divider(),
-                              _nutrientTile("Potassium", "${data['potassium'] ?? '0'} mg", Colors.amber),
-                              _divider(),
-                              _nutrientTile("Sodium", "${data['sodium'] ?? '0'} mg", Colors.blueGrey),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
+              _buildModernChip(data['foodCategory'] ?? 'Unknown', Colors.blue),
+              _buildModernChip(data['foodGroup'] ?? 'General', Colors.orange),
             ],
           ),
-        ),
+        ],
       ),
     );
   }
 
-  Widget _buildCategoryChip(String text, Color color) {
+  Widget _buildModernChip(String label, Color color) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
       decoration: BoxDecoration(
         color: color.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: color.withValues(alpha: 0.3)),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withValues(alpha: 0.2)),
       ),
       child: Text(
-        text,
-        style: TextStyle(
-          color: color,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-        ),
+        label,
+        style: TextStyle(color: color.withValues(alpha: 0.8), fontSize: 12, fontWeight: FontWeight.bold),
       ),
     );
   }
 
-  Widget _buildQuickNutrition() {
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        title,
+        style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50), letterSpacing: -0.3),
+      ),
+    );
+  }
+
+  Widget _buildQuickNutritionGrid() {
     return Row(
       children: [
-        Expanded(
-          child: _buildNutritionCard(
-            '🔥',
-            'Calories',
-            '${data['calorie'] ?? '0'}',
-            'kcal',
-            Colors.orange,
-          ),
-        ),
+        Expanded(child: _buildMacroCard('🔥', 'Calories', '${data['calorie'] ?? 0}', 'kcal', Colors.orange)),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildNutritionCard(
-            '🥩',
-            'Protein',
-            '${data['protein'] ?? '0'}',
-            'g',
-            Colors.red,
-          ),
-        ),
+        Expanded(child: _buildMacroCard('🥩', 'Protein', '${data['protein'] ?? 0}', 'g', Colors.blue)),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildNutritionCard(
-            '🍞',
-            'Carbs',
-            '${data['carb'] ?? '0'}',
-            'g',
-            Colors.brown,
-          ),
-        ),
+        Expanded(child: _buildMacroCard('🍞', 'Carbs', '${data['carb'] ?? 0}', 'g', Colors.brown)),
         const SizedBox(width: 12),
-        Expanded(
-          child: _buildNutritionCard(
-            '🥑',
-            'Fat',
-            '${data['fat'] ?? '0'}',
-            'g',
-            Colors.green,
-          ),
-        ),
+        Expanded(child: _buildMacroCard('🥑', 'Fat', '${data['fat'] ?? 0}', 'g', Colors.green)),
       ],
     );
   }
 
-  Widget _buildNutritionCard(String emoji, String label, String value, String unit, Color color) {
+  Widget _buildMacroCard(String emoji, String label, String value, String unit, Color color) {
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 8),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         children: [
-          Text(emoji, style: const TextStyle(fontSize: 20)),
+          Text(emoji, style: const TextStyle(fontSize: 22)),
+          const SizedBox(height: 8),
+          Text(value, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: color)),
+          Text(unit, style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.bold)),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: TextStyle(
-              fontSize: 11,
-              color: Colors.grey[600],
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 16,
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          Text(
-            unit,
-            style: TextStyle(
-              fontSize: 10,
-              color: Colors.grey[500],
-            ),
-          ),
+          Text(label, style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w500)),
         ],
       ),
     );
   }
 
-  Widget _nutrientTile(String label, String value, Color color) {
+  Widget _buildDetailedNutrientsCard() {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: Column(
+        children: [
+          _nutrientRow("Water", "${data['water'] ?? 0} g", Colors.lightBlue),
+          _divider(),
+          _nutrientRow("Fibre", "${data['fibre'] ?? 0} g", Colors.green),
+          _divider(),
+          _nutrientRow("Iron", "${data['iron'] ?? 0} mg", Colors.redAccent),
+          _divider(),
+          _nutrientRow("Calcium", "${data['calcium'] ?? 0} mg", Colors.indigo),
+          _divider(),
+          _nutrientRow("Sodium", "${data['sodium'] ?? 0} mg", Colors.blueGrey),
+          _divider(),
+          _nutrientRow("Potassium", "${data['potassium'] ?? 0} mg", Colors.teal),
+          _divider(),
+          _nutrientRow("Phosphorus", "${data['phosphorus'] ?? 0} mg", Colors.deepPurple),
+          _divider(),
+          _nutrientRow("Ash", "${data['ash'] ?? 0} g", Colors.brown),
+        ],
+      ),
+    );
+  }
+
+  Widget _nutrientRow(String label, String value, Color color) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      padding: const EdgeInsets.symmetric(vertical: 12),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: const TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ),
+          Text(label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.black87)),
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: color.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(
-              value,
-              style: TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: color,
-              ),
-            ),
+            decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(10)),
+            child: Text(value, style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: color)),
           ),
         ],
       ),
@@ -327,10 +206,6 @@ class MealDetailsPage extends StatelessWidget {
   }
 
   Widget _divider() {
-    return Divider(
-      height: 1,
-      thickness: 1,
-      color: Colors.grey[200],
-    );
+    return Divider(height: 1, thickness: 1, color: Colors.grey.shade100);
   }
 }
