@@ -95,8 +95,6 @@ class _MealRecommenderPageState extends State<MealRecommender> {
         .where('calorie', isLessThanOrEqualTo: calHigh)
         .get();
 
-    print(widget.nutritionalTargets);
-
     return snapshot.docs.map((doc) {
       var data = doc.data();
       data['id'] = doc.id; // Store document ID
@@ -114,8 +112,6 @@ class _MealRecommenderPageState extends State<MealRecommender> {
     if (_isLoading) {
       return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2)));
     }
-
-    print(recommendedMeals);
 
     if (recommendedMeals.isEmpty) {
       return Container(
@@ -142,7 +138,7 @@ class _MealRecommenderPageState extends State<MealRecommender> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: ListTile(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data))),
@@ -171,7 +167,8 @@ class _MealRecommenderPageState extends State<MealRecommender> {
 
   Future<void> _showLogDialog(Map<String, dynamic> mealData) async {
     String? selectedServingName;
-    final servings = mealData['servings'] ?? [];
+    final List<dynamic> servings = mealData['servings'] ?? [];
+    _sizeController.text = '100';
     
     await showDialog(
       context: context,
@@ -179,54 +176,118 @@ class _MealRecommenderPageState extends State<MealRecommender> {
         builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Text("Log ${mealData['name']}", style: const TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (servings.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      hint: const Text("Select portion size"),
-                      value: selectedServingName,
-                      items: servings.map((s) => DropdownMenuItem<String>(value: s['name'], child: Text("${s['name']} (${s['grams']}g)"))).toList(),
-                      onChanged: (val) => setDialogState(() {
-                        selectedServingName = val;
-                        final s = servings.firstWhere((item) => item['name'] == val);
-                        _sizeController.text = s['grams'].toString();
-                      }),
+          content: Form(
+            key: _logFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (servings.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        hint: const Text("Select portion size"),
+                        value: selectedServingName,
+                        items: servings.map((s) => DropdownMenuItem<String>(value: s['name'], child: Text("${s['name']} (${s['grams']}g)"))).toList(),
+                        onChanged: (val) => setDialogState(() {
+                          selectedServingName = val;
+                          final s = servings.firstWhere((item) => item['name'] == val);
+                          _sizeController.text = s['grams'].toString();
+                        }),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                ],
+                TextFormField(
+                  controller: _sizeController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: "Custom Amount (grams)",
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return 'Please enter a value';
+                    }
+                    final num = double.tryParse(val);
+                    if (num == null) {
+                      return 'Please enter a valid number';
+                    }
+                    if (num <= 0) {
+                      return 'Please enter a value greater than 0';
+                    }
+                    return null;
+                  }
                 ),
-                const SizedBox(height: 16),
               ],
-              TextField(
-                controller: _sizeController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: "Custom Amount (grams)",
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-            ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: TextStyle(color: Colors.grey.shade600))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
+                if (!_logFormKey.currentState!.validate()) return;
                 final size = double.tryParse(_sizeController.text) ?? 100.0;
-                await _addMealToLog(mealData['id'], mealData['name'], size);
+                final exceeds = _checkIfMealExceedsTarget(mealData, size, widget.nutritionalTargets);
+                if (exceeds['exceeds']) {
+                  await _showExceedConfirmationDialog(logContext, exceeds, mealData['name'], size, mealData['id'], FirebaseAuth.instance.currentUser!.uid, widget.logDate);
+                } else {
+                  await _addMealToLog(mealData['id'], mealData['name'], size);
+                }
+
+                if (!logContext.mounted) return;
                 Navigator.pop(logContext);
               },
               child: const Text("Add Meal", style: TextStyle(fontWeight: FontWeight.bold)),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Map<String, dynamic> _checkIfMealExceedsTarget(Map<String, dynamic> nutrients, double size, Map<String, dynamic>? targets) {
+    if (targets == null) return {'exceeds': false, 'exceedingNutrients': []};
+    final List<Map<String, dynamic>> exceeding = [];
+    final mapKeys = {'calorie': 'Calories', 'protein': 'Protein_g', 'carb': 'Carbs_g', 'fat': 'Fats_g'};
+
+    mapKeys.forEach((dbKey, targetKey) {
+      final mealVal = (nutrients[dbKey] ?? 0.0) * size / 100.0;
+      final targetVal = (targets[targetKey] ?? 0.0);
+      if (targetVal > 0 && mealVal > targetVal) {
+        exceeding.add({'name': dbKey, 'amount': mealVal, 'target': targetVal});
+      }
+    });
+    return {'exceeds': exceeding.isNotEmpty, 'exceedingNutrients': exceeding};
+  }
+
+  Future<void> _showExceedConfirmationDialog(BuildContext context, Map<String, dynamic> data, String mealName, double size, String id, String uid, String date) async {
+    await showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Row(children: [Icon(Icons.warning_amber_rounded, color: Colors.orange), SizedBox(width: 8), Text("Limit Exceeded")]),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text("This portion of $mealName exceeds your meal goals for:"),
+            const SizedBox(height: 12),
+            ...data['exceedingNutrients'].map<Widget>((n) => Text("• ${n['name']}: ${n['amount'].toStringAsFixed(0)} / ${n['target'].toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold))).toList(),
+            const SizedBox(height: 16),
+            const Text("Log it anyway?"),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("No")),
+          TextButton(onPressed: () { Navigator.pop(ctx); _addMealToLog(id, mealName, size); }, child: const Text("Yes, Log It", style: TextStyle(fontWeight: FontWeight.bold))),
+        ],
       ),
     );
   }
@@ -240,6 +301,7 @@ class _MealRecommenderPageState extends State<MealRecommender> {
       'date': widget.logDate,
       'servingSize': size,
     });
+    if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$mealName added!"), behavior: SnackBarBehavior.floating, backgroundColor: const Color(0xFF1E88E5)));
   }
 }

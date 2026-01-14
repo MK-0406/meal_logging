@@ -32,6 +32,7 @@ class _MealLogPageState extends State<MealLogPage> {
   List<QueryDocumentSnapshot> _customMeals = [];
   bool _isLoading = true;
   bool _isSearching = false;
+  final _logFormKey = GlobalKey<FormState>();
 
   final TextEditingController _sizeController = TextEditingController();
 
@@ -385,46 +386,63 @@ class _MealLogPageState extends State<MealLogPage> {
         builder: (context, setDialogState) => AlertDialog(
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
           title: Text("Log $mealName", style: const TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (servings != null && servings.isNotEmpty) ...[
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
-                  child: DropdownButtonHideUnderline(
-                    child: DropdownButton<String>(
-                      isExpanded: true,
-                      hint: const Text("Select portion size"),
-                      value: selectedServingName,
-                      items: servings.map((s) => DropdownMenuItem<String>(value: s['name'], child: Text("${s['name']} (${s['grams']}g)"))).toList(),
-                      onChanged: (val) => setDialogState(() {
-                        selectedServingName = val;
-                        final s = servings.firstWhere((item) => item['name'] == val);
-                        _sizeController.text = s['grams'].toString();
-                      }),
+          content: Form(
+            key: _logFormKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (servings != null && servings.isNotEmpty) ...[
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(12), border: Border.all(color: Colors.grey.shade200)),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        isExpanded: true,
+                        hint: const Text("Select portion size"),
+                        value: selectedServingName,
+                        items: servings.map((s) => DropdownMenuItem<String>(value: s['name'], child: Text("${s['name']} (${s['grams']}g)"))).toList(),
+                        onChanged: (val) => setDialogState(() {
+                          selectedServingName = val;
+                          final s = servings.firstWhere((item) => item['name'] == val);
+                          _sizeController.text = s['grams'].toString();
+                        }),
+                      ),
                     ),
                   ),
+                  const SizedBox(height: 16),
+                ],
+                TextFormField(
+                  controller: _sizeController,
+                  keyboardType: TextInputType.number,
+                  decoration: InputDecoration(
+                    labelText: "Custom Amount (grams)",
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                  ),
+                  validator: (val) {
+                    if (val == null || val.isEmpty) {
+                      return 'Please enter a value';
+                    }
+                    final num = double.tryParse(val);
+                    if (num == null) {
+                      return 'Please enter a valid number';
+                    }
+                    if (num <= 0) {
+                      return 'Please enter a value greater than 0';
+                    }
+                    return null;
+                  }
                 ),
-                const SizedBox(height: 16),
               ],
-              TextField(
-                controller: _sizeController,
-                keyboardType: TextInputType.number,
-                decoration: InputDecoration(
-                  labelText: "Custom Amount (grams)",
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                ),
-              ),
-            ],
+            ),
           ),
           actions: [
             TextButton(onPressed: () => Navigator.pop(context), child: Text("Cancel", style: TextStyle(color: Colors.grey.shade600))),
             ElevatedButton(
               style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
               onPressed: () async {
+                if (!_logFormKey.currentState!.validate()) return;
                 final size = double.tryParse(_sizeController.text) ?? 100.0;
                 final exceeds = _checkIfMealExceedsTarget(mealNutrients, size, widget.nutritionalTargets);
                 if (exceeds['exceeds']) {
