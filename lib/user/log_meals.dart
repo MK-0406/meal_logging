@@ -326,8 +326,9 @@ class _MealLogPageState extends State<MealLogPage> {
       ),
       child: ListTile(
         onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data))),
-        contentPadding: const EdgeInsets.all(12),
+        contentPadding: const EdgeInsets.all(7),
         leading: Container(
+          margin: const EdgeInsets.only(left: 12),
           width: 52, height: 52,
           decoration: BoxDecoration(color: Colors.blue.shade50, borderRadius: BorderRadius.circular(16)),
           child: Icon(Icons.restaurant_menu_rounded, color: Colors.blue.shade400),
