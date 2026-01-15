@@ -36,407 +36,249 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE0F7FA), Color(0xFFF1F8E9)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SafeArea(
-          child: Column(
-            children: [
-              // HEADER with Back Arrow
-              Container(
-                width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      lightBlueTheme.colorScheme.primary,
-                      lightBlueTheme.colorScheme.secondary
-                    ],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
-                  borderRadius: const BorderRadius.only(
-                    bottomLeft: Radius.circular(20),
-                    bottomRight: Radius.circular(20),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.2),
-                      offset: const Offset(0, 3),
-                      blurRadius: 6,
-                    ),
-                  ],
-                ),
-                child: Row(
-                  children: [
-                    const SizedBox(width: 5),
-                    IconButton(
-                      icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                    const SizedBox(width: 4),
-                    const Icon(Icons.person, color: Colors.white, size: 28),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Profile',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-
-              Expanded(
-                child: userInfoData == null
-                    ? Center(
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      CircularProgressIndicator(
-                        color: lightBlueTheme.colorScheme.primary,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        'Loading profile...',
-                        style: TextStyle(
-                          color: lightBlueTheme.colorScheme.primary,
-                          fontSize: 16,
+      backgroundColor: const Color(0xFFF8FBFF),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: userInfoData == null
+                ? _buildLoadingState()
+                : SingleChildScrollView(
+                    padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
+                    child: Column(
+                      children: [
+                        _buildUserOverview(),
+                        const SizedBox(height: 32),
+                        _buildInfoSection(
+                          title: "Personal Profile",
+                          icon: Icons.person_outline_rounded,
+                          color: Colors.blue,
+                          children: [
+                            _buildInfoRow('Name', userInfoData!['name']),
+                            _buildInfoRow('Gender', userInfoData!['gender']),
+                            _buildInfoRow('Age', '${userInfoData!['age']} years'),
+                            _buildInfoRow('Height', '${userInfoData!['height_m']} m'),
+                            _buildInfoRow('Weight', '${userInfoData!['weight_kg']} kg'),
+                            _buildInfoRow('BMI', '${userInfoData!['bmi']} kg/m²', isLast: true),
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                )
-                    : SingleChildScrollView(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(
-                    children: [
-                      // PROFILE AVATAR
-                      Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          gradient: LinearGradient(
-                            colors: [
-                              lightBlueTheme.colorScheme.primary,
-                              lightBlueTheme.colorScheme.secondary
-                            ],
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                          ),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.15),
-                              blurRadius: 8,
-                              offset: const Offset(0, 4),
+                        const SizedBox(height: 24),
+                        _buildInfoSection(
+                          title: "Health Metrics",
+                          icon: Icons.favorite_outline_rounded,
+                          color: Colors.redAccent,
+                          children: [
+                            _buildHealthMetric(
+                              'Blood Pressure',
+                              '${userInfoData!['bloodPressureSystolic']}/${userInfoData!['bloodPressureDiastolic']}',
+                              'mmHg',
+                            ),
+                            _buildHealthMetric(
+                              'Blood Sugar',
+                              '${userInfoData!['bloodSugar_mmolL']}',
+                              'mmol/L',
+                            ),
+                            _buildHealthMetric(
+                              'Cholesterol',
+                              '${userInfoData!['cholesterol_mmolL']}',
+                              'mmol/L',
+                              isLast: true,
                             ),
                           ],
                         ),
-                        child: CircleAvatar(
-                          radius: 60,
-                          backgroundColor: Colors.white,
-                          child: Icon(
-                            Icons.person,
-                            size: 70,
-                            color: lightBlueTheme.colorScheme.primary,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // EMAIL + ROLE
-                      Text(
-                        userData!['email'] ?? 'No email',
-                        style: TextStyle(
-                          fontSize: 20,
-                          fontWeight: FontWeight.bold,
-                          color: lightBlueTheme.colorScheme.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-                        decoration: BoxDecoration(
-                          color: lightBlueTheme.colorScheme.primary.withValues(alpha: 0.1),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Text(
-                          userData!['role']?.toUpperCase() ?? 'USER',
-                          style: TextStyle(
-                            color: lightBlueTheme.colorScheme.primary,
-                            fontSize: 12,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-
-                      // PERSONAL INFO CARD
-                      Card(
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.lightBlue.shade50,
-                                Colors.lightBlue.shade100,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.person_2, color: lightBlueTheme.colorScheme.secondary),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "Personal Information",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: lightBlueTheme.colorScheme.secondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              _buildInfoRow('Name', userInfoData!['name']),
-                              _divider(),
-                              _buildInfoRow('Gender', userInfoData!['gender']),
-                              _divider(),
-                              _buildInfoRow('Age', '${userInfoData!['age']} years'),
-                              _divider(),
-                              _buildInfoRow('Height', '${userInfoData!['height_m']} m'),
-                              _divider(),
-                              _buildInfoRow('Weight', '${userInfoData!['weight_kg']} kg'),
-                              _divider(),
-                              _buildInfoRow('BMI', '${userInfoData!['bmi']} kg/m²'),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      // HEALTH METRICS CARD
-                      Card(
-                        elevation: 5,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        child: Container(
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.lightBlue.shade50,
-                                Colors.lightBlue.shade100,
-                              ],
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                            ),
-                            borderRadius: BorderRadius.circular(16),
-                          ),
-                          padding: const EdgeInsets.all(20),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  Icon(Icons.monitor_heart, color: lightBlueTheme.colorScheme.secondary),
-                                  const SizedBox(width: 8),
-                                  Text(
-                                    "Health Metrics",
-                                    style: TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: lightBlueTheme.colorScheme.secondary,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 16),
-                              _buildHealthMetric(
-                                'Blood Pressure',
-                                '${userInfoData!['bloodPressureSystolic']}/${userInfoData!['bloodPressureDiastolic']}',
-                                'mmHg',
-                              ),
-                              _divider(),
-                              _buildHealthMetric(
-                                'Blood Sugar',
-                                '${userInfoData!['bloodSugar_mmolL']}',
-                                'mmol/L',
-                              ),
-                              _divider(),
-                              _buildHealthMetric(
-                                'Cholesterol',
-                                '${userInfoData!['cholesterol_mmolL']}',
-                                'mmol/L',
-                              ),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 30),
-
-                      // ACTION BUTTONS
-                      Row(
-                        children: [
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => ProfileFormScreen(),
-                                  ),
-                                );
-                              },
-                              style: ElevatedButton.styleFrom(
-                                foregroundColor: Colors.white,
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                ),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              icon: const Icon(Icons.edit, size: 20),
-                              label: const Text(
-                                "Update Profile",
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton.icon(
-                              onPressed: () async {
-                                await FirebaseAuth.instance.signOut();
-                                if (context.mounted) {
-                                  Navigator.pushReplacement(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => LoginScreen(),
-                                      ));
-                                }
-                              },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: Colors.white,
-                                foregroundColor: lightBlueTheme.colorScheme.secondary,
-                                elevation: 2,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(12),
-                                  side: BorderSide(color: lightBlueTheme.colorScheme.secondary),
-                                ),
-                                padding: const EdgeInsets.symmetric(vertical: 16),
-                              ),
-                              icon: const Icon(Icons.logout, size: 20),
-                              label: const Text(
-                                "Logout",
-                                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600),
-                              ),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 20),
-                    ],
+                        const SizedBox(height: 40),
+                        _buildActionButtons(),
+                      ],
+                    ),
                   ),
-                ),
-              ),
-            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'My Profile',
+            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoadingState() {
+    return Center(
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const CircularProgressIndicator(strokeWidth: 3, color: Color(0xFF42A5F5)),
+          const SizedBox(height: 20),
+          Text("Loading your profile...", style: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.w500)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserOverview() {
+    return Column(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(4),
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            border: Border.all(color: const Color(0xFF42A5F5).withOpacity(0.2), width: 4),
+          ),
+          child: CircleAvatar(
+            radius: 50,
+            backgroundColor: const Color(0xFF42A5F5).withOpacity(0.1),
+            child: const Icon(Icons.person_rounded, size: 60, color: Color(0xFF1E88E5)),
           ),
         ),
-      )
+        const SizedBox(height: 16),
+        Text(
+          userData!['email'] ?? 'No email',
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50)),
+        ),
+        const SizedBox(height: 6),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+          decoration: BoxDecoration(
+            color: const Color(0xFF42A5F5).withOpacity(0.1),
+            borderRadius: BorderRadius.circular(20),
+          ),
+          child: Text(
+            userData!['role']?.toUpperCase() ?? 'MEMBER',
+            style: const TextStyle(color: Color(0xFF1E88E5), fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.5),
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildInfoRow(String label, dynamic value) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w500,
-              color: Colors.black87,
-            ),
-          ),
-          Text(
-            value?.toString() ?? '-',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: lightBlueTheme.colorScheme.secondary,
-            ),
-          ),
-        ],
+  Widget _buildInfoSection({required String title, required IconData icon, required Color color, required List<Widget> children}) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8))],
       ),
-    );
-  }
-
-  Widget _buildHealthMetric(String label, String value, String unit) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Expanded(
-            child: Text(
-              label,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-                color: Colors.black87,
-              ),
-            ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
             children: [
+              Icon(icon, color: color, size: 20),
+              const SizedBox(width: 10),
               Text(
-                value,
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: lightBlueTheme.colorScheme.secondary,
-                ),
-              ),
-              Text(
-                unit,
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey[600],
-                ),
+                title,
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.blueGrey.shade800),
               ),
             ],
           ),
+          const SizedBox(height: 24),
+          ...children,
         ],
       ),
     );
   }
 
-  Widget _divider() {
-    return Divider(
-      height: 20,
-      thickness: 1,
-      color: Colors.grey[200],
+  Widget _buildInfoRow(String label, dynamic value, {bool isLast = false}) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: TextStyle(fontSize: 15, color: Colors.blueGrey.shade400, fontWeight: FontWeight.w500)),
+            Text(value?.toString() ?? '-', style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+          ],
+        ),
+        if (!isLast) Divider(height: 32, thickness: 1, color: Colors.grey.shade50),
+      ],
+    );
+  }
+
+  Widget _buildHealthMetric(String label, String value, String unit, {bool isLast = false}) {
+    return Column(
+      children: [
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(label, style: TextStyle(fontSize: 15, color: Colors.blueGrey.shade400, fontWeight: FontWeight.w500)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50))),
+                Text(unit, style: TextStyle(fontSize: 10, color: Colors.blueGrey.shade300, fontWeight: FontWeight.bold)),
+              ],
+            ),
+          ],
+        ),
+        if (!isLast) Divider(height: 32, thickness: 1, color: Colors.grey.shade50),
+      ],
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: ElevatedButton.icon(
+            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileFormScreen())),
+            icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
+            label: const Text("Update Health Data", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF42A5F5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              elevation: 0,
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        SizedBox(
+          width: double.infinity,
+          height: 56,
+          child: OutlinedButton.icon(
+            onPressed: () async {
+              await FirebaseAuth.instance.signOut();
+              if (context.mounted) {
+                Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
+              }
+            },
+            icon: const Icon(Icons.logout_rounded, color: Colors.redAccent),
+            label: const Text("Sign Out", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.redAccent)),
+            style: OutlinedButton.styleFrom(
+              side: const BorderSide(color: Colors.redAccent, width: 1.5),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
