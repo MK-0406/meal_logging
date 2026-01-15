@@ -1,10 +1,8 @@
 import 'dart:convert';
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter/material.dart';
-import 'package:meal_logging/main.dart';
 import 'main_dashboard.dart';
 import '../custom_styles.dart';
 import '../functions.dart';
@@ -14,7 +12,7 @@ class ProfileFormScreen extends StatefulWidget {
   const ProfileFormScreen({super.key});
 
   @override
-  _ProfileFormScreenState createState() => _ProfileFormScreenState();
+  State<ProfileFormScreen> createState() => _ProfileFormScreenState();
 }
 
 class _ProfileFormScreenState extends State<ProfileFormScreen> {
@@ -40,62 +38,64 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
   String cholesterolUnit = 'mmol/L';
   String bloodSugarUnit = 'mmol/L';
 
-  double height_m = 0;
-  double weight_kg = 0;
-  double cholesterol_mmolL = 0;
-  double bloodSugar_mmolL = 0;
+  double heightM = 0;
+  double weightKg = 0;
+  double cholesterolMmolL = 0;
+  double bloodSugarMmolL = 0;
 
   void changeUnit() {
     if (double.tryParse(_cholesterolLevelController.text) != null) {
       switch (cholesterolUnit) {
         case 'mg/dL':
-          cholesterol_mmolL = double.parse(_cholesterolLevelController.text) * 0.02586;
+          cholesterolMmolL = double.parse(_cholesterolLevelController.text) * 0.02586;
           break;
         case 'mmol/L':
-          cholesterol_mmolL = double.parse(_cholesterolLevelController.text);
+          cholesterolMmolL = double.parse(_cholesterolLevelController.text);
           break;
       }
       switch (bloodSugarUnit) {
         case 'mg/dL':
-          bloodSugar_mmolL = double.parse(_bloodSugarLevelController.text) * 0.05556;
+          bloodSugarMmolL = double.parse(_bloodSugarLevelController.text) * 0.05556;
           break;
         case 'mmol/L':
-          bloodSugar_mmolL = double.parse(_bloodSugarLevelController.text);
+          bloodSugarMmolL = double.parse(_bloodSugarLevelController.text);
           break;
       }
-      cholesterol_mmolL = double.parse(cholesterol_mmolL.toStringAsFixed(2));
-      bloodSugar_mmolL = double.parse(bloodSugar_mmolL.toStringAsFixed(2));
-      height_m = double.parse(height_m.toStringAsFixed(2));
-      weight_kg = double.parse(weight_kg.toStringAsFixed(2));
+      cholesterolMmolL = double.parse(cholesterolMmolL.toStringAsFixed(2));
+      bloodSugarMmolL = double.parse(bloodSugarMmolL.toStringAsFixed(2));
+      heightM = double.parse(heightM.toStringAsFixed(2));
+      weightKg = double.parse(weightKg.toStringAsFixed(2));
     }
   }
 
   void calculateBMI() {
     switch (heightUnit) {
       case 'cm':
-        height_m = double.parse(_heightController.text) / 100;
+        heightM = (double.tryParse(_heightController.text) ?? 0) / 100;
         break;
       case 'ft':
-        height_m = double.parse(_heightController.text) * 0.3048;
+        heightM = (double.tryParse(_heightController.text) ?? 0) * 0.3048;
         break;
       case 'm':
-        height_m = double.parse(_heightController.text);
+        heightM = (double.tryParse(_heightController.text) ?? 0);
         break;
     }
     switch (weightUnit) {
       case 'kg':
-        weight_kg = double.parse(_weightController.text);
+        weightKg = (double.tryParse(_weightController.text) ?? 0);
         break;
       case 'lb':
-        weight_kg = double.parse(_weightController.text) * 0.453592;
+        weightKg = (double.tryParse(_weightController.text) ?? 0) * 0.453592;
         break;
     }
 
-    setState(() {
-      bmi = weight_kg / (height_m * height_m);
-      bmi = double.parse(bmi!.toStringAsFixed(2));
-      _bmiController.text = bmi.toString();
-    });
+    if (heightM > 0) {
+      setState(() {
+        bmi = weightKg / (heightM * heightM);
+        bmi = double.parse(bmi!.toStringAsFixed(2));
+        _bmiController.text = bmi.toString();
+      });
+    }
   }
 
   Map<String, dynamic>? userData;
@@ -127,7 +127,6 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
 
     if (height != null && weight != null && height > 0 && weight > 0) {
       calculateBMI();
-      _bmiController.text = bmi?.toStringAsFixed(2) ?? '';
     }
   }
 
@@ -140,18 +139,14 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
         userInfoData = userInfoDoc.data() as Map<String, dynamic>?;
         _nameController.text = userInfoData?['name']?.toString() ?? '';
         _ageController.text = userInfoData?['age']?.toString() ?? '';
-        _gender = userInfoData?['gender']?.toString() ?? '';
-        _heightController.text = (userInfoData?['height_m'] * 100)?.toString() ?? '';
+        _gender = userInfoData?['gender']?.toString();
+        _heightController.text = (userInfoData?['height_m'] * 100)?.toStringAsFixed(0) ?? '';
         _weightController.text = userInfoData?['weight_kg']?.toString() ?? '';
         _bmiController.text = userInfoData?['bmi']?.toString() ?? '';
-        _bloodPressureSystolicController.text =
-            userInfoData?['bloodPressureSystolic']?.toString() ?? '';
-        _bloodPressureDiastolicController.text =
-            userInfoData?['bloodPressureDiastolic']?.toString() ?? '';
-        _cholesterolLevelController.text =
-            userInfoData?['cholesterol_mmolL']?.toString() ?? '';
-        _bloodSugarLevelController.text =
-            userInfoData?['bloodSugar_mmolL']?.toString() ?? '';
+        _bloodPressureSystolicController.text = userInfoData?['bloodPressureSystolic']?.toString() ?? '';
+        _bloodPressureDiastolicController.text = userInfoData?['bloodPressureDiastolic']?.toString() ?? '';
+        _cholesterolLevelController.text = userInfoData?['cholesterol_mmolL']?.toString() ?? '';
+        _bloodSugarLevelController.text = userInfoData?['bloodSugar_mmolL']?.toString() ?? '';
         isEditing = true;
       });
     }
@@ -160,153 +155,160 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Personal & Health Information', style: TextStyle(fontSize: 19.5, fontWeight: FontWeight.bold)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        centerTitle: true,
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ),
-        ),
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(20),
-          child: Card(
-            elevation: 8,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(25),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(20),
+      backgroundColor: const Color(0xFFF8FBFF),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 40),
               child: Form(
                 key: _formKey,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(
-                      'Enter your details:',
-                      style: TextStyle(
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        color: lightBlueTheme.colorScheme.primary,
+                    _buildSectionLabel("BASIC INFORMATION"),
+                    const SizedBox(height: 12),
+                    _buildFormCard([
+                      InputTextField(label: 'Full Name', controller: _nameController, isNumber: false, isInt: false),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          Expanded(child: InputTextField(label: 'Age', controller: _ageController, isNumber: true, isInt: true)),
+                          const SizedBox(width: 16),
+                          Expanded(child: _buildDropdownField('Gender', ['Male', 'Female'], _gender, (v) => setState(() => _gender = v))),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 20),
-
-                    /// PERSONAL INFO
-                    _buildSectionHeader('Personal Information'),
-                    const SizedBox(height: 14),
-                    InputTextField(label: 'User Name',controller: _nameController, isNumber: false, isInt: false),
-                    const SizedBox(height: 17),
-                    InputTextField(label: 'Age', controller: _ageController, isNumber: true, isInt: true,),
-                    const SizedBox(height: 17),
-                    _buildDropdownField('Gender', ['Male', 'Female'], _gender,
-                            (val) => setState(() => _gender = val)),
-
-                    const SizedBox(height: 30),
-                    _buildSectionHeader('Health Information'),
-                    const SizedBox(height: 14),
-
-                    _buildHeightWeightFields(),
-                    const SizedBox(height: 17),
-
-                    _buildReadOnlyField('Body Mass Index (BMI)', _bmiController),
-                    const SizedBox(height: 17),
-
-                    InputTextField(label: 'Blood Pressure Systolic', controller: _bloodPressureSystolicController, isNumber: true, isInt: false),
-                    const SizedBox(height: 17),
-                    InputTextField(label: 'Blood Pressure Diastolic', controller: _bloodPressureDiastolicController, isNumber: true, isInt: false),
-                    const SizedBox(height: 17),
-
-                    _buildCholesterolBloodSugarFields(),
+                    ]),
+                    const SizedBox(height: 28),
+                    _buildSectionLabel("BODY METRICS"),
+                    const SizedBox(height: 12),
+                    _buildFormCard([
+                      _buildMetricRow('Height', _heightController, ['cm', 'm', 'ft'], heightUnit, (v) => setState(() => heightUnit = v!)),
+                      const SizedBox(height: 16),
+                      _buildMetricRow('Weight', _weightController, ['kg', 'lb'], weightUnit, (v) => setState(() => weightUnit = v!)),
+                      const SizedBox(height: 16),
+                      _buildReadOnlyField('Body Mass Index (BMI)', _bmiController),
+                    ]),
+                    const SizedBox(height: 28),
+                    _buildSectionLabel("HEALTH INDICATORS"),
+                    const SizedBox(height: 12),
+                    _buildFormCard([
+                      Row(
+                        children: [
+                          Expanded(child: InputTextField(label: 'Systolic (BP)', controller: _bloodPressureSystolicController, isNumber: true, isInt: false)),
+                          const SizedBox(width: 16),
+                          Expanded(child: InputTextField(label: 'Diastolic (BP)', controller: _bloodPressureDiastolicController, isNumber: true, isInt: false)),
+                        ],
+                      ),
+                      const SizedBox(height: 16),
+                      _buildMetricRow('Cholesterol', _cholesterolLevelController, ['mg/dL', 'mmol/L'], cholesterolUnit, (v) => setState(() => cholesterolUnit = v!)),
+                      const SizedBox(height: 16),
+                      _buildMetricRow('Blood Sugar', _bloodSugarLevelController, ['mg/dL', 'mmol/L'], bloodSugarUnit, (v) => setState(() => bloodSugarUnit = v!)),
+                    ]),
                     const SizedBox(height: 40),
-
-                    Center(
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          //backgroundColor: Colors.deepOrange,
-                          //foregroundColor: Colors.white,
-                          //padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(30),
-                          ),
-                          elevation: 5,
-                        ),
-                        onPressed: () {
-                          if (_formKey.currentState!.validate()) {
-                            changeUnit();
-                            _saveProfileData();
-                            Navigator.pushReplacement(
-                              context,
-                              MaterialPageRoute(builder: (_) => const MainDashboard()),
-                            );
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: const Text('Profile saved successfully!'),
-                                backgroundColor: lightBlueTheme.colorScheme.secondary,
-                              ),
-                            );
-                          }
-                        },
-                        child: const Text(
-                          'Save',
-                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                    ),
+                    _buildSaveButton(),
+                    const SizedBox(height: 40),
                   ],
                 ),
               ),
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 25),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  isEditing ? 'Update Profile' : 'Input Profile',
+                  style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                ),
+                const Text(
+                  'Keep your health data accurate',
+                  style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionLabel(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 4),
+      child: Text(
+        text,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.w800,
+          color: Colors.blueGrey.shade300,
+          letterSpacing: 1.2,
         ),
       ),
     );
   }
 
-  Widget _buildSectionHeader(String title) => Text(
-    title,
-    style: TextStyle(
-      color: lightBlueTheme.colorScheme.secondary,
-      fontWeight: FontWeight.bold,
-      fontSize: 17,
-    ),
-  );
-
-  /*Widget _buildTextField(String label, TextEditingController controller,
-      {bool number = false}) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: number ? TextInputType.number : TextInputType.text,
-      decoration: InputDecoration(
-        labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        labelStyle: TextStyle(fontSize: 15),
-        contentPadding: EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+  Widget _buildFormCard(List<Widget> children) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 15, offset: const Offset(0, 8))],
       ),
-      validator: (value) =>
-      value == null || value.isEmpty ? 'Please enter $label' : null,
+      child: Column(children: children),
     );
-  }*/
+  }
 
-  Widget _buildDropdownField(String label, List<String> options, String? value,
-      void Function(String?) onChanged) {
+  Widget _buildMetricRow(String label, TextEditingController controller, List<String> units, String selectedUnit, Function(String?) onUnitChanged) {
+    return Row(
+      children: [
+        Expanded(flex: 3, child: InputTextField(label: label, controller: controller, isNumber: true, isInt: false)),
+        const SizedBox(width: 12),
+        Expanded(flex: 2, child: _buildDropdownField('Unit', units, selectedUnit, onUnitChanged)),
+      ],
+    );
+  }
+
+  Widget _buildDropdownField(String label, List<String> options, String? value, void Function(String?) onChanged) {
     return DropdownButtonFormField<String>(
-      value: value,
+      initialValue: value,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        labelStyle: TextStyle(fontSize: 15),
-        contentPadding: EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide(color: Colors.grey.shade200)),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       ),
-      items: options.map((e) => DropdownMenuItem(value: e, child: Text(e))).toList(),
+      items: options.map((e) => DropdownMenuItem(value: e, child: Text(e, style: const TextStyle(fontSize: 14)))).toList(),
       onChanged: onChanged,
-      validator: (v) => v == null ? 'Please select $label' : null,
+      validator: (v) => v == null ? 'Required' : null,
     );
   }
 
@@ -316,89 +318,55 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
       readOnly: true,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-        labelStyle: TextStyle(fontSize: 15),
-        contentPadding: EdgeInsets.symmetric(vertical: 13, horizontal: 16),
+        filled: true,
+        fillColor: Colors.blue.shade50.withValues(alpha: 0.3),
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      ),
+      style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF1E88E5)),
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
+          boxShadow: [BoxShadow(color: const Color(0xFF42A5F5).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
+        ),
+        child: ElevatedButton(
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
+          onPressed: _handleSave,
+          child: const Text("Save Profile Data", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+        ),
       ),
     );
   }
 
-  Widget _buildHeightWeightFields() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              flex: 6,
-              child: InputTextField(label: 'Height', controller: _heightController, isNumber: true, isInt: false)),
-            const SizedBox(width: 15),
-            Expanded(
-              flex: 5,
-              child: _buildDropdownField('Unit', ['cm', 'm', 'ft'], heightUnit,
-                      (v) => setState(() => heightUnit = v!)),
-            ),
-          ],
+  Future<void> _handleSave() async {
+    if (_formKey.currentState!.validate()) {
+      changeUnit();
+      _saveProfileData();
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainDashboard()));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: const Text('Health data updated successfully!'),
+          backgroundColor: const Color(0xFF1E88E5),
+          behavior: SnackBarBehavior.floating,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         ),
-        const SizedBox(height: 15),
-        Row(
-          children: [
-            Expanded(
-              flex: 6,
-              child: InputTextField(label: 'Weight', controller: _weightController, isNumber: true, isInt: false,)),
-            const SizedBox(width: 15),
-            Expanded(
-              flex: 5,
-              child: _buildDropdownField('Unit', ['kg', 'lb'], weightUnit,
-                      (v) => setState(() => weightUnit = v!)),
-            ),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildCholesterolBloodSugarFields() {
-    return Column(
-      children: [
-        Row(
-          children: [
-            Expanded(
-              flex: 6,
-              child: InputTextField(label: 'Cholesterol Level', controller: _cholesterolLevelController, isNumber: true, isInt: false,)),
-            const SizedBox(width: 15),
-            Expanded(
-              flex: 5,
-              child: _buildDropdownField('Unit', ['mg/dL', 'mmol/L'], cholesterolUnit,
-                      (v) => setState(() => cholesterolUnit = v!)),
-            ),
-          ],
-        ),
-        const SizedBox(height: 15),
-        Row(
-          children: [
-            Expanded(
-              flex: 6,
-              child: InputTextField(label: 'Blood Sugar Level', controller: _bloodSugarLevelController, isNumber: true, isInt: false,)),
-            const SizedBox(width: 15),
-            Expanded(
-              flex: 5,
-              child: _buildDropdownField('Unit', ['mg/dL', 'mmol/L'], bloodSugarUnit,
-                      (v) => setState(() => bloodSugarUnit = v!)),
-            ),
-          ],
-        ),
-      ],
-    );
+      );
+    }
   }
 
   Future<void> regenerateRecommendation(DateTime date) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-
-    // Calculate today's date
-    final yesterday = date.subtract(const Duration(days: 1));
     final todayDate = DateFormat('EEEE, dd MMM yyyy').format(date);
+    final yesterday = date.subtract(const Duration(days: 1));
 
-    // Get today's meal data
     final List<Map<String, dynamic>> todayMealData = await Database.getItemsWithConditions(
       'mealLogs', 'uid',
       conditions: {
@@ -407,97 +375,60 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
     );
 
     double proteinIntake = 0, carbsIntake = 0, fatsIntake = 0;
-
     for (final data in todayMealData) {
       final mealDoc = await Database.getDocument('meals', data['mealID']);
-      final mealDataMap = mealDoc.data() as Map<String, dynamic>;
-
-      double ratio = data['servingSize'] / 100;
-      proteinIntake += mealDataMap['protein'] * ratio;
-      carbsIntake += mealDataMap['carb'] * ratio;
-      fatsIntake += mealDataMap['fat'] * ratio;
+      if (mealDoc.exists) {
+        final mData = mealDoc.data() as Map<String, dynamic>;
+        double ratio = (data['servingSize'] ?? 100) / 100;
+        proteinIntake += (mData['protein'] ?? 0) * ratio;
+        carbsIntake += (mData['carb'] ?? 0) * ratio;
+        fatsIntake += (mData['fat'] ?? 0) * ratio;
+      }
     }
 
-    if (proteinIntake == 0 && carbsIntake == 0 && fatsIntake == 0){
-      await FirebaseFirestore.instance
-          .collection('recommendations')
-          .doc(uid)
-          .collection('dates')
-          .doc(todayDate)
-          .delete();
-      return;
-    }
+    if (proteinIntake == 0 && carbsIntake == 0 && fatsIntake == 0) return;
 
-    // Call your API
     final url = Uri.parse("https://meal-recommender-model.onrender.com/predict");
     final bodyData = {
       "features": [
-        int.parse(_ageController.text),
-        (height_m * 100),
-        weight_kg,
+        int.tryParse(_ageController.text) ?? 0,
+        (heightM * 100),
+        weightKg,
         bmi,
-        double.parse(double.tryParse(_bloodPressureSystolicController.text)!.toStringAsFixed(2)),
-        double.parse(double.tryParse(_bloodPressureDiastolicController.text)!.toStringAsFixed(2)),
-        (cholesterol_mmolL * 38.67),
-        (bloodSugar_mmolL * 18),
-        proteinIntake.toDouble(),
-        carbsIntake.toDouble(),
-        fatsIntake.toDouble(),
+        double.tryParse(_bloodPressureSystolicController.text) ?? 0,
+        double.tryParse(_bloodPressureDiastolicController.text) ?? 0,
+        (cholesterolMmolL * 38.67),
+        (bloodSugarMmolL * 18),
+        proteinIntake, carbsIntake, fatsIntake,
       ]
     };
 
-    final response = await http.post(
-      url,
-      headers: {"Content-Type": "application/json"},
-      body: jsonEncode(bodyData),
-    );
-
+    final response = await http.post(url, headers: {"Content-Type": "application/json"}, body: jsonEncode(bodyData));
     if (response.statusCode != 200) return;
 
     final data = jsonDecode(response.body);
     final prediction = data['prediction'][0];
+    final results = {
+      'Protein_g': prediction[0], 'Carbs_g': prediction[1], 'Fats_g': prediction[2],
+      'Calories': (4 * (prediction[0] + prediction[1]) + 9 * prediction[2]).round(),
+    };
 
-    final nutrients = ['Protein_g', 'Carbs_g', 'Fats_g'];
-
-    final results = <String, dynamic>{};
-
-    for (int i = 0; i < nutrients.length; i++) {
-      results[nutrients[i]] = prediction[i];
-    }
-
-    results['Calories'] = (4 * (prediction[0] + prediction[1]) + 9 * prediction[2]).round();
-
-    // Save to Firestore under tomorrow
-    await FirebaseFirestore.instance
-        .collection('recommendations')
-        .doc(uid)
-        .collection('dates')
-        .doc(todayDate)
-        .set(results);
-
-    print("Recommendation regenerated!");
+    await FirebaseFirestore.instance.collection('recommendations').doc(uid).collection('dates').doc(todayDate).set(results);
   }
 
   void _saveProfileData() async {
     await Database.setItems('usersInfo', null, {
       'name': _nameController.text.trim(),
-      'age': int.parse(_ageController.text),
+      'age': int.tryParse(_ageController.text) ?? 0,
       'gender': _gender,
-      'height_m': height_m,
-      'weight_kg': weight_kg,
-      'bmi': bmi,
-      'bloodPressureSystolic':
-      double.parse(double.tryParse(_bloodPressureSystolicController.text)!.toStringAsFixed(2)),
-      'bloodPressureDiastolic':
-      double.parse(double.tryParse(_bloodPressureDiastolicController.text)!.toStringAsFixed(2)),
-      'cholesterol_mmolL': cholesterol_mmolL,
-      'bloodSugar_mmolL': bloodSugar_mmolL,
-      'createdAt': FieldValue.serverTimestamp(),
+      'height_m': heightM, 'weight_kg': weightKg, 'bmi': bmi,
+      'bloodPressureSystolic': double.tryParse(_bloodPressureSystolicController.text) ?? 0,
+      'bloodPressureDiastolic': double.tryParse(_bloodPressureDiastolicController.text) ?? 0,
+      'cholesterol_mmolL': cholesterolMmolL, 'bloodSugar_mmolL': bloodSugarMmolL,
       'updatedAt': FieldValue.serverTimestamp(),
     });
 
     if (isEditing) {
-      print("isEditing");
       await regenerateRecommendation(DateTime.now());
       await regenerateRecommendation(DateTime.now().add(const Duration(days: 1)));
     }
