@@ -1,5 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'dart:ui';
 import 'manage_meals.dart';
 import 'manage_users.dart';
 import 'manage_admins.dart';
@@ -30,55 +32,125 @@ class _MainDashboardState extends State<_MainDashboard> {
     MealsPage(),
   ];
 
+  void _onDestinationSelected(int index) {
+    if (index == currentPageIndex) return;
+    HapticFeedback.lightImpact();
+    setState(() {
+      currentPageIndex = index;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       extendBody: true,
-      bottomNavigationBar: NavigationBar(
-        //backgroundColor: Colors.white,
-        elevation: 3,
-        //indicatorColor: Colors.deepOrange.shade100,
-        selectedIndex: currentPageIndex,
-        onDestinationSelected: (int index) {
-          setState(() {
-            currentPageIndex = index;
-          });
-        },
-        destinations: const [
-          NavigationDestination(
-            selectedIcon: Icon(Icons.home),
-            icon: Icon(Icons.home_outlined),
-            label: 'Home',
+      body: Stack(
+        children: [
+          Container(
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFFF8FAFF), Color(0xFFE8F4FF)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+            ),
           ),
-          NavigationDestination(
-            icon: Icon(Icons.people_alt_outlined),
-            selectedIcon: Icon(Icons.people_alt),
-            label: 'Users',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.admin_panel_settings_outlined),
-            selectedIcon: Icon(Icons.admin_panel_settings),
-            label: 'Admins',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.fastfood_outlined),
-            selectedIcon: Icon(Icons.fastfood),
-            label: 'Meals',
+          SafeArea(
+            bottom: false,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 300),
+              switchInCurve: Curves.easeIn,
+              switchOutCurve: Curves.easeOut,
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return FadeTransition(
+                  opacity: animation,
+                  child: SlideTransition(
+                    position: Tween<Offset>(
+                      begin: const Offset(0.0, 0.01),
+                      end: Offset.zero,
+                    ).animate(animation),
+                    child: child,
+                  ),
+                );
+              },
+              child: KeyedSubtree(
+                key: ValueKey<int>(currentPageIndex),
+                child: _pages[currentPageIndex],
+              ),
+            ),
           ),
         ],
       ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+      bottomNavigationBar: _buildFloatingNavigationBar(),
+    );
+  }
+
+  Widget _buildFloatingNavigationBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 0, 20, 15),
+      height: 72,
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.06),
+            blurRadius: 25,
+            offset: const Offset(0, 8),
           ),
-        ),
-        child: SafeArea(
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: _pages[currentPageIndex],
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(30),
+        child: BackdropFilter(
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+          child: NavigationBarTheme(
+            data: NavigationBarThemeData(
+              backgroundColor: Colors.transparent,
+              indicatorColor: const Color(0xFF42A5F5).withValues(alpha: 0.12),
+              indicatorShape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
+                  return const TextStyle(
+                    fontSize: 11,
+                    fontWeight: FontWeight.bold,
+                    color: Color(0xFF42A5F5),
+                  );
+                }
+                return const TextStyle(fontSize: 11, color: Colors.grey);
+              }),
+            ),
+            child: NavigationBar(
+              elevation: 0,
+              height: 72,
+              selectedIndex: currentPageIndex,
+              onDestinationSelected: _onDestinationSelected,
+              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+              destinations: const [
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.dashboard_rounded, color: Color(0xFF42A5F5)),
+                  icon: Icon(Icons.dashboard_outlined, color: Colors.grey),
+                  label: 'Home',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.people_rounded, color: Color(0xFF42A5F5)),
+                  icon: Icon(Icons.people_outline_rounded, color: Colors.grey),
+                  label: 'Users',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF42A5F5)),
+                  icon: Icon(Icons.admin_panel_settings_outlined, color: Colors.grey),
+                  label: 'Admins',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.restaurant_menu_rounded, color: Color(0xFF42A5F5)),
+                  icon: Icon(Icons.restaurant_menu_outlined, color: Colors.grey),
+                  label: 'Meals',
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -86,19 +158,14 @@ class _MainDashboardState extends State<_MainDashboard> {
   }
 }
 
-/// 🏠 Home Page
 class _HomePage extends StatelessWidget {
   const _HomePage();
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     Future<Map<String, int>> getDashboardStats() async {
       final users = await FirebaseFirestore.instance.collection('users').get();
       final meals = await FirebaseFirestore.instance.collection('meals').get();
-
-      // Change this collection name if different
       final adminRequests = await FirebaseFirestore.instance
           .collection('users')
           .where('status', isEqualTo: 'pending')
@@ -111,59 +178,57 @@ class _HomePage extends StatelessWidget {
       };
     }
 
-    return Padding(
-      key: const ValueKey('home'),
-      padding: const EdgeInsets.all(16.0),
-      child: FutureBuilder<Map<String, int>>(
-        future: getDashboardStats(),
-        builder: (context, snapshot) {
-          final stats = snapshot.data ?? {
-            'users': 0,
-            'meals': 0,
-            'approvals': 0,
-          };
-
-          return ListView(
-            children: [
-              Text(
-                'Admin Dashboard',
-                style: theme.textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue.shade900,
-                ),
-              ),
-              const SizedBox(height: 20),
-
-              // ⭐ TOTAL USERS
-              _buildDashboardCard(
-                icon: Icons.person,
-                iconColor: Colors.blue.shade600,
-                title: 'Total Users',
-                value: '${stats['users']}',
-              ),
-
-              const SizedBox(height: 12),
-
-              // ⭐ ACTIVE MEALS
-              _buildDashboardCard(
-                icon: Icons.fastfood,
-                iconColor: Colors.orange.shade600,
-                title: 'Total Meals',
-                value: '${stats['meals']}',
-              ),
-
-              const SizedBox(height: 12),
-
-              // ⭐ PENDING APPROVALS
-              _buildDashboardCard(
-                icon: Icons.admin_panel_settings,
-                iconColor: Colors.red.shade600,
-                title: 'Pending Admin Approvals',
-                value: '${stats['approvals']}',
-              ),
-            ],
-          );
-        },
+    return SingleChildScrollView(
+      padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Admin Dashboard',
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Color(0xFF2C3E50),
+              letterSpacing: -0.5,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            'Monitor application activity and manage data',
+            style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
+          ),
+          const SizedBox(height: 32),
+          FutureBuilder<Map<String, int>>(
+            future: getDashboardStats(),
+            builder: (context, snapshot) {
+              final stats = snapshot.data ?? {'users': 0, 'meals': 0, 'approvals': 0};
+              return Column(
+                children: [
+                  _buildDashboardCard(
+                    icon: Icons.person_rounded,
+                    iconColor: Colors.blue,
+                    title: 'Total Active Users',
+                    value: '${stats['users']}',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDashboardCard(
+                    icon: Icons.fastfood_rounded,
+                    iconColor: Colors.orange,
+                    title: 'Meals in Database',
+                    value: '${stats['meals']}',
+                  ),
+                  const SizedBox(height: 16),
+                  _buildDashboardCard(
+                    icon: Icons.admin_panel_settings_rounded,
+                    iconColor: Colors.redAccent,
+                    title: 'Pending Approvals',
+                    value: '${stats['approvals']}',
+                  ),
+                ],
+              );
+            },
+          ),
+        ],
       ),
     );
   }
@@ -173,49 +238,59 @@ class _HomePage extends StatelessWidget {
     required Color iconColor,
     required String title,
     required String value,
-    VoidCallback? onTap,
   }) {
     return Container(
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(22),
-        gradient: LinearGradient(
-          colors: [
-            Colors.white,
-            Colors.blue.shade50,
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: 0.05),
-            blurRadius: 8,
-            offset: const Offset(2, 3),
+            color: Colors.blue.shade900.withValues(alpha: 0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
-      child: ListTile(
-        leading: CircleAvatar(
-          backgroundColor: iconColor.withValues(alpha: 0.18),
-          radius: 22,
-          child: Icon(icon, size: 26, color: iconColor),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: iconColor.withValues(alpha: 0.1),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: Icon(icon, size: 28, color: iconColor),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.grey,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    value,
+                    style: const TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2C3E50),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey.shade300),
+          ],
         ),
-        title: Text(
-          title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        trailing: Text(
-          value,
-          style: TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.bold,
-            color: iconColor,
-          ),
-        ),
-        onTap: onTap,
       ),
     );
   }
