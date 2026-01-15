@@ -3,7 +3,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../functions.dart';
-import '../main.dart';
 
 class ForumPostDetailPage extends StatefulWidget {
   final QueryDocumentSnapshot post;
@@ -18,393 +17,279 @@ class ForumPostDetailPage extends StatefulWidget {
 }
 
 class _ForumPostDetailPage extends State<ForumPostDetailPage> {
-
-  late String time = timeAgo(widget.post['createdAt']);
-
   final _commentCtrl = TextEditingController();
-  int commentCount = 0;
+  int _commentCount = 0;
   bool _isPosting = false;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[100],
-      body: SafeArea(
-        child: Column(
-          children: [
-            // ----- HEADER -----
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [
-                    lightBlueTheme.colorScheme.primary,
-                    lightBlueTheme.colorScheme.secondary
-                  ],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-                borderRadius: const BorderRadius.only(
-                  bottomLeft: Radius.circular(20),
-                  bottomRight: Radius.circular(20),
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withOpacity(0.2),
-                    offset: const Offset(0, 3),
-                    blurRadius: 6,
-                  ),
-                ],
-              ),
-              child: Row(
+      backgroundColor: const Color(0xFFF8FBFF),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: SingleChildScrollView(
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  IconButton(
-                    icon: const Icon(Icons.arrow_back, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
+                  _buildMainPost(),
+                  const SizedBox(height: 28),
+                  const Text(
+                    "Discussion",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50), letterSpacing: -0.3),
                   ),
-                  const SizedBox(width: 8),
-                  const Expanded(
-                    child: Text(
-                      'Post Details',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
+                  const SizedBox(height: 12),
+                  _buildCommentsList(),
                 ],
               ),
             ),
-
-            // ----- BODY -----
-            Expanded(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  child: Column(
-                    children: [
-                      // Post content in a card
-                      Container(
-                        padding: const EdgeInsets.all(16),
-                        margin: const EdgeInsets.symmetric(vertical: 8),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(16),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black12,
-                              blurRadius: 6,
-                              offset: const Offset(0, 4),
-                            ),
-                          ],
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            // Title + Like
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Flexible(
-                                  child: Text(
-                                    widget.post['title'],
-                                    style: const TextStyle(
-                                        fontSize: 22, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
-                                StreamBuilder<DocumentSnapshot>(
-                                  stream: FirebaseFirestore.instance
-                                      .collection("posts")
-                                      .doc(widget.post.id)
-                                      .collection("likes")
-                                      .doc(FirebaseAuth.instance.currentUser!.uid)
-                                      .snapshots(),
-                                  builder: (context, snapshot) {
-                                    final liked = snapshot.data?.exists ?? false;
-
-                                    return IconButton(
-                                      icon: Icon(
-                                        liked ? Icons.favorite : Icons.favorite_border,
-                                        color: liked ? Colors.red : Colors.grey,
-                                        size: 30,
-                                      ),
-                                      onPressed: () {
-                                        if (liked) {
-                                          unlikePost(widget.post.id,
-                                              FirebaseAuth.instance.currentUser!.uid);
-                                        } else {
-                                          likePost(widget.post.id,
-                                              FirebaseAuth.instance.currentUser!.uid);
-                                        }
-                                      },
-                                    );
-                                  },
-                                )
-                              ],
-                            ),
-
-                            const SizedBox(height: 12),
-                            // Username + time
-                            Row(
-                              children: [
-                                CircleAvatar(
-                                  radius: 18,
-                                  child: Icon(Icons.person, size: 20),
-                                ),
-                                const SizedBox(width: 10),
-                                Text(
-                                  "${widget.post['username']} • $time",
-                                  style: TextStyle(color: Colors.grey[600]),
-                                ),
-                              ],
-                            ),
-                            const SizedBox(height: 16),
-                            // Post content
-                            Text(widget.post['content'],
-                                style: const TextStyle(fontSize: 16)),
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      // ----- COMMENTS LIST -----
-                      const Align(
-                        alignment: Alignment.centerLeft,
-                        child: Text(
-                          "Comments",
-                          style:
-                          TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-
-                      StreamBuilder<QuerySnapshot>(
-                          stream: FirebaseFirestore.instance
-                              .collection('posts')
-                              .doc(widget.post.id)
-                              .collection('comments')
-                              .orderBy('createdAt', descending: false)
-                              .snapshots(),
-                          builder: (context, snapshot) {
-                            if (!snapshot.hasData) {
-                              return const Center(
-                                  child: CircularProgressIndicator());
-                            }
-
-                            final comments = snapshot.data!.docs;
-
-                            if (comments.isEmpty) {
-                              return const Center(child: Text("No comments yet."));
-                            }
-
-                            commentCount = comments.length;
-
-                            return Column(
-                              children: comments.map((c) {
-                                return Container(
-                                  margin: const EdgeInsets.symmetric(vertical: 4),
-                                  padding: const EdgeInsets.all(12),
-                                  decoration: BoxDecoration(
-                                    color: Colors.white,
-                                    borderRadius: BorderRadius.circular(12),
-                                    boxShadow: [
-                                      BoxShadow(
-                                        color: Colors.black12,
-                                        blurRadius: 4,
-                                        offset: const Offset(0, 2),
-                                      ),
-                                    ],
-                                  ),
-                                  child: Row(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      CircleAvatar(
-                                        radius: 16,
-                                        child: Icon(Icons.person, size: 18),
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Expanded(
-                                        child: Column(
-                                          crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                          children: [
-                                            Text(
-                                              c['authorName'] ?? 'Unknown',
-                                              style: const TextStyle(
-                                                  fontWeight: FontWeight.bold),
-                                            ),
-                                            const SizedBox(height: 2),
-                                            Text(c['text'] ?? ''),
-                                            const SizedBox(height: 4),
-                                            Text(
-                                              (c['createdAt'] == null) ? 'Just now' : timeAgo(c['createdAt']),
-                                              style: TextStyle(
-                                                  color: Colors.grey[500],
-                                                  fontSize: 12),
-                                            ),
-                                          ],
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                );
-                              }).toList()
-                            );
-                          },
-                        ),
-
-                      // ----- COMMENT INPUT -----
-                      const SizedBox(height: 8),
-                    ],
-                  ),
-                ),
-              )
-            ),
-
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: TextField(
-                      controller: _commentCtrl,
-                      decoration: InputDecoration(
-                        hintText: "Write a comment...",
-                        contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 12),
-                        filled: true,
-                        fillColor: Colors.white,
-                        border: OutlineInputBorder(
-                          borderRadius: BorderRadius.circular(12),
-                          borderSide: BorderSide.none,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 8),
-                  _isPosting
-                      ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                      : CircleAvatar(
-                    backgroundColor:
-                    lightBlueTheme.colorScheme.primary,
-                    child: IconButton(
-                      icon: const Icon(Icons.send, color: Colors.white),
-                      onPressed: () => addComment(widget.post.id),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 10),
-          ],
-        ),
+          ),
+          _buildCommentInput(),
+        ],
       ),
     );
   }
 
+  Widget _buildHeader() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 8),
+          const Text(
+            'Topic Details',
+            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMainPost() {
+    final data = widget.post.data() as Map<String, dynamic>;
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 15, offset: const Offset(0, 8))],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 20,
+                backgroundColor: Colors.blue.shade50,
+                child: Icon(Icons.person_rounded, color: Colors.blue.shade400, size: 22),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(data['username'] ?? "Member", style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                    Text(timeAgo(data['createdAt']), style: TextStyle(color: Colors.grey.shade500, fontSize: 12)),
+                  ],
+                ),
+              ),
+              _buildLikeButton(),
+            ],
+          ),
+          const SizedBox(height: 20),
+          Text(
+            data['title'] ?? "",
+            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50), height: 1.2),
+          ),
+          const SizedBox(height: 12),
+          Text(
+            data['content'] ?? "",
+            style: TextStyle(fontSize: 15, color: Colors.grey.shade700, height: 1.5),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLikeButton() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection("posts")
+          .doc(widget.post.id)
+          .collection("likes")
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final liked = snapshot.data?.exists ?? false;
+        return Container(
+          decoration: BoxDecoration(
+            color: liked ? Colors.red.shade50 : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: Icon(
+              liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              color: liked ? Colors.red : Colors.grey,
+              size: 24,
+            ),
+            onPressed: () => liked 
+              ? unlikePost(widget.post.id, FirebaseAuth.instance.currentUser!.uid) 
+              : likePost(widget.post.id, FirebaseAuth.instance.currentUser!.uid),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildCommentsList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('posts')
+          .doc(widget.post.id)
+          .collection('comments')
+          .orderBy('createdAt', descending: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        final comments = snapshot.data!.docs;
+        if (comments.isEmpty) return Center(child: Text("No comments yet. Start the conversation!", style: TextStyle(color: Colors.grey.shade400, fontSize: 13)));
+        
+        _commentCount = comments.length;
+        return Column(
+          children: comments.map((c) => _buildCommentCard(c.data() as Map<String, dynamic>)).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildCommentCard(Map<String, dynamic> data) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.grey.shade50),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          CircleAvatar(
+            radius: 14,
+            backgroundColor: Colors.grey.shade100,
+            child: Icon(Icons.person_rounded, size: 16, color: Colors.grey.shade400),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Text(data['authorName'] ?? 'Member', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                    Text(timeAgo(data['createdAt']), style: TextStyle(color: Colors.grey.shade400, fontSize: 10)),
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(data['text'] ?? '', style: TextStyle(color: Colors.grey.shade700, fontSize: 14, height: 1.4)),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCommentInput() {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, -5))],
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: TextField(
+              controller: _commentCtrl,
+              decoration: InputDecoration(
+                hintText: "Add a comment...",
+                hintStyle: TextStyle(color: Colors.grey.shade400),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          _isPosting 
+            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+            : GestureDetector(
+                onTap: () => addComment(widget.post.id),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: const BoxDecoration(color: Color(0xFF42A5F5), shape: BoxShape.circle),
+                  child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                ),
+              ),
+        ],
+      ),
+    );
+  }
 
   Future<void> addComment(String postId) async {
     final text = _commentCtrl.text.trim();
     if (text.isEmpty) return;
-
     setState(() => _isPosting = true);
-
     final userData = await Database.getDocument('usersInfo', null);
-    final username = userData['name'];
-
-    await FirebaseFirestore.instance
-        .collection("posts")
-        .doc(postId)
-        .collection("comments")
-        .add({
-      "text": text,
-      "authorId": widget.post['userId'],
-      "authorName": username,
-      "createdAt": FieldValue.serverTimestamp(),
+    await FirebaseFirestore.instance.collection("posts").doc(postId).collection("comments").add({
+      "text": text, "authorId": FirebaseAuth.instance.currentUser!.uid, "authorName": userData['name'], "createdAt": FieldValue.serverTimestamp(),
     });
-
-    await FirebaseFirestore.instance
-        .collection("posts")
-        .doc(postId)
-        .update({
-      "commentCount": commentCount,
-    });
-
+    await FirebaseFirestore.instance.collection("posts").doc(postId).update({"commentCount": _commentCount});
     _commentCtrl.clear();
     setState(() => _isPosting = false);
   }
 
-  String timeAgo(Timestamp timestamp) {
-    final DateTime createdAt = timestamp.toDate();
-    final Duration diff = DateTime.now().difference(createdAt);
-
-    int duration = diff.inSeconds;
-    String time = '$duration seconds';
-
-    if (duration < 1) {
-      time = 'Just now';
-    } else {
-      if (duration >= 60) {
-        duration = diff.inMinutes;
-        time = '$duration minutes ago';
-        if (duration >= 60) {
-          duration = diff.inHours;
-          time = '$duration hours ago';
-          if (duration >= 24) {
-            duration = diff.inDays;
-            time = '$duration days ago';
-            if (duration >= 7) {
-              duration = diff.inDays ~/ 7;
-              time = '$duration weeks ago';
-              if (duration >= 30) {
-                duration = diff.inDays ~/ 30;
-                time = '$duration months ago';
-                if (duration >= 12) {
-                  duration = diff.inDays ~/ 365;
-                  time = '$duration years ago';
-                }
-              }
-            }
-          }
-        }
-      }
-    }
-    return time;
-  }
-
   Future<void> likePost(String postId, String userId) async {
     final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
-
-    // Create a like document under likes/{userId}
-    await postRef.collection('likes').doc(userId).set({
-      'liked': true,
-      'createdAt': FieldValue.serverTimestamp(),
-    });
-
-    // Increase likeCount
-    await postRef.update({
-      'likeCount': FieldValue.increment(1),
-    });
+    await postRef.collection('likes').doc(userId).set({'liked': true, 'createdAt': FieldValue.serverTimestamp()});
+    await postRef.update({'likeCount': FieldValue.increment(1)});
   }
 
   Future<void> unlikePost(String postId, String userId) async {
     final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
-
-    // Remove like entry
     await postRef.collection('likes').doc(userId).delete();
-
-    // Decrease likeCount
-    await postRef.update({
-      'likeCount': FieldValue.increment(-1),
-    });
+    await postRef.update({'likeCount': FieldValue.increment(-1)});
   }
 
+  String timeAgo(dynamic timestamp) {
+    if (timestamp == null) return 'Just now';
+    DateTime dateTime = (timestamp is Timestamp) ? timestamp.toDate() : DateTime.now();
+    final difference = DateTime.now().difference(dateTime);
+    if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
+    if (difference.inHours < 24) return '${difference.inHours}h ago';
+    return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
+  }
 }
-
-
