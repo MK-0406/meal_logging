@@ -8,117 +8,141 @@ class WelcomeScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
+            colors: [Color(0xFFF8FBFF), Color(0xFFE3F2FD), Color(0xFFBBDEFB)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
           ),
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            child: AnimatedOpacity(
-              opacity: 1.0,
-              duration: const Duration(milliseconds: 800),
-              child: Padding(
-                padding: const EdgeInsets.all(24.0),
-                child: Card(
-                  elevation: 8,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  color: Colors.white.withValues(alpha: 0.9),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 26.0,
-                      vertical: 40.0,
+        child: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 30),
+            child: Column(
+              children: [
+                const Spacer(flex: 2),
+                
+                // --- Top Section: Title & Logo ---
+                const Column(
+                  children: [
+                    Text(
+                      'Welcome to',
+                      style: TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.w500,
+                        color: Color(0xFF1E88E5),
+                        letterSpacing: 1.2,
+                      ),
                     ),
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
+                    SizedBox(height: 4),
+                    Text(
+                      'FoodWise',
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.w900,
+                        color: Color(0xFF0D47A1),
+                        letterSpacing: -1.0,
+                      ),
+                    ),
+                  ],
+                ),
+                
+                const Spacer(flex: 1),
+
+                // --- Middle Section: Hero Image ---
+                Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(32),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF0D47A1).withValues(alpha: 0.15),
+                        blurRadius: 40,
+                        offset: const Offset(0, 20),
+                      ),
+                    ],
+                  ),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(32),
+                    child: Image.asset(
+                      'assets/images/welcome_img.png',
+                      height: 280,
+                      fit: BoxFit.cover,
+                    ),
+                  ),
+                ),
+
+                const Spacer(flex: 1),
+
+                // --- Bottom Section: Description & Button ---
+                Column(
+                  children: [
+                    Text(
+                      'Smarter Eating Habits,\n healthier life.',
+                      style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.blueGrey.shade800,
+                        height: 1.2,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Track nutrients, discover recipes, and get personalised recommendations tailored just for you.',
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: Colors.blueGrey.shade400,
+                        fontWeight: FontWeight.w500,
+                        height: 1.5,
+                      ),
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
+                ),
+
+                const Spacer(flex: 2),
+
+                // --- Action Button ---
+                SizedBox(
+                  width: double.infinity,
+                  height: 60,
+                  child: ElevatedButton(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF1E88E5),
+                      foregroundColor: Colors.white,
+                      elevation: 0,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => LoginScreen()),
+                      );
+                    },
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        // App title
                         Text(
-                          'Welcome to',
+                          'Get Started',
                           style: TextStyle(
-                            fontSize: 24,
-                            fontWeight: FontWeight.w400,
-                            color: Color(0xFF0D47A1),
-                          ),
-                        ),
-                        Text(
-                          'FoodWise',
-                          style: TextStyle(
-                            fontSize: 46,
+                            fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: Color(0xFF0D47A1),
-                            letterSpacing: 1,
+                            letterSpacing: 0.5,
                           ),
                         ),
-
-                        const SizedBox(height: 18),
-
-                        // Optional image
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(20),
-                          child: Image.asset(
-                            'assets/images/welcome_img.png',
-                            height: 210,
-                            fit: BoxFit.cover,
-                          ),
-                        ),
-
-                        const SizedBox(height: 28),
-
-                        // Subtitle
-                        Text(
-                          'Discover smarter eating habits with FoodWise!',
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.blueGrey[700],
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-
-                        const SizedBox(height: 38),
-
-                        // Button
-                        SizedBox(
-                          width: double.infinity,
-                          child: ElevatedButton(
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: Color(0xFF0277BD),
-                              elevation: 6,
-                              padding: const EdgeInsets.symmetric(
-                                vertical: 14,
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(30),
-                              ),
-                            ),
-                            onPressed: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (_) => LoginScreen(),
-                                ),
-                              );
-                            },
-                            child: const Text(
-                              'Get Started',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                              ),
-                            ),
-                          ),
-                        ),
+                        SizedBox(width: 10),
+                        Icon(Icons.arrow_forward_rounded, size: 20),
                       ],
                     ),
                   ),
                 ),
-              ),
+                
+                const SizedBox(height: 40),
+              ],
             ),
           ),
         ),
