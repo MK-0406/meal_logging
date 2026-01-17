@@ -20,6 +20,8 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
   final _commentCtrl = TextEditingController();
   int _commentCount = 0;
   bool _isPosting = false;
+  String? _replyToId;
+  String? _replyToName;
 
   @override
   Widget build(BuildContext context) {
@@ -171,23 +173,52 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-        final comments = snapshot.data!.docs;
-        if (comments.isEmpty) return Center(child: Text("No comments yet. Start the conversation!", style: TextStyle(color: Colors.grey.shade400, fontSize: 13)));
+        final allDocs = snapshot.data!.docs;
+        if (allDocs.isEmpty) return Center(child: Text("No comments yet. Start the conversation!", style: TextStyle(color: Colors.grey.shade400, fontSize: 13)));
         
-        _commentCount = comments.length;
+        _commentCount = allDocs.length;
+
+        // Group comments into parents and replies
+        final List<QueryDocumentSnapshot> parents = [];
+        final Map<String, List<QueryDocumentSnapshot>> replies = {};
+
+        for (var doc in allDocs) {
+          final data = doc.data() as Map<String, dynamic>;
+          final parentId = data['parentId'];
+          if (parentId == null) {
+            parents.add(doc);
+          } else {
+            if (!replies.containsKey(parentId)) {
+              replies[parentId] = [];
+            }
+            replies[parentId]!.add(doc);
+          }
+        }
+
         return Column(
-          children: comments.map((c) => _buildCommentCard(c.data() as Map<String, dynamic>)).toList(),
+          children: parents.map((p) {
+            final parentId = p.id;
+            final List<Widget> children = [];
+            children.add(_buildCommentCard(p.id, p.data() as Map<String, dynamic>, false));
+            
+            if (replies.containsKey(parentId)) {
+              for (var r in replies[parentId]!) {
+                children.add(_buildCommentCard(r.id, r.data() as Map<String, dynamic>, true));
+              }
+            }
+            return Column(children: children);
+          }).toList(),
         );
       },
     );
   }
 
-  Widget _buildCommentCard(Map<String, dynamic> data) {
+  Widget _buildCommentCard(String commentId, Map<String, dynamic> data, bool isReply) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
+      margin: EdgeInsets.only(bottom: 12, left: isReply ? 32 : 0),
+      padding: EdgeInsets.fromLTRB(16, 16, 16, (isReply == false) ? 5 : 16),
       decoration: BoxDecoration(
-        color: Colors.white,
+        color: isReply ? Colors.blue.shade50.withValues(alpha: 0.3) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade50),
       ),
@@ -213,6 +244,19 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 ),
                 const SizedBox(height: 4),
                 Text(data['text'] ?? '', style: TextStyle(color: Colors.grey.shade700, fontSize: 14, height: 1.4)),
+                if (!isReply) 
+                  Align(
+                    alignment: Alignment.centerRight,
+                    child: TextButton(
+                      onPressed: () {
+                        setState(() {
+                          _replyToId = commentId;
+                          _replyToName = data['authorName'] ?? 'Member';
+                        });
+                      },
+                      child: const Text("Reply", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    ),
+                  ),
               ],
             ),
           ),
@@ -223,37 +267,63 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
 
   Widget _buildCommentInput() {
     return Container(
-      padding: const EdgeInsets.fromLTRB(20, 12, 20, 30),
+      padding: EdgeInsets.fromLTRB(20, (_replyToId != null) ? 5 : 12, 20, 25),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, -5))],
       ),
-      child: Row(
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: TextField(
-              controller: _commentCtrl,
-              decoration: InputDecoration(
-                hintText: "Add a comment...",
-                hintStyle: TextStyle(color: Colors.grey.shade400),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+          if (_replyToId != null)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 6.0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Text(
+                      "Replying to $_replyToName",
+                      style: TextStyle(fontSize: 12, color: Colors.blue.shade700, fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close, size: 16),
+                    onPressed: () => setState(() {
+                      _replyToId = null;
+                      _replyToName = null;
+                    }),
+                  )
+                ],
               ),
             ),
-          ),
-          const SizedBox(width: 12),
-          _isPosting 
-            ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
-            : GestureDetector(
-                onTap: () => addComment(widget.post.id),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: const BoxDecoration(color: Color(0xFF42A5F5), shape: BoxShape.circle),
-                  child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+          Row(
+            children: [
+              Expanded(
+                child: TextField(
+                  controller: _commentCtrl,
+                  decoration: InputDecoration(
+                    hintText: _replyToId != null ? "Write a reply..." : "Add a comment...",
+                    hintStyle: TextStyle(color: Colors.grey.shade400),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(24), borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                  ),
                 ),
               ),
+              const SizedBox(width: 12),
+              _isPosting 
+                ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))
+                : GestureDetector(
+                    onTap: () => addComment(widget.post.id),
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: const BoxDecoration(color: Color(0xFF42A5F5), shape: BoxShape.circle),
+                      child: const Icon(Icons.send_rounded, color: Colors.white, size: 20),
+                    ),
+                  ),
+            ],
+          ),
         ],
       ),
     );
@@ -265,11 +335,19 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
     setState(() => _isPosting = true);
     final userData = await Database.getDocument('usersInfo', null);
     await FirebaseFirestore.instance.collection("posts").doc(postId).collection("comments").add({
-      "text": text, "authorId": FirebaseAuth.instance.currentUser!.uid, "authorName": userData['name'], "createdAt": FieldValue.serverTimestamp(),
+      "text": text,
+      "authorId": FirebaseAuth.instance.currentUser!.uid,
+      "authorName": userData['name'],
+      "createdAt": FieldValue.serverTimestamp(),
+      "parentId": _replyToId,
     });
     await FirebaseFirestore.instance.collection("posts").doc(postId).update({"commentCount": _commentCount});
     _commentCtrl.clear();
-    setState(() => _isPosting = false);
+    setState(() {
+      _isPosting = false;
+      _replyToId = null;
+      _replyToName = null;
+    });
   }
 
   Future<void> likePost(String postId, String userId) async {
