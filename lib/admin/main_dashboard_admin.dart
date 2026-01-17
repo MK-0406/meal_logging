@@ -168,7 +168,7 @@ class _HomePage extends StatelessWidget {
       final meals = await FirebaseFirestore.instance.collection('meals').get();
       final adminRequests = await FirebaseFirestore.instance
           .collection('users')
-          .where('status', isEqualTo: 'pending')
+          .where('registrationStatus', isEqualTo: 'pending')
           .get();
 
       return {
