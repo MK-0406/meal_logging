@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'log_meals.dart';
 import 'meal_details.dart';
+import 'nutrition_progress.dart'; // Import the new trend page
 import '../functions.dart';
 
 import 'package:http/http.dart' as http;
@@ -483,10 +484,17 @@ class _MealDiaryState extends State<MealDiary> {
       ),
       child: Column(
         children: [
-          const SizedBox(height: 8),
           Row(
-            mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
+              IconButton(
+                icon: const Icon(Icons.bar_chart_rounded, color: Colors.white, size: 24),
+                onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const NutritionProgressPage())),
+                style: IconButton.styleFrom(
+                  backgroundColor: Colors.white.withValues(alpha: 0.15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
               _headerNavButton(Icons.chevron_left, () => _previousDay(true)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
@@ -510,6 +518,7 @@ class _MealDiaryState extends State<MealDiary> {
                 Icons.chevron_right,
                 selectedDate.isBefore(today) ? _nextDay : null,
               ),
+              const SizedBox(width: 40), // Balance the trends button
             ],
           ),
         ],
@@ -592,40 +601,51 @@ class _MealDiaryState extends State<MealDiary> {
         children: [
           Row(
             children: [
-              SizedBox(
-                height: 110,
-                width: 110,
-                child: Stack(
-                  children: [
-                    Center(
-                      child: SizedBox(
-                        height: 100,
-                        width: 100,
-                        child: CircularProgressIndicator(
-                          value: calPercent,
-                          strokeWidth: 10,
-                          backgroundColor: Colors.grey.shade100,
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            cCal > tCal ? Colors.red.shade400 : const Color(0xFF42A5F5)
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  SizedBox(
+                    height: 110,
+                    width: 110,
+                    child: Stack(
+                      children: [
+                        Center(
+                          child: SizedBox(
+                            height: 100,
+                            width: 100,
+                            child: CircularProgressIndicator(
+                              value: calPercent,
+                              strokeWidth: 10,
+                              backgroundColor: Colors.grey.shade100,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                  cCal > tCal ? Colors.red.shade400 : const Color(0xFF42A5F5)
+                              ),
+                            ),
                           ),
                         ),
-                      ),
-                    ),
-                    Center(
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            calRemaining.toStringAsFixed(0),
-                            style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                        Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                calRemaining.toStringAsFixed(0),
+                                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: Colors.black87),
+                              ),
+                              Text('kcal left', style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
+                            ],
                           ),
-                          Text('kcal left', style: TextStyle(fontSize: 10, color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
-                        ],
-                      ),
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Goal: ${tCal.toStringAsFixed(0)} kcal',
+                    style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w600),
+                  ),
+                ]
               ),
+
               const SizedBox(width: 28),
               Expanded(
                 child: Column(
@@ -658,7 +678,16 @@ class _MealDiaryState extends State<MealDiary> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(label, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.black87)),
+                Text(
+                  'Goal: ${target.toStringAsFixed(0)}g',
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade400, fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
             Text(
               isOver
                   ? '+${(-remaining).toStringAsFixed(0)}g over'
