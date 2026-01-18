@@ -27,6 +27,7 @@ dependencies:
   flutter_ai_toolkit: ^1.0.0
   google_generative_ai: ^0.4.5
   flutter_markdown: ^0.7.5
+  fl_chart: ^0.70.2
 
   cupertino_icons: ^1.0.8
 
