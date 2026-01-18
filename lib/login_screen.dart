@@ -1,7 +1,5 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'authentication.dart';
-import 'main.dart';
 import 'signup_screen.dart';
 import 'user/main_dashboard.dart';
 import 'user/input_personal_health_info.dart';
@@ -43,7 +41,7 @@ class _LoginScreenState extends State<LoginScreen> {
       final userInfoDoc = await Database.getDocument('usersInfo', null);
       final userDoc = await Database.getDocument('users', null);
 
-      if (!mounted) return;
+      if (!context.mounted) return;
 
       if (userDoc['role'] == 'user') {
         if (userInfoDoc.exists) {
@@ -54,11 +52,13 @@ class _LoginScreenState extends State<LoginScreen> {
       } else {
         if (userDoc['registrationStatus'] == 'approved') {
           Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainDashboardAdmin()));
-        } else {
+          _showSnackBar('Login Successful', Colors.green);
+        } else if (userDoc['registrationStatus'] == 'pending') {
           _showSnackBar('Your registration is pending approval.', const Color(0xFF1E88E5));
+        } else {
+          _showSnackBar('Your registration has been rejected.', const Color(0xFF1E88E5));
         }
       }
-      _showSnackBar('Login Successful', Colors.green);
     } else {
       _showSnackBar(error, Colors.redAccent);
     }
@@ -117,7 +117,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       borderRadius: BorderRadius.circular(32),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF0D47A1).withOpacity(0.05),
+                          color: const Color(0xFF0D47A1).withValues(alpha: 0.05),
                           blurRadius: 30,
                           offset: const Offset(0, 15),
                         ),
@@ -242,7 +242,7 @@ class _LoginScreenState extends State<LoginScreen> {
           gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF42A5F5).withOpacity(0.3),
+              color: const Color(0xFF42A5F5).withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
