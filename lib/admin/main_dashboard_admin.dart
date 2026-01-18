@@ -165,7 +165,10 @@ class _HomePage extends StatelessWidget {
   Widget build(BuildContext context) {
     Future<Map<String, int>> getDashboardStats() async {
       final users = await FirebaseFirestore.instance.collection('users').get();
-      final meals = await FirebaseFirestore.instance.collection('meals').get();
+      final meals = await FirebaseFirestore.instance
+          .collection('meals')
+          .where('deleted', isEqualTo: false)
+          .get();
       final adminRequests = await FirebaseFirestore.instance
           .collection('users')
           .where('registrationStatus', isEqualTo: 'pending')
