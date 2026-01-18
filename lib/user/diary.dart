@@ -428,7 +428,7 @@ class _MealDiaryState extends State<MealDiary> {
 
   @override
   Widget build(BuildContext context) {
-    final formattedDate = DateFormat('EEEE, dd MMM yyyy').format(selectedDate);
+    final formattedDate = DateFormat('EEE, dd MMM yyyy').format(selectedDate);
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
     final selected = DateTime(selectedDate.year, selectedDate.month, selectedDate.day);
@@ -470,7 +470,7 @@ class _MealDiaryState extends State<MealDiary> {
   Widget _buildHeader(String dayText, DateTime today) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
+      padding: const EdgeInsets.fromLTRB(18, 13, 20, 20),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
