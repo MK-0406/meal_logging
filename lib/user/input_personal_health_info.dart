@@ -74,7 +74,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
         heightM = (double.tryParse(_heightController.text) ?? 0) / 100;
         break;
       case 'ft':
-        heightM = (double.tryParse(_heightController.text) ?? 0) * 0.3048;
+        heightM = (double.tryParse(_heightController.text) ?? 0) * 0.305;
         break;
       case 'm':
         heightM = (double.tryParse(_heightController.text) ?? 0);
@@ -128,6 +128,111 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
     if (height != null && weight != null && height > 0 && weight > 0) {
       calculateBMI();
     }
+  }
+  
+  void onHeightUnitChanged(String changedUnit) {
+    final previousUnit = heightUnit;
+    if (previousUnit == changedUnit) return;
+
+    double height = double.parse(_heightController.text);
+
+    switch (previousUnit) {
+
+      case 'cm':
+        switch (changedUnit) {
+          case 'm':
+            height = height / 100;
+            break;
+          case 'ft':
+            height = height / 30.48;
+            break;
+        }
+        break;
+
+      case 'm':
+        switch (changedUnit) {
+          case 'cm':
+            height = height * 100.roundToDouble();
+            break;
+          case 'ft':
+            height = (height / 0.305);
+            break;
+        }
+        break;
+
+      case 'ft':
+        switch (changedUnit) {
+          case 'cm':
+            height = (height * 30.48).roundToDouble();
+            break;
+          case 'm':
+            height = height * 0.305;
+            break;
+        }
+        break;
+    }
+    heightUnit = changedUnit;
+    _heightController.text = height.toStringAsFixed(2);
+  }
+
+  void onWeightUnitChanged(String changedUnit) {
+    final previousUnit = weightUnit;
+    if (previousUnit == changedUnit) return;
+
+    double weight = double.parse(_weightController.text);
+
+    switch (previousUnit) {
+
+      case 'kg':
+        weight = weight * 2.205;
+        break;
+
+      case 'lb':
+        weight = weight / 2.205;
+        break;
+    }
+    weightUnit = changedUnit;
+    _weightController.text = weight.toStringAsFixed(1);
+  }
+
+  void onCholesterolUnitChanged(String changedUnit) {
+    final previousUnit = cholesterolUnit;
+    if (previousUnit == changedUnit) return;
+
+    double cholesterol = double.parse(_cholesterolLevelController.text);
+
+    switch (previousUnit) {
+
+      case 'mmol/L':
+        cholesterol = cholesterol / 0.02586;
+        break;
+
+      case 'mg/dL':
+        cholesterol = cholesterol * 0.02586;
+        break;
+    }
+    cholesterolUnit = changedUnit;
+    _cholesterolLevelController.text = cholesterol.toStringAsFixed(1);
+  }
+
+  void onBloodSugarUnitChanged(String changedUnit) {
+    final previousUnit = bloodSugarUnit;
+    if (previousUnit == changedUnit) return;
+
+    double bloodSugar = double.parse(_bloodSugarLevelController.text);
+
+    switch (previousUnit) {
+
+      case 'mmol/L':
+        bloodSugar = bloodSugar / 0.05556;
+        break;
+
+      case 'mg/dL':
+        bloodSugar = bloodSugar * 0.05556;
+        break;
+    }
+    bloodSugarUnit = changedUnit;
+    _bloodSugarLevelController.text = bloodSugar.toStringAsFixed(1);
   }
 
   Future<void> fetchUserData() async {
@@ -184,9 +289,9 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
                     _buildSectionLabel("BODY METRICS"),
                     const SizedBox(height: 12),
                     _buildFormCard([
-                      _buildMetricRow('Height', _heightController, ['cm', 'm', 'ft'], heightUnit, (v) => setState(() => heightUnit = v!)),
+                      _buildMetricRow('Height', _heightController, ['cm', 'm', 'ft'], heightUnit, (v) => setState(() => onHeightUnitChanged(v!))),
                       const SizedBox(height: 16),
-                      _buildMetricRow('Weight', _weightController, ['kg', 'lb'], weightUnit, (v) => setState(() => weightUnit = v!)),
+                      _buildMetricRow('Weight', _weightController, ['kg', 'lb'], weightUnit, (v) => setState(() => onWeightUnitChanged(v!))),
                       const SizedBox(height: 16),
                       _buildReadOnlyField('Body Mass Index (BMI)', _bmiController),
                     ]),
@@ -202,9 +307,9 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
                         ],
                       ),
                       const SizedBox(height: 16),
-                      _buildMetricRow('Cholesterol', _cholesterolLevelController, ['mg/dL', 'mmol/L'], cholesterolUnit, (v) => setState(() => cholesterolUnit = v!)),
+                      _buildMetricRow('Cholesterol', _cholesterolLevelController, ['mg/dL', 'mmol/L'], cholesterolUnit, (v) => setState(() => onCholesterolUnitChanged(v!))),
                       const SizedBox(height: 16),
-                      _buildMetricRow('Blood Sugar', _bloodSugarLevelController, ['mg/dL', 'mmol/L'], bloodSugarUnit, (v) => setState(() => bloodSugarUnit = v!)),
+                      _buildMetricRow('Blood Sugar', _bloodSugarLevelController, ['mg/dL', 'mmol/L'], bloodSugarUnit, (v) => setState(() => onBloodSugarUnitChanged(v!))),
                     ]),
                     const SizedBox(height: 40),
                     _buildSaveButton(),
