@@ -10,12 +10,14 @@ class MealRecommender extends StatefulWidget {
   final Map<String, dynamic>? nutritionalTargets;
   final String? mealType;
   final String logDate;
+  final VoidCallback? onMealLogged;
 
   const MealRecommender({
     super.key,
     this.nutritionalTargets,
     this.mealType,
     required this.logDate,
+    this.onMealLogged,
   });
 
   @override
@@ -35,33 +37,40 @@ class _MealRecommenderPageState extends State<MealRecommender> {
     _sizeController.text = '100';
   }
 
+  @override
+  void didUpdateWidget(covariant MealRecommender oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Automatically re-run the recommendation engine if targets (balance) change
+    if (widget.nutritionalTargets != oldWidget.nutritionalTargets) {
+      _runModel();
+    }
+  }
+
   Future<void> _runModel() async {
     try {
       setState(() => _isLoading = true);
       recommendedMeals.clear();
 
       if (widget.nutritionalTargets != null && widget.mealType != null) {
-        final t = widget.nutritionalTargets;
-        if (t != null) {
-          final meals = await _queryMeals(
-            (widget.mealType! == 'Lunch' || widget.mealType == 'Dinner') ? 'Lunch / Dinner' : widget.mealType!,
-            t['Calories'],
-            t['Carbs_g'],
-            t['Protein_g'],
-            t['Fats_g'],
-          );
-          recommendedMeals.addAll(meals);
-        }
+        final t = widget.nutritionalTargets!;
+        final meals = await _queryMeals(
+          (widget.mealType! == 'Lunch' || widget.mealType == 'Dinner') ? 'Lunch / Dinner' : widget.mealType!,
+          t['Calories'] ?? 0.0,
+          t['Carbs_g'] ?? 0.0,
+          t['Protein_g'] ?? 0.0,
+          t['Fats_g'] ?? 0.0,
+        );
+        recommendedMeals.addAll(meals);
       } else {
         final interpreter = await Interpreter.fromAsset('meal_recommender-2.tflite');
         final input = [[19, 179, 68, 21.22, 155, 107, 255, 110, 3324, 197, 214, 97]];
         final output = List.filled(4, 0.0).reshape([1, 4]);
         interpreter.run(input, output);
 
+        final Map<String, dynamic> results = {};
         final nutrients = ['Calories', 'Protein_g', 'Carbs_g', 'Fats_g'];
         final preds = output[0];
         final margins = [0.12, 0.14, 0.27, 0.25];
-        final Map<String, dynamic> results = {};
 
         for (int i = 0; i < nutrients.length; i++) {
           final val = preds[i];
@@ -84,9 +93,9 @@ class _MealRecommenderPageState extends State<MealRecommender> {
       }
 
       recommendedMeals.shuffle(Random());
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     } catch (e) {
-      setState(() => _isLoading = false);
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -97,7 +106,7 @@ class _MealRecommenderPageState extends State<MealRecommender> {
 
     return snapshot.docs.map((doc) {
       var data = doc.data();
-      data['id'] = doc.id; // Store document ID
+      data['id'] = doc.id;
       return data;
     }).where((meal) =>
       meal['protein'] <= proteinHigh &&
@@ -153,16 +162,10 @@ class _MealRecommenderPageState extends State<MealRecommender> {
         subtitle: Text("${cal.toStringAsFixed(0)} kcal per 100g", style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
         trailing: IconButton(
           icon: const Icon(Icons.add_circle, color: Color(0xFF42A5F5), size: 32),
-          onPressed: () => _logMealWrapper(data),
+          onPressed: () => _showLogDialog(data),
         ),
       ),
     );
-  }
-
-  void _logMealWrapper(Map<String, dynamic> data) {
-    // Since we can't easily call parent methods in a clean way without callbacks, 
-    // I'll implement a clean log dialog here that matches the parent one.
-    _showLogDialog(data);
   }
 
   Future<void> _showLogDialog(Map<String, dynamic> mealData) async {
@@ -211,16 +214,10 @@ class _MealRecommenderPageState extends State<MealRecommender> {
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                   ),
                   validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Please enter a value';
-                    }
+                    if (val == null || val.isEmpty) return 'Please enter a value';
                     final num = double.tryParse(val);
-                    if (num == null) {
-                      return 'Please enter a valid number';
-                    }
-                    if (num <= 0) {
-                      return 'Please enter a value greater than 0';
-                    }
+                    if (num == null) return 'Please enter a valid number';
+                    if (num <= 0) return 'Please enter a value greater than 0';
                     return null;
                   }
                 ),
@@ -234,9 +231,12 @@ class _MealRecommenderPageState extends State<MealRecommender> {
               onPressed: () async {
                 if (!_logFormKey.currentState!.validate()) return;
                 final size = double.tryParse(_sizeController.text) ?? 100.0;
-                final exceeds = _checkIfMealExceedsTarget(mealData, size, widget.nutritionalTargets);
+                
+                final balance = widget.nutritionalTargets;
+                final exceeds = _checkIfMealExceedsTarget(mealData, size, balance);
+                
                 if (exceeds['exceeds']) {
-                  await _showExceedConfirmationDialog(logContext, exceeds, mealData['name'], size, mealData['id'], FirebaseAuth.instance.currentUser!.uid, widget.logDate);
+                  await _showExceedConfirmationDialog(logContext, exceeds, mealData['name'], size, mealData['id']);
                 } else {
                   await _addMealToLog(mealData['id'], mealData['name'], size);
                 }
@@ -252,22 +252,22 @@ class _MealRecommenderPageState extends State<MealRecommender> {
     );
   }
 
-  Map<String, dynamic> _checkIfMealExceedsTarget(Map<String, dynamic> nutrients, double size, Map<String, dynamic>? targets) {
-    if (targets == null) return {'exceeds': false, 'exceedingNutrients': []};
+  Map<String, dynamic> _checkIfMealExceedsTarget(Map<String, dynamic> nutrients, double size, Map<String, dynamic>? balance) {
+    if (balance == null) return {'exceeds': false, 'exceedingNutrients': []};
     final List<Map<String, dynamic>> exceeding = [];
     final mapKeys = {'calorie': 'Calories', 'protein': 'Protein_g', 'carb': 'Carbs_g', 'fat': 'Fats_g'};
 
     mapKeys.forEach((dbKey, targetKey) {
       final mealVal = (nutrients[dbKey] ?? 0.0) * size / 100.0;
-      final targetVal = (targets[targetKey] ?? 0.0);
-      if (targetVal > 0 && mealVal > targetVal) {
-        exceeding.add({'name': dbKey, 'amount': mealVal, 'target': targetVal});
+      final balanceVal = balance[targetKey] ?? 0.0;
+      if (balanceVal >= 0 && mealVal > balanceVal) {
+        exceeding.add({'name': targetKey, 'amount': mealVal, 'target': balanceVal});
       }
     });
     return {'exceeds': exceeding.isNotEmpty, 'exceedingNutrients': exceeding};
   }
 
-  Future<void> _showExceedConfirmationDialog(BuildContext context, Map<String, dynamic> data, String mealName, double size, String id, String uid, String date) async {
+  Future<void> _showExceedConfirmationDialog(BuildContext context, Map<String, dynamic> data, String mealName, double size, String id) async {
     await showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -277,7 +277,7 @@ class _MealRecommenderPageState extends State<MealRecommender> {
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text("This portion of $mealName exceeds your meal goals for:"),
+            Text("This portion of $mealName exceeds your REMAINING meal budget for:"),
             const SizedBox(height: 12),
             ...data['exceedingNutrients'].map<Widget>((n) => Text("• ${n['name']}: ${n['amount'].toStringAsFixed(0)} / ${n['target'].toStringAsFixed(0)}", style: const TextStyle(fontWeight: FontWeight.bold))).toList(),
             const SizedBox(height: 16),
@@ -301,6 +301,11 @@ class _MealRecommenderPageState extends State<MealRecommender> {
       'date': widget.logDate,
       'servingSize': size,
     });
+    
+    if (widget.onMealLogged != null) {
+      widget.onMealLogged!();
+    }
+    
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text("$mealName added!"), behavior: SnackBarBehavior.floating, backgroundColor: const Color(0xFF1E88E5)));
   }
