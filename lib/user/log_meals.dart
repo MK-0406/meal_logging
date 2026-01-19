@@ -136,6 +136,7 @@ class _MealLogPageState extends State<MealLogPage> {
       _displayedMeals = _allRandomMeals.where((meal) =>
       (meal['foodCategory'] ?? '').toString().contains(widget.mealType)
           || (meal['foodCategory'] ?? '').toString().contains('Anytime')
+          && meal['deleted'] == false
       ).take(5).toList();
     }
     setState(() => _isLoading = false);
@@ -149,6 +150,7 @@ class _MealLogPageState extends State<MealLogPage> {
         _displayedMeals = _allRandomMeals.where((meal) =>
         (meal['foodCategory'] ?? '').toString().contains(widget.mealType)
             || (meal['foodCategory'] ?? '').toString().contains('Anytime')
+            && meal['deleted'] == false
         ).take(5).toList();
       });
     } else {
@@ -156,7 +158,8 @@ class _MealLogPageState extends State<MealLogPage> {
         _isSearching = true;
         _allMeals = [..._allRandomMeals, ..._allCustomMeals];
         _displayedMeals = _allMeals.where((meal) =>
-            (meal['name'] ?? '').toString().toLowerCase().contains(lowerQuery))
+            (meal['name'] ?? '').toString().toLowerCase().contains(lowerQuery)
+                && meal['deleted'] == false)
             .toList();
       });
     }
