@@ -48,6 +48,52 @@ class _MealDiaryState extends State<MealDiary> {
     _loadIncludeSnacksFromDatabase();
   }
 
+  Future<void> _checkBoundaries(Map<String, dynamic> data) async { // set min and max intake for each nutrient
+    final userDetails = await Database.getDocument('usersInfo', null);
+    final userData = userDetails.data() as Map<String, dynamic>;
+
+    double minProtein = userData['weight_kg'];
+    double maxProtein = userData['weight_kg'] * 3.5;
+
+    if (data['Protein_g'] < minProtein) {
+      data['Protein_g'] = minProtein;
+    } else if (data['Protein_g'] > maxProtein) {
+      data['Protein_g'] = maxProtein;
+    }
+
+    if (data['Carbs_g'] < 130) {
+      if (userData['bmi'] < 23 && userData['bloodPressureDiastolic'] < 80 && userData['bloodPressureSystolic'] < 130 && userData['bloodSugar_mmolL'] < 7) {
+        data['Carbs_g'] = 130;
+      } else {
+        if (data['Carbs_g'] < 50) {
+          data['Carbs_g'] = 50;
+        }
+      }
+    }
+
+    switch (userData['gender']) {
+      case 'Male':
+        double minFats = (1500 * 0.2) / 9;
+        double maxFats = (1500 * 0.3) / 9;
+        if (data['Fats_g'] < minFats) {
+          data['Fats_g'] = minFats;
+        } else if (data['Fats_g'] > maxFats) {
+          data['Fats_g'] = maxFats;
+        }
+        break;
+
+      case 'Female':
+        double minFats = (1200 * 0.2) / 9;
+        double maxFats = (1200 * 0.3) / 9;
+        if (data['Fats_g'] < minFats) {
+          data['Fats_g'] = minFats;
+        } else if (data['Fats_g'] > maxFats) {
+          data['Fats_g'] = maxFats;
+        }
+        break;
+    }
+  }
+
   Future<void> regenerateTomorrowRecommendation() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final tomorrow = selectedDate.add(const Duration(days: 1));
@@ -122,7 +168,9 @@ class _MealDiaryState extends State<MealDiary> {
       results[nutrients[i]] = prediction[i];
     }
 
-    results['Calories'] = (4 * (prediction[0] + prediction[1]) + 9 * prediction[2]).round();
+    await _checkBoundaries(results);
+
+    results['Calories'] = (4 * (results['Protein_g'] + results['Carbs_g']) + 9 * results['Fats_g']).round();
 
     await FirebaseFirestore.instance
         .collection('recommendations')
