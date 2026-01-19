@@ -1,7 +1,9 @@
-import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
 import 'authentication.dart';
 import 'login_screen.dart';
+import 'user/input_personal_health_info.dart';
 import '../functions.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -36,21 +38,47 @@ class _SignupScreenState extends State<SignupScreen> {
     setState(() => _isLoading = false);
 
     if (error == null) {
-      final status = (selectedRole == 'admin') ? 'pending' : 'approved';
-      await Database.setItems('users', null, {
-        'email': emailController.text.trim(),
-        'role': selectedRole,
-        'registrationStatus': status,
-        'createdAt': FieldValue.serverTimestamp(),
-        'updatedAt': FieldValue.serverTimestamp(),
-      });
-
+      final user = FirebaseAuth.instance.currentUser!;
+      await _createUserDocument(user.uid, user.email!);
+      
       if (!mounted) return;
-      _showSnackBar('Signup Successful! Please login.', Colors.green);
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      _showSnackBar('Signup Successful! Please complete your profile.', Colors.green);
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
     } else {
       _showSnackBar(error, Colors.redAccent);
     }
+  }
+
+  Future<void> _handleGoogleSignup() async {
+    setState(() => _isLoading = true);
+    final userCredential = await _authService.signInWithGoogle();
+    setState(() => _isLoading = false);
+
+    if (userCredential != null) {
+      final userDoc = await Database.getDocument('users', userCredential.user!.uid);
+      
+      if (!userDoc.exists) {
+        await _createUserDocument(userCredential.user!.uid, userCredential.user!.email!);
+        if (!mounted) return;
+        _showSnackBar('Account Created with Google!', Colors.green);
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
+      } else {
+        if (!mounted) return;
+        _showSnackBar('Account already exists. Please login.', const Color(0xFF1E88E5));
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      }
+    }
+  }
+
+  Future<void> _createUserDocument(String uid, String email) async {
+    final status = (selectedRole == 'admin') ? 'pending' : 'approved';
+    await Database.setItems('users', uid, {
+      'email': email,
+      'role': selectedRole,
+      'registrationStatus': status,
+      'createdAt': FieldValue.serverTimestamp(),
+      'updatedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   void _showSnackBar(String message, Color bgColor) {
@@ -85,7 +113,6 @@ class _SignupScreenState extends State<SignupScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // --- Header Section ---
                   const Text(
                     'Create Account',
                     style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF0D47A1), letterSpacing: -1.0),
@@ -98,23 +125,15 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                   const SizedBox(height: 40),
 
-                  // --- Signup Card ---
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0D47A1).withValues(alpha: 0.05),
-                          blurRadius: 30,
-                          offset: const Offset(0, 15),
-                        ),
-                      ],
+                      boxShadow: [BoxShadow(color: const Color(0xFF0D47A1).withValues(alpha: 0.05), blurRadius: 30, offset: const Offset(0, 15))],
                     ),
                     child: Column(
                       children: [
-                        // Role Selection
                         SegmentedButton<String>(
                           segments: const [
                             ButtonSegment<String>(value: 'user', label: Text('User'), icon: Icon(Icons.person_rounded, size: 18)),
@@ -183,23 +202,20 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         const SizedBox(height: 32),
                         _buildSignupButton(),
+                        const SizedBox(height: 16),
+                        _buildGoogleButton(),
                       ],
                     ),
                   ),
 
                   const SizedBox(height: 32),
-
-                  // --- Footer Section ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text("Already have an account?", style: TextStyle(color: Colors.blueGrey.shade400, fontWeight: FontWeight.w500)),
                       TextButton(
                         onPressed: () => Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen())),
-                        child: const Text(
-                          'Login',
-                          style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.w800),
-                        ),
+                        child: const Text('Login', style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ),
@@ -257,20 +273,10 @@ class _SignupScreenState extends State<SignupScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF42A5F5).withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: const Color(0xFF42A5F5).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
         ),
         child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
           onPressed: () {
             if (_formKey.currentState!.validate() && !_isLoading) {
               _handleSignup();
@@ -278,10 +284,24 @@ class _SignupScreenState extends State<SignupScreen> {
           },
           child: _isLoading
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-              : const Text(
-                  'Create Account',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5),
-                ),
+              : const Text('Create Account', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: _isLoading ? null : _handleGoogleSignup,
+        icon: Image.network('https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg', height: 24, errorBuilder: (c, e, s) => const Icon(Icons.g_mobiledata_rounded, color: Colors.red, size: 28)),
+        label: const Text('Sign Up with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Colors.grey.shade200),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white,
         ),
       ),
     );

@@ -29,38 +29,58 @@ class _LoginScreenState extends State<LoginScreen> {
     }
 
     setState(() => _isLoading = true);
-
     final error = await _authService.signIn(
       emailController.text.trim(),
       passwordController.text.trim(),
     );
-
     setState(() => _isLoading = false);
 
     if (error == null) {
-      final userInfoDoc = await Database.getDocument('usersInfo', null);
-      final userDoc = await Database.getDocument('users', null);
-
-      if (!context.mounted) return;
-
-      if (userDoc['role'] == 'user') {
-        if (userInfoDoc.exists) {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainDashboard()));
-        } else {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
-        }
-      } else {
-        if (userDoc['registrationStatus'] == 'approved') {
-          Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainDashboardAdmin()));
-          _showSnackBar('Login Successful', Colors.green);
-        } else if (userDoc['registrationStatus'] == 'pending') {
-          _showSnackBar('Your registration is pending approval.', const Color(0xFF1E88E5));
-        } else {
-          _showSnackBar('Your registration has been rejected.', const Color(0xFF1E88E5));
-        }
-      }
+      _navigateToDashboard();
     } else {
       _showSnackBar(error, Colors.redAccent);
+    }
+  }
+
+  Future<void> _handleGoogleSignIn() async {
+    setState(() => _isLoading = true);
+    final userCredential = await _authService.signInWithGoogle();
+    setState(() => _isLoading = false);
+
+    if (userCredential != null) {
+      final userDoc = await Database.getDocument('users', userCredential.user!.uid);
+      
+      // If new Google user, create basic entry
+      if (!userDoc.exists) {
+        _showSnackBar("Account does not exist.", Colors.redAccent);
+      }
+      
+      _navigateToDashboard();
+    } else {
+      _showSnackBar("Google Sign-In failed.", Colors.redAccent);
+    }
+  }
+
+  Future<void> _navigateToDashboard() async {
+    final userInfoDoc = await Database.getDocument('usersInfo', null);
+    final userDoc = await Database.getDocument('users', null);
+
+    if (!mounted) return;
+
+    if (userDoc['role'] == 'user') {
+      if (userInfoDoc.exists) {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainDashboard()));
+      } else {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
+      }
+    } else {
+      if (userDoc['registrationStatus'] == 'approved') {
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainDashboardAdmin()));
+      } else if (userDoc['registrationStatus'] == 'pending') {
+        _showSnackBar('Your registration is pending approval.', const Color(0xFF1E88E5));
+      } else {
+        _showSnackBar('Your registration has been rejected.', const Color(0xFF1E88E5));
+      }
     }
   }
 
@@ -96,7 +116,6 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // --- Header Section ---
                   const Text(
                     'Welcome Back',
                     style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: Color(0xFF0D47A1), letterSpacing: -1.0),
@@ -107,82 +126,73 @@ class _LoginScreenState extends State<LoginScreen> {
                     style: TextStyle(fontSize: 15, color: Colors.blueGrey.shade400, fontWeight: FontWeight.w500),
                     textAlign: TextAlign.center,
                   ),
-                  const SizedBox(height: 48),
+                  const SizedBox(height: 40),
 
-                  // --- Login Card ---
                   Container(
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
                       color: Colors.white,
                       borderRadius: BorderRadius.circular(32),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF0D47A1).withValues(alpha: 0.05),
-                          blurRadius: 30,
-                          offset: const Offset(0, 15),
-                        ),
-                      ],
+                      boxShadow: [BoxShadow(color: const Color(0xFF0D47A1).withValues(alpha: 0.05), blurRadius: 30, offset: const Offset(0, 15))],
                     ),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        children: [
-                          _buildTextField(
-                            controller: emailController,
-                            label: 'Email Address',
-                            icon: Icons.email_rounded,
-                            keyboardType: TextInputType.emailAddress,
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return 'Please enter your email';
-                              if (!RegExp(r'^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$').hasMatch(value)) return 'Enter a valid email';
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 20),
-                          _buildTextField(
-                            controller: passwordController,
-                            label: 'Password',
-                            icon: Icons.lock_rounded,
-                            isPassword: true,
-                            obscureText: _obscurePassword,
-                            onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
-                            validator: (value) {
-                              if (value == null || value.isEmpty) return 'Please enter your password';
-                              if (value.length < 6) return 'Password must be 6+ characters';
-                              return null;
-                            },
-                          ),
-                          const SizedBox(height: 12),
-                          Align(
-                            alignment: Alignment.centerRight,
-                            child: TextButton(
-                              onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
-                              child: Text(
-                                'Forgot Password?',
-                                style: TextStyle(color: const Color(0xFF1E88E5), fontWeight: FontWeight.w700, fontSize: 13),
+                    child: Column(
+                      children: [
+                        Form(
+                          key: _formKey,
+                          child: Column(
+                            children: [
+                              _buildTextField(
+                                controller: emailController,
+                                label: 'Email Address',
+                                icon: Icons.email_rounded,
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'Please enter your email';
+                                  if (!RegExp(r'^[\w-]+(\.[\w-]+)*@([\w-]+\.)+[a-zA-Z]{2,7}$').hasMatch(value)) return 'Enter a valid email';
+                                  return null;
+                                },
                               ),
-                            ),
+                              const SizedBox(height: 20),
+                              _buildTextField(
+                                controller: passwordController,
+                                label: 'Password',
+                                icon: Icons.lock_rounded,
+                                isPassword: true,
+                                obscureText: _obscurePassword,
+                                onTogglePassword: () => setState(() => _obscurePassword = !_obscurePassword),
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) return 'Please enter your password';
+                                  if (value.length < 6) return 'Password must be 6+ characters';
+                                  return null;
+                                },
+                              ),
+                            ],
                           ),
-                          const SizedBox(height: 24),
-                          _buildLoginButton(),
-                        ],
-                      ),
+                        ),
+                        const SizedBox(height: 12),
+                        Align(
+                          alignment: Alignment.centerRight,
+                          child: TextButton(
+                            onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ForgotPasswordScreen())),
+                            child: const Text('Forgot Password?', style: TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.w700, fontSize: 13)),
+                          ),
+                        ),
+                        const SizedBox(height: 20),
+                        _buildLoginButton(),
+                        const SizedBox(height: 16),
+                        _buildGoogleButton(),
+                      ],
                     ),
                   ),
 
                   const SizedBox(height: 32),
-
-                  // --- Footer Section ---
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Text("Don't have an account?", style: TextStyle(color: Colors.blueGrey.shade400, fontWeight: FontWeight.w500)),
                       TextButton(
                         onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const SignupScreen())),
-                        child: const Text(
-                          'Sign Up',
-                          style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.w800),
-                        ),
+                        child: const Text('Sign Up', style: TextStyle(color: Color(0xFF0D47A1), fontWeight: FontWeight.w800)),
                       ),
                     ],
                   ),
@@ -240,20 +250,10 @@ class _LoginScreenState extends State<LoginScreen> {
         decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(16),
           gradient: const LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF42A5F5).withValues(alpha: 0.3),
-              blurRadius: 12,
-              offset: const Offset(0, 6),
-            ),
-          ],
+          boxShadow: [BoxShadow(color: const Color(0xFF42A5F5).withValues(alpha: 0.3), blurRadius: 12, offset: const Offset(0, 6))],
         ),
         child: ElevatedButton(
-          style: ElevatedButton.styleFrom(
-            backgroundColor: Colors.transparent,
-            shadowColor: Colors.transparent,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          ),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.transparent, shadowColor: Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
           onPressed: () {
             if (_formKey.currentState!.validate() && !_isLoading) {
               _handleLogin(context);
@@ -261,10 +261,24 @@ class _LoginScreenState extends State<LoginScreen> {
           },
           child: _isLoading
               ? const SizedBox(width: 24, height: 24, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-              : const Text(
-                  'Sign In',
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5),
-                ),
+              : const Text('Sign In', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white, letterSpacing: 0.5)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildGoogleButton() {
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: OutlinedButton.icon(
+        onPressed: _isLoading ? null : _handleGoogleSignIn,
+        icon: Image.network('https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_%22G%22_logo.svg', height: 24, errorBuilder: (c, e, s) => const Icon(Icons.g_mobiledata_rounded, color: Colors.red, size: 28)),
+        label: const Text('Continue with Google', style: TextStyle(fontSize: 15, fontWeight: FontWeight.bold, color: Colors.black87)),
+        style: OutlinedButton.styleFrom(
+          side: BorderSide(color: Colors.grey.shade200),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          backgroundColor: Colors.white,
         ),
       ),
     );

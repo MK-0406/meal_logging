@@ -28,6 +28,7 @@ dependencies:
   google_generative_ai: ^0.4.5
   flutter_markdown: ^0.7.5
   fl_chart: ^0.70.2
+  google_sign_in: ^6.2.1
 
   cupertino_icons: ^1.0.8
 
