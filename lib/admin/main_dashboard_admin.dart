@@ -164,7 +164,10 @@ class _HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Future<Map<String, int>> getDashboardStats() async {
-      final users = await FirebaseFirestore.instance.collection('users').get();
+      final users = await FirebaseFirestore
+          .instance.collection('users')
+          .where('role', isEqualTo: 'user')
+          .get();
       final meals = await FirebaseFirestore.instance
           .collection('meals')
           .where('deleted', isEqualTo: false)
