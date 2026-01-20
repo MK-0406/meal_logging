@@ -49,12 +49,16 @@ class _MealDiaryState extends State<MealDiary> {
     _loadIncludeSnacksFromDatabase();
   }
 
-  Future<void> _checkBoundaries(Map<String, dynamic> data) async { // set min and max intake for each nutrient
+  Future<Map<String, dynamic>> _checkBoundaries(Map<String, dynamic> data) async { // set min and max intake for each nutrient
     final userDetails = await Database.getDocument('usersInfo', null);
     final userData = userDetails.data() as Map<String, dynamic>;
 
     double minProtein = userData['weight_kg'];
     double maxProtein = userData['weight_kg'] * 3.5;
+
+    if (data.isEmpty){
+      data = {'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0};
+    }
 
     if (data['Protein_g'] < minProtein) {
       data['Protein_g'] = minProtein;
@@ -93,6 +97,11 @@ class _MealDiaryState extends State<MealDiary> {
         }
         break;
     }
+    
+    // Recalculate Calories based on boundaries
+    data['Calories'] = (4 * (data['Protein_g'] + data['Carbs_g']) + 9 * data['Fats_g']).round();
+
+    return data;
   }
 
   Future<void> regenerateTomorrowRecommendation() async {
@@ -163,15 +172,13 @@ class _MealDiaryState extends State<MealDiary> {
     final data = jsonDecode(response.body);
     final prediction = data['prediction'][0];
     final nutrients = ['Protein_g', 'Carbs_g', 'Fats_g'];
-    final results = <String, dynamic>{};
+    var results = <String, dynamic>{};
 
     for (int i = 0; i < nutrients.length; i++) {
       results[nutrients[i]] = prediction[i];
     }
 
-    await _checkBoundaries(results);
-
-    results['Calories'] = (4 * (results['Protein_g'] + results['Carbs_g']) + 9 * results['Fats_g']).round();
+    results = await _checkBoundaries(results);
 
     await FirebaseFirestore.instance
         .collection('recommendations')
@@ -300,10 +307,8 @@ class _MealDiaryState extends State<MealDiary> {
                 TextButton(
                   onPressed: () async {
                     Navigator.pop(context);
-                    setState(() {
-                      results = {'Calories': 2000, 'Protein_g': 130, 'Carbs_g': 250, 'Fats_g': 90};
-                      calculateRecommendationForEachMealPeriod();
-                    });
+                    results = await _checkBoundaries({});
+                    calculateRecommendationForEachMealPeriod();
                     await FirebaseFirestore.instance
                         .collection('recommendations')
                         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -355,7 +360,13 @@ class _MealDiaryState extends State<MealDiary> {
               ),
               actions: [
                 TextButton(
-                  onPressed: () => Navigator.pop(context),
+                  onPressed: () async {
+                    Navigator.pop(context);
+                    results = await _checkBoundaries(results);
+                    setState(() {
+                      calculateRecommendationForEachMealPeriod();
+                    });
+                  },
                   child: Text("Later", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
                 ),
                 ElevatedButton(
@@ -462,6 +473,7 @@ class _MealDiaryState extends State<MealDiary> {
     );
     if (picked != null) {
       setState(() => selectedDate = picked);
+      _checkAndPromptMissingMeals(true);
       _loadRecommendationFromDatabase();
       _loadDailyIntake();
       mealTargets = null;
