@@ -22,6 +22,7 @@ class _MealDiaryState extends State<MealDiary> {
   Map<String, Map<String, dynamic>>? mealTargets;
   bool _isLoadingModel = true;
   Map<String, double>? _dailyIntake;
+  Map<String, Map<String, double>> _periodIntake = {};
   bool _isLoadingIntake = false;
   final bool _previousDayAvailable = true;
   bool includeSnacks = true;
@@ -473,6 +474,55 @@ class _MealDiaryState extends State<MealDiary> {
     setState(() {});
     _loadDailyIntake();
   }
+  
+  Future<void> _saveAdjustedTargets(Map<String, dynamic> adjustedTargets) async {
+    await FirebaseFirestore.instance
+        .collection('recommendations')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .collection('dates')
+        .doc(DateFormat('EEEE, dd MMM yyyy').format(selectedDate))
+        .set(adjustedTargets, SetOptions(merge: true));
+  }
+
+  Map<String, dynamic>? _getAdjustedTargets(String mealType) {
+    if (mealTargets == null) return null;
+
+    // Create a copy to avoid mutating the original until all adjustments are done
+    Map<String, Map<String, dynamic>> adjusted = {};
+    mealTargets!.forEach((key, value) {
+      adjusted[key] = Map<String, dynamic>.from(value);
+    });
+
+    final metrics = ['Calories', 'Protein_g', 'Carbs_g', 'Fats_g'];
+
+    // 1. Breakfast -> Lunch
+    for (var m in metrics) {
+      double target = mealTargets!['Breakfast']?[m] ?? 0.0;
+      double intake = _periodIntake['Breakfast']?[m] ?? 0.0;
+      double diff = target - intake;
+      adjusted['Lunch']?[m] = (adjusted['Lunch']![m] + diff).clamp(0.0, double.infinity);
+    }
+
+    // 2. Lunch -> Dinner
+    for (var m in metrics) {
+      // For lunch, we use the adjusted target to find the deviation
+      double target = adjusted['Lunch']?[m] ?? 0.0;
+      double intake = _periodIntake['Lunch']?[m] ?? 0.0;
+      double diff = target - intake;
+      adjusted['Dinner']?[m] = (adjusted['Dinner']![m] + diff).clamp(0.0, double.infinity);
+    }
+
+    // 3. Dinner -> Snack
+    for (var m in metrics) {
+      double target = adjusted['Dinner']?[m] ?? 0.0;
+      double intake = _periodIntake['Dinner']?[m] ?? 0.0;
+      double diff = target - intake;
+      adjusted['Snack']?[m] = (adjusted['Snack']![m] + diff).clamp(0.0, double.infinity);
+    }
+
+    _saveAdjustedTargets(adjusted);
+    return adjusted[mealType];
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -503,7 +553,8 @@ class _MealDiaryState extends State<MealDiary> {
                   _buildDailyDashboard(),
                   const SizedBox(height: 24),
                   ...mealCategories.map((mealType) {
-                    final mealTarget = mealTargets?[mealType];
+                    // Use adjusted targets for display and logging
+                    final mealTarget = _getAdjustedTargets(mealType);
                     return _buildMealSection(mealType, mealTarget);
                   }),
                 ],
@@ -1061,6 +1112,13 @@ class _MealDiaryState extends State<MealDiary> {
   Future<Map<String, double>> _calculateDailyIntake() async {
     try {
       double tCal = 0, tProt = 0, tCarb = 0, tFat = 0;
+      Map<String, Map<String, double>> periodIntake = {
+        'Breakfast': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+        'Lunch': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+        'Dinner': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+        'Snack': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+      };
+
       final query = await mealLogs
           .where('uid', isEqualTo: FirebaseAuth.instance.currentUser!.uid)
           .where('date', isEqualTo: DateFormat('EEEE, dd MMM yyyy').format(selectedDate))
@@ -1068,17 +1126,29 @@ class _MealDiaryState extends State<MealDiary> {
 
       for (final doc in query.docs) {
         final data = doc.data() as Map<String, dynamic>;
+        final type = data['mealType'] ?? 'Snack';
         DocumentSnapshot mDoc = await mealsCol.doc(data['mealID']).get();
         if (!mDoc.exists) mDoc = await customMealsCol.doc(data['mealID']).get();
         if (mDoc.exists) {
           final mData = mDoc.data() as Map<String, dynamic>;
           final ratio = (data['servingSize'] ?? 0) / 100;
-          tCal += (mData['calorie'] ?? 0) * ratio;
-          tProt += (mData['protein'] ?? 0) * ratio;
-          tCarb += (mData['carb'] ?? 0) * ratio;
-          tFat += (mData['fat'] ?? 0) * ratio;
+          double c = (mData['calorie'] ?? 0) * ratio;
+          double p = (mData['protein'] ?? 0) * ratio;
+          double carb = (mData['carb'] ?? 0) * ratio;
+          double f = (mData['fat'] ?? 0) * ratio;
+          
+          tCal += c; tProt += p; tCarb += carb; tFat += f;
+          
+          if (periodIntake.containsKey(type)) {
+            periodIntake[type]!['Calories'] = (periodIntake[type]!['Calories'] ?? 0) + c;
+            periodIntake[type]!['Protein_g'] = (periodIntake[type]!['Protein_g'] ?? 0) + p;
+            periodIntake[type]!['Carbs_g'] = (periodIntake[type]!['Carbs_g'] ?? 0) + carb;
+            periodIntake[type]!['Fats_g'] = (periodIntake[type]!['Fats_g'] ?? 0) + f;
+          }
         }
       }
+      
+      setState(() => _periodIntake = periodIntake);
       return {'calories': tCal, 'protein': tProt, 'carbs': tCarb, 'fats': tFat};
     } catch (e) {
       return {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0};
