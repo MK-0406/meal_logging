@@ -56,7 +56,7 @@ class _MealDiaryState extends State<MealDiary> {
     double minProtein = userData['weight_kg'];
     double maxProtein = userData['weight_kg'] * 3.5;
 
-    if (data.isEmpty){
+    if (data['Protein_g'] == null){
       data = {'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0};
     }
 
@@ -366,6 +366,12 @@ class _MealDiaryState extends State<MealDiary> {
                     setState(() {
                       calculateRecommendationForEachMealPeriod();
                     });
+                    await FirebaseFirestore.instance
+                        .collection('recommendations')
+                        .doc(FirebaseAuth.instance.currentUser!.uid)
+                        .collection('dates')
+                        .doc(DateFormat('EEEE, dd MMM yyyy').format(selectedDate))
+                        .set(results);
                   },
                   child: Text("Later", style: TextStyle(color: Colors.grey.shade600, fontWeight: FontWeight.bold)),
                 ),
