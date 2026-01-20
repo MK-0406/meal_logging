@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'forum_details.dart';
 import 'new_forum.dart';
@@ -21,7 +22,7 @@ class _ForumPage extends StatefulWidget {
 
 class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _itemCount = 5; // Initialized to 5 posts
+  int _itemCount = 5;
 
   @override
   void initState() {
@@ -160,76 +161,133 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
   Widget _buildPostCard(QueryDocumentSnapshot post) {
     final data = post.data() as Map<String, dynamic>;
-    return Container(
-      margin: const EdgeInsets.only(bottom: 16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4)),
-        ],
-      ),
-      child: InkWell(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ForumPostDetailPage(post: post))),
-        borderRadius: BorderRadius.circular(20),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                children: [
-                  CircleAvatar(
-                    radius: 18,
-                    backgroundColor: Colors.blue.shade50,
-                    child: Icon(Icons.person_rounded, size: 20, color: Colors.blue.shade400),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          data['username'] ?? "Member", // Fixed: Uses 'username' from your DB
-                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Colors.black87),
-                        ),
-                        Text(
-                          _formatTimestamp(data['createdAt']),
-                          style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 14),
-              Text(
-                data['title'] ?? "",
-                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 17, color: Color(0xFF2C3E50), height: 1.2),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                data['content'] ?? "",
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 14, height: 1.4),
-              ),
-              const SizedBox(height: 16),
-              Row(
-                children: [
-                  _buildStat(Icons.favorite_rounded, data['likeCount']?.toString() ?? "0", Colors.red.shade400),
-                  const SizedBox(width: 20),
-                  _buildStat(Icons.chat_bubble_rounded, data['commentCount']?.toString() ?? "0", Colors.blue.shade400),
-                  const Spacer(),
-                  Text("Read More", style: TextStyle(color: Colors.blue.shade600, fontSize: 12, fontWeight: FontWeight.bold)),
-                  Icon(Icons.chevron_right_rounded, size: 16, color: Colors.blue.shade600),
-                ],
-              ),
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('viewed_posts')
+          .doc(uid)
+          .collection('posts')
+          .doc(post.id)
+          .snapshots(),
+      builder: (context, viewedSnapshot) {
+        final isRead = viewedSnapshot.data?.exists ?? false;
+
+        return Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          decoration: BoxDecoration(
+            color: isRead ? Colors.white : const Color(0xFFE3F2FD).withValues(alpha: 0.3),
+            borderRadius: BorderRadius.circular(20),
+            boxShadow: [
+              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
             ],
           ),
-        ),
-      ),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(20),
+            child: Container(
+              decoration: BoxDecoration(
+                border: Border(
+                  left: BorderSide(
+                    color: isRead ? Colors.transparent : const Color(0xFF1E88E5),
+                    width: 6,
+                  ),
+                ),
+              ),
+              child: InkWell(
+                onTap: () async {
+                  await _markAsRead(post.id);
+                  if (context.mounted) {
+                    Navigator.push(context, MaterialPageRoute(builder: (_) => ForumPostDetailPage(post: post)));
+                  }
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          CircleAvatar(
+                            radius: 18,
+                            backgroundColor: Colors.blue.shade50,
+                            child: Icon(Icons.person_rounded, size: 20, color: Colors.blue.shade400),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  data['username'] ?? "Member",
+                                  style: TextStyle(
+                                    fontWeight: isRead ? FontWeight.w600 : FontWeight.w900, 
+                                    fontSize: 14, 
+                                    color: isRead ? Colors.grey.shade700 : Colors.black87
+                                  ),
+                                ),
+                                Text(
+                                  _formatTimestamp(data['createdAt']),
+                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                                ),
+                              ],
+                            ),
+                          ),
+                          if (!isRead)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(color: const Color(0xFF1E88E5), borderRadius: BorderRadius.circular(8)),
+                              child: const Text("NEW", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 14),
+                      Text(
+                        data['title'] ?? "",
+                        style: TextStyle(
+                          fontWeight: isRead ? FontWeight.bold : FontWeight.w900, 
+                          fontSize: 17, 
+                          color: isRead ? const Color(0xFF2C3E50) : const Color(0xFF0D47A1), 
+                          height: 1.2
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        data['content'] ?? "",
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(color: isRead ? Colors.grey.shade600 : Colors.grey.shade800, fontSize: 14, height: 1.4),
+                      ),
+                      const SizedBox(height: 16),
+                      Row(
+                        children: [
+                          _buildStat(Icons.favorite_rounded, data['likeCount']?.toString() ?? "0", Colors.red.shade400),
+                          const SizedBox(width: 20),
+                          _buildStat(Icons.chat_bubble_rounded, data['commentCount']?.toString() ?? "0", Colors.blue.shade400),
+                          const Spacer(),
+                          Text(isRead ? "Read More" : "View Now", style: TextStyle(color: const Color(0xFF1E88E5), fontSize: 12, fontWeight: FontWeight.bold)),
+                          Icon(Icons.chevron_right_rounded, size: 16, color: const Color(0xFF1E88E5)),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        );
+      }
     );
+  }
+
+  Future<void> _markAsRead(String postId) async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    await FirebaseFirestore.instance
+        .collection('viewed_posts')
+        .doc(uid)
+        .collection('posts')
+        .doc(postId)
+        .set({'viewedAt': FieldValue.serverTimestamp()});
   }
 
   Widget _buildStat(IconData icon, String value, Color color) {
@@ -261,7 +319,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Center(
         child: TextButton.icon(
-          onPressed: () => setState(() => _itemCount += 5), // Adds 5 more posts
+          onPressed: () => setState(() => _itemCount += 5),
           icon: const Icon(Icons.expand_more),
           label: const Text("Load more posts", style: TextStyle(fontWeight: FontWeight.bold)),
         ),
