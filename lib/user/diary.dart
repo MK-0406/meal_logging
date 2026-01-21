@@ -29,11 +29,16 @@ class _MealDiaryState extends State<MealDiary> {
   bool includeSnacksFromDatabase = false;
   late DocumentSnapshot diaryDoc;
 
+  // Water Tracking State
+  int _waterIntakeMl = 0;
+  late int _waterTargetMl = 2700;
+
   late var results = <String, dynamic>{};
   late var mealRatios = {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.10};
 
   final CollectionReference userInfo = FirebaseFirestore.instance.collection('usersInfo');
   final CollectionReference mealLogs = FirebaseFirestore.instance.collection('mealLogs');
+  final CollectionReference waterLogs = FirebaseFirestore.instance.collection('waterLogs');
   final CollectionReference mealsCol = FirebaseFirestore.instance.collection('meals');
   final CollectionReference customMealsCol = FirebaseFirestore.instance.collection('custom_meal').doc(FirebaseAuth.instance.currentUser!.uid).collection('meals');
 
@@ -47,6 +52,55 @@ class _MealDiaryState extends State<MealDiary> {
     _loadRecommendationFromDatabase();
     _loadDailyIntake();
     _loadIncludeSnacksFromDatabase();
+    _loadWaterIntake();
+    _loadWaterTarget();
+  }
+
+  Future<void> _loadWaterTarget() async {
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    final doc = await userInfo.doc(uid).get();
+    if (doc.exists) {
+      final data = doc.data() as Map<String, dynamic>;
+      if (mounted) {
+        setState(() {
+          _waterTargetMl = (data['gender'] == 'Male') ? 3700 : 2700;
+        });
+      }
+    }
+  }
+
+  Future<void> _loadWaterIntake() async {
+    final dateStr = DateFormat('EEEE, dd MMM yyyy').format(selectedDate);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+    
+    final query = await waterLogs
+        .where('uid', isEqualTo: uid)
+        .where('date', isEqualTo: dateStr)
+        .orderBy('timestamp', descending: true)
+        .get();
+
+    int total = 0;
+    for (var doc in query.docs) {
+      total += (doc.data() as Map<String, dynamic>)['amountMl'] as int;
+    }
+
+    setState(() {
+      _waterIntakeMl = total;
+    });
+  }
+
+  Future<void> _logWater(int amount) async {
+    final dateStr = DateFormat('EEEE, dd MMM yyyy').format(selectedDate);
+    final uid = FirebaseAuth.instance.currentUser!.uid;
+
+    await waterLogs.add({
+      'uid': uid,
+      'date': dateStr,
+      'amountMl': amount,
+      'timestamp': FieldValue.serverTimestamp(),
+    });
+
+    _loadWaterIntake();
   }
 
   Future<Map<String, dynamic>> _checkBoundaries(Map<String, dynamic> data) async { // set min and max intake for each nutrient
@@ -133,6 +187,8 @@ class _MealDiaryState extends State<MealDiary> {
       carbsIntake += mealDataMap['carb'] * ratio;
       fatsIntake += mealDataMap['fat'] * ratio;
     }
+
+    // no need delete, i need the tmr data for tmr target reminder
 
     final url = Uri.parse("https://meal-recommender-model.onrender.com/predict");
     final bodyData = {
@@ -230,7 +286,7 @@ class _MealDiaryState extends State<MealDiary> {
     mealRatios.forEach((meal, ratio) {
       final mealValues = <String, dynamic>{};
       for (var nutrient in nutrients) {
-        mealValues[nutrient] = results[nutrient] * ratio;
+        mealValues[nutrient] = (results[nutrient] ?? 0) * ratio;
       }
       targets[meal] = mealValues;
     });
@@ -432,26 +488,28 @@ class _MealDiaryState extends State<MealDiary> {
     });
   }
 
-  Future<void> _previousDay(bool needChecking) async {
-    selectedDate = selectedDate.subtract(const Duration(days: 1));
-    await _loadIncludeSnacksFromDatabase();
-    await _checkAndPromptMissingMeals(needChecking);
-    await _loadRecommendationFromDatabase();
-    await _loadDailyIntake();
+  void _previousDay(bool needChecking) {
     setState(() {
+      selectedDate = selectedDate.subtract(const Duration(days: 1));
+      _checkAndPromptMissingMeals(needChecking);
+      _loadRecommendationFromDatabase();
+      _loadDailyIntake();
       mealTargets = null;
+      _loadIncludeSnacksFromDatabase();
+      _loadWaterIntake(); // Update water for the day
       results.clear();
     });
   }
 
-  Future<void> _nextDay() async {
-    selectedDate = selectedDate.add(const Duration(days: 1));
-    await _loadIncludeSnacksFromDatabase();
-    await _checkAndPromptMissingMeals(true);
-    await _loadRecommendationFromDatabase();
-    await _loadDailyIntake();
+  void _nextDay() {
     setState(() {
+      selectedDate = selectedDate.add(const Duration(days: 1));
+      _checkAndPromptMissingMeals(true);
+      _loadRecommendationFromDatabase();
       mealTargets = null;
+      _loadDailyIntake();
+      _loadIncludeSnacksFromDatabase();
+      _loadWaterIntake(); // Update water for the day
       results.clear();
     });
   }
@@ -481,6 +539,7 @@ class _MealDiaryState extends State<MealDiary> {
       _checkAndPromptMissingMeals(true);
       _loadRecommendationFromDatabase();
       _loadDailyIntake();
+      _loadWaterIntake(); // Update water for the day
       mealTargets = null;
       _loadIncludeSnacksFromDatabase();
       results.clear();
@@ -490,6 +549,7 @@ class _MealDiaryState extends State<MealDiary> {
   void _refreshData() {
     setState(() {});
     _loadDailyIntake();
+    _loadWaterIntake();
   }
   
   Future<void> _saveAdjustedTargets(Map<String, dynamic> adjustedTargets) async {
@@ -571,6 +631,8 @@ class _MealDiaryState extends State<MealDiary> {
                 children: [
                   _buildDailyDashboard(),
                   const SizedBox(height: 24),
+                  _buildHydrationCard(),
+                  const SizedBox(height: 24),
                   ...mealCategories.map((mealType) {
                     // Use adjusted targets for display and logging
                     final mealTarget = _getAdjustedTargets(mealType);
@@ -613,7 +675,7 @@ class _MealDiaryState extends State<MealDiary> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              _headerNavButton(Icons.chevron_left, () async => await _previousDay(true)),
+              _headerNavButton(Icons.chevron_left, () => _previousDay(true)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                 decoration: BoxDecoration(
@@ -633,7 +695,8 @@ class _MealDiaryState extends State<MealDiary> {
                 )
               ),
               _headerNavButton(
-                Icons.chevron_right, () async => await _nextDay(),
+                Icons.chevron_right,
+                selectedDate.isBefore(today) ? _nextDay : null,
               ),
               const SizedBox(width: 40), // Balance the trends button
             ],
@@ -828,6 +891,160 @@ class _MealDiaryState extends State<MealDiary> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildHydrationCard() {
+
+    int totalWaterIntake = _waterIntakeMl + _dailyIntake!['water']!.round(); // include water from meal
+    final percent = (totalWaterIntake / _waterTargetMl).clamp(0.0, 1.0);
+    
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(28),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.lightBlue.shade900.withValues(alpha: 0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: Colors.blue.shade50,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(Icons.water_drop_rounded, color: Colors.blue.shade400, size: 24),
+                  ),
+                  const SizedBox(width: 16),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text("Water", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87)),
+                      Text("Daily Target: ${_waterTargetMl}ml", style: const TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
+                    ],
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "${totalWaterIntake.toStringAsFixed(0)}ml",
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Colors.blue.shade700), //smaller font
+                  ),
+                  Text("Balance: ${(_waterTargetMl - totalWaterIntake).toStringAsFixed(0)}ml", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w500)),
+                ],
+              ) //no need quick log
+            ],
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                flex: 10,
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: percent,
+                    minHeight: 12,
+                    backgroundColor: Colors.blue.shade50,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.blue.shade400),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 20),
+              Expanded(
+                flex: 2,
+                child: GestureDetector(
+                  onTap: () => _showWaterLoggingDialog(),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF42A5F5),
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(color: const Color(0xFF42A5F5).withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0, 4)),
+                      ],
+                    ),
+                    child: const Icon(Icons.add_rounded, color: Colors.white, size: 22),
+                  ),
+                ),
+              )
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  void _showWaterLoggingDialog() {
+    final TextEditingController _waterController = TextEditingController(text: "250");
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Log Water Intake", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("How much water did you drink?", style: TextStyle(color: Colors.grey, fontSize: 14)),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _waterController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: "Amount (ml)",
+                suffixText: "ml",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+            const SizedBox(height: 20),
+            const Text("Quick Select:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [100, 200, 250, 300, 500, 750, 1000].map((ml) => ActionChip(
+                label: Text("${ml}ml"),
+                backgroundColor: Colors.blue.shade50,
+                labelStyle: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 11),
+                onPressed: () {
+                  _waterController.text = ml.toString();
+                },
+              )).toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            onPressed: () {
+              final amount = int.tryParse(_waterController.text) ?? 0;
+              if (amount > 0) {
+                _logWater(amount);
+                Navigator.pop(context);
+              }
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white),
+            child: const Text("Log Water"),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1129,7 +1346,7 @@ class _MealDiaryState extends State<MealDiary> {
 
   Future<Map<String, double>> _calculateDailyIntake() async {
     try {
-      double tCal = 0, tProt = 0, tCarb = 0, tFat = 0;
+      double tCal = 0, tProt = 0, tCarb = 0, tFat = 0, tWater = 0; //add water
       Map<String, Map<String, double>> periodIntake = {
         'Breakfast': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
         'Lunch': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
@@ -1154,8 +1371,9 @@ class _MealDiaryState extends State<MealDiary> {
           double p = (mData['protein'] ?? 0) * ratio;
           double carb = (mData['carb'] ?? 0) * ratio;
           double f = (mData['fat'] ?? 0) * ratio;
+          double w = (mData['water'] ?? 0) * ratio; //add water intake
           
-          tCal += c; tProt += p; tCarb += carb; tFat += f;
+          tCal += c; tProt += p; tCarb += carb; tFat += f; tWater += w;
           
           if (periodIntake.containsKey(type)) {
             periodIntake[type]!['Calories'] = (periodIntake[type]!['Calories'] ?? 0) + c;
@@ -1167,7 +1385,7 @@ class _MealDiaryState extends State<MealDiary> {
       }
       
       setState(() => _periodIntake = periodIntake);
-      return {'calories': tCal, 'protein': tProt, 'carbs': tCarb, 'fats': tFat};
+      return {'calories': tCal, 'protein': tProt, 'carbs': tCarb, 'fats': tFat, 'water': tWater}; // add water
     } catch (e) {
       return {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0};
     }
