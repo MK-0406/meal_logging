@@ -1,6 +1,7 @@
 import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -46,44 +47,113 @@ class MealReminder {
 @pragma('vm:entry-point')
 void alarmCallback() async {
   try {
+    // 1. Initialize Firebase in the background isolate
+    WidgetsFlutterBinding.ensureInitialized();
+    await Firebase.initializeApp();
+
     final prefs = await SharedPreferences.getInstance();
     await prefs.reload();
+    
     final pendingReminders = prefs.getStringList('pending_reminders') ?? [];
+    final uid = prefs.getString('reminders_uid');
+    
     final now = DateTime.now();
     final currentMinute = now.hour * 60 + now.minute;
 
     for (String reminderData in pendingReminders) {
       final parts = reminderData.split('|');
-      if (parts.length != 3) continue;
+      if (parts.length != 4) continue;
+      
       final id = int.parse(parts[0]);
       final title = parts[1];
       final reminderMinute = int.parse(parts[2]);
+      final isEarlyWarning = parts[3] == 'early';
 
       if (currentMinute == reminderMinute) {
         final notifications = FlutterLocalNotificationsPlugin();
         const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
         await notifications.initialize(const InitializationSettings(android: androidInit));
 
-        await notifications.show(
-          id,
-          "$title Reminder",
-          "It's time for your $title!",
-          const NotificationDetails(
-            android: AndroidNotificationDetails(
-              'meal_channel',
-              'Meal Reminders',
-              importance: Importance.max,
-              priority: Priority.high,
-              showWhen: true,
-              playSound: true,
-              enableVibration: true,
-            ),
-          ),
-        );
+        if (isEarlyWarning && uid != null) {
+          // logic for 1hr before: fetch targets and 3 recommended meals
+          final data = await _getEarlyWarningData(uid, title);
+          await notifications.show(
+            id,
+            "Upcoming $title",
+            "Target: ${data['targets']}. Try: ${data['meals']}!",
+            _notifDetails(),
+          );
+        } else if (!isEarlyWarning) {
+          await notifications.show(
+            id,
+            "$title Reminder",
+            "It's time for your $title!",
+            _notifDetails(),
+          );
+        }
       }
     }
   } catch (e) {
     debugPrint("Alarm callback error: $e");
+  }
+}
+
+NotificationDetails _notifDetails() {
+  return const NotificationDetails(
+    android: AndroidNotificationDetails(
+      'meal_channel', 'Meal Reminders',
+      importance: Importance.max, priority: Priority.high,
+      showWhen: true, playSound: true, enableVibration: true,
+    ),
+  );
+}
+
+Future<Map<String, String>> _getEarlyWarningData(String uid, String mealType) async {
+  try {
+    final dateStr = DateFormat('EEEE, dd MMM yyyy').format(DateTime.now());
+    
+    // 1. Get Targets from User's personalized recommendations
+    final recDoc = await FirebaseFirestore.instance
+        .collection('recommendations')
+        .doc(uid)
+        .collection('dates')
+        .doc(dateStr)
+        .get();
+        
+    double targetCal = 500, targetP = 30, targetC = 60, targetF = 20;
+    if (recDoc.exists) {
+      final t = recDoc.data()!;
+      final targets = t[mealType];
+
+      targetCal = (targets['Calories']).toDouble();
+      targetP = (targets['Protein_g']).toDouble();
+      targetC = (targets['Carbs_g']).toDouble();
+      targetF = (targets['Fats_g']).toDouble();
+    }
+
+    // 2. Get 3 matching meals from the main database
+    final mealsSnap = await FirebaseFirestore.instance.collection('meals')
+        .where('calorie', isLessThanOrEqualTo: targetCal)
+        .limit(30)
+        .get();
+    
+    final filteredMeals = mealsSnap.docs.where((doc) {
+      final d = doc.data();
+      return (d['protein'] ?? 0) <= targetP && 
+             (d['carb'] ?? 0) <= targetC && 
+             (d['fat'] ?? 0) <= targetF &&
+              d['foodCategory'].toString().contains(mealType) ||
+              d['foodCategory'].toString().contains('Anytime');
+    }).toList()..shuffle();
+
+    final recommended = filteredMeals.take(2).map((d) => d.data()['name'].toString()).join(", ");
+
+    return {
+      'targets': '${targetCal.toStringAsFixed(0)}kcal (P:${targetP.toStringAsFixed(0)}g, C:${targetC.toStringAsFixed(0)}g, F:${targetF.toStringAsFixed(0)}g)',
+      'meals': recommended.isNotEmpty ? recommended : "a balanced option",
+    };
+  } catch (e) {
+    return {'targets': 'a healthy amount', 'meals': 'a balanced meal'};
   }
 }
 
@@ -97,12 +167,7 @@ class ReminderPage extends StatefulWidget {
 }
 
 class _ReminderPageState extends State<ReminderPage> {
-  List<MealReminder> reminders = [
-    MealReminder(name: "Breakfast", hour: 8, minute: 0, isEnabled: true),
-    MealReminder(name: "Lunch", hour: 12, minute: 30, isEnabled: true),
-    MealReminder(name: "Dinner", hour: 19, minute: 0, isEnabled: true),
-  ];
-
+  List<MealReminder> reminders = [];
   final Set<String> _protectedReminders = {'Breakfast', 'Lunch', 'Dinner'};
 
   @override
@@ -114,10 +179,12 @@ class _ReminderPageState extends State<ReminderPage> {
 
   Future<void> _refreshReminders() async {
     final loaded = await loadReminders();
-    if (loaded.isNotEmpty) {
-      setState(() => reminders = loaded);
-      NotificationService.scheduleAllReminders(reminders);
-    }
+    setState(() => reminders = loaded.isNotEmpty ? loaded : [
+      MealReminder(name: "Breakfast", hour: 8, minute: 0, isEnabled: true),
+      MealReminder(name: "Lunch", hour: 12, minute: 30, isEnabled: true),
+      MealReminder(name: "Dinner", hour: 19, minute: 0, isEnabled: true),
+    ]);
+    NotificationService.scheduleAllReminders(reminders);
   }
 
   @override
@@ -148,7 +215,6 @@ class _ReminderPageState extends State<ReminderPage> {
         child: FloatingActionButton(
           onPressed: _showAddReminderDialog,
           backgroundColor: const Color(0xFF42A5F5),
-          elevation: 4,
           child: const Icon(Icons.add_rounded, color: Colors.white, size: 30),
         ),
       ),
@@ -160,49 +226,20 @@ class _ReminderPageState extends State<ReminderPage> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 10, 20, 24),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.only(
-          bottomLeft: Radius.circular(32),
-          bottomRight: Radius.circular(32),
-        ),
+        gradient: LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
+        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                "Reminders",
-                style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5),
-              ),
-              Text(
-                "Stay consistent with your goals",
-                style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
-              ),
-            ],
-          ),
+          const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text("Reminders", style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
+            Text("Stay consistent with your goals", style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500)),
+          ]),
           IconButton(
-            icon: const Icon(Icons.notifications_active_outlined, color: Colors.white, size: 24),
-            onPressed: () {
-              HapticFeedback.mediumImpact();
-              NotificationService.testNotification();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(
-                  content: Text("Sending test notification...", style: TextStyle(fontWeight: FontWeight.bold)),
-                  behavior: SnackBarBehavior.floating,
-                  duration: Duration(seconds: 2),
-                ),
-              );
-            },
-            style: IconButton.styleFrom(
-              backgroundColor: Colors.white.withValues(alpha: 0.15),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            ),
+            icon: const Icon(Icons.notifications_active_outlined, color: Colors.white),
+            onPressed: () { NotificationService.testNotification(); HapticFeedback.mediumImpact(); },
+            style: IconButton.styleFrom(backgroundColor: Colors.white.withValues(alpha: 0.15), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))),
           ),
         ],
       ),
@@ -211,124 +248,53 @@ class _ReminderPageState extends State<ReminderPage> {
 
   Widget _buildSettingsTip() {
     return Container(
-      padding: const EdgeInsets.only(left: 16, right: 16, top: 10, bottom: 10),
-      decoration: BoxDecoration(
-        color: Colors.orange.shade50,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: Colors.orange.shade100),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.info_outline_rounded, color: Colors.orange.shade700, size: 24),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  "Missing reminders?",
-                  style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange.shade900, fontSize: 14),
-                ),
-                Text(
-                  "Ensure Alarms are Allowed and Battery is Unrestricted in System Settings.",
-                  style: TextStyle(color: Colors.orange.shade800, fontSize: 12, height: 1.3),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(color: Colors.orange.shade50, borderRadius: BorderRadius.circular(20), border: Border.all(color: Colors.orange.shade100)),
+      child: Row(children: [
+        Icon(Icons.info_outline_rounded, color: Colors.orange.shade700),
+        const SizedBox(width: 12),
+        const Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text("Missing reminders?", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+          Text("Ensure Alarms are Allowed and Battery is Unrestricted in System Settings.", style: TextStyle(fontSize: 12, height: 1.3)),
+        ])),
+      ]),
     );
   }
 
   Widget _buildInstructions() {
-    return Row(
-      children: [
-        Icon(Icons.touch_app_rounded, size: 16, color: Colors.blueGrey.shade300),
-        const SizedBox(width: 8),
-        Text(
-          "Long press a card to delete custom reminders",
-          style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade400, fontWeight: FontWeight.w500),
-        ),
-      ],
-    );
+    return Row(children: [
+      Icon(Icons.touch_app_rounded, size: 16, color: Colors.blueGrey.shade300),
+      const SizedBox(width: 8),
+      Text("Long press a card to delete custom reminders", style: TextStyle(fontSize: 12, color: Colors.blueGrey.shade400)),
+    ]);
   }
 
   Widget _buildReminderCard(MealReminder r, int index) {
     final color = _getReminderColor(r.name);
     final isEnabled = r.isEnabled;
-
     return AnimatedOpacity(
       duration: const Duration(milliseconds: 300),
       opacity: isEnabled ? 1.0 : 0.6,
       child: Container(
         margin: const EdgeInsets.only(top: 16),
-        decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: isEnabled ? Colors.black.withValues(alpha: 0.03) : Colors.transparent,
-              blurRadius: 10,
-              offset: const Offset(0, 4),
-            ),
-          ],
-        ),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: isEnabled ? Colors.black.withValues(alpha: 0.03) : Colors.transparent, blurRadius: 10, offset: const Offset(0, 4))]),
         child: Material(
           color: Colors.transparent,
           child: InkWell(
             onLongPress: _protectedReminders.contains(r.name) ? null : () => _deleteReminder(index),
-            onTap: () {
-              HapticFeedback.selectionClick();
-              _selectTime(r);
-            },
+            onTap: () { HapticFeedback.selectionClick(); _selectTime(r); },
             borderRadius: BorderRadius.circular(24),
             child: Padding(
               padding: const EdgeInsets.all(20),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(12),
-                    decoration: BoxDecoration(
-                      color: color.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(_getReminderIcon(r.name), color: color, size: 28),
-                  ),
-                  const SizedBox(width: 20),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          r.name,
-                          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.black87),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatTime(r.hour, r.minute),
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: isEnabled ? color.withValues(alpha: 0.8) : Colors.grey,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Switch.adaptive(
-                    value: r.isEnabled,
-                    activeThumbColor: const Color(0xFF42A5F5),
-                    onChanged: (value) {
-                      HapticFeedback.lightImpact();
-                      setState(() => r.isEnabled = value);
-                      saveReminders(reminders);
-                      NotificationService.scheduleAllReminders(reminders);
-                    },
-                  ),
-                ],
-              ),
+              child: Row(children: [
+                Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(16)), child: Icon(_getReminderIcon(r.name), color: color, size: 28)),
+                const SizedBox(width: 20),
+                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                  Text(r.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  Text(_formatTime(r.hour, r.minute), style: TextStyle(fontSize: 16, color: isEnabled ? color.withValues(alpha: 0.8) : Colors.grey, fontWeight: FontWeight.w700)),
+                ])),
+                Switch.adaptive(value: r.isEnabled, activeThumbColor: const Color(0xFF42A5F5), onChanged: (v) { setState(() => r.isEnabled = v); saveReminders(reminders); NotificationService.scheduleAllReminders(reminders); HapticFeedback.lightImpact(); }),
+              ]),
             ),
           ),
         ),
@@ -339,173 +305,65 @@ class _ReminderPageState extends State<ReminderPage> {
   void _showAddReminderDialog() {
     final nameController = TextEditingController();
     TimeOfDay selectedTime = TimeOfDay.now();
-
-    showDialog(
-      context: context,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-          title: const Text("New Reminder", style: TextStyle(fontWeight: FontWeight.bold)),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(
-                  labelText: "Reminder Name (e.g. Snack)",
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                ),
-              ),
-              const SizedBox(height: 20),
-              ListTile(
-                title: const Text("Pick Time", style: TextStyle(fontWeight: FontWeight.w600)),
-                trailing: Text(
-                  DateFormat('hh:mm a').format(DateTime(0, 0, 0, selectedTime.hour, selectedTime.minute)),
-                  style: const TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.bold, fontSize: 16),
-                ),
-                onTap: () async {
-                  final picked = await _pickTime(selectedTime);
-                  if (picked != null) setDialogState(() => selectedTime = picked);
-                },
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
-            ElevatedButton(
-              onPressed: () {
-                if (nameController.text.isNotEmpty) {
-                  setState(() {
-                    reminders.add(MealReminder(
-                      name: nameController.text.trim(),
-                      hour: selectedTime.hour,
-                      minute: selectedTime.minute,
-                      isEnabled: true,
-                    ));
-                  });
-                  saveReminders(reminders);
-                  NotificationService.scheduleAllReminders(reminders);
-                  Navigator.pop(context);
-                }
-              },
-              style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white),
-              child: const Text("Add"),
-            ),
-          ],
-        ),
-      ),
-    );
+    showDialog(context: context, builder: (context) => StatefulBuilder(builder: (context, setDialogState) => AlertDialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      title: const Text("New Reminder", style: TextStyle(fontWeight: FontWeight.bold)),
+      content: Column(mainAxisSize: MainAxisSize.min, children: [
+        TextField(controller: nameController, decoration: InputDecoration(labelText: "Reminder Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)))),
+        const SizedBox(height: 20),
+        ListTile(title: const Text("Pick Time"), trailing: Text(DateFormat('hh:mm a').format(DateTime(0, 0, 0, selectedTime.hour, selectedTime.minute)), style: const TextStyle(color: Color(0xFF1E88E5), fontWeight: FontWeight.bold)), onTap: () async {
+          final picked = await _pickTime(selectedTime);
+          if (picked != null) setDialogState(() => selectedTime = picked);
+        }),
+      ]),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+        ElevatedButton(onPressed: () {
+          if (nameController.text.isNotEmpty) {
+            setState(() => reminders.add(MealReminder(name: nameController.text.trim(), hour: selectedTime.hour, minute: selectedTime.minute, isEnabled: true)));
+            saveReminders(reminders); NotificationService.scheduleAllReminders(reminders); Navigator.pop(context);
+          }
+        }, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white), child: const Text("Add")),
+      ],
+    )));
   }
 
   Future<TimeOfDay?> _pickTime(TimeOfDay initialTime) async {
-    return await showTimePicker(
-      context: context,
-      initialTime: initialTime,
-      builder: (context, child) {
-        return MediaQuery(
-          data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false),
-          child: Theme(
-            data: Theme.of(context).copyWith(
-              colorScheme: const ColorScheme.light(
-                primary: Color(0xFF42A5F5),
-                onPrimary: Colors.white,
-                surface: Colors.white,
-                onSurface: Colors.black,
-              ),
-            ),
-            child: child!,
-          ),
-        );
-      },
-    );
+    return await showTimePicker(context: context, initialTime: initialTime, builder: (context, child) => MediaQuery(data: MediaQuery.of(context).copyWith(alwaysUse24HourFormat: false), child: Theme(data: Theme.of(context).copyWith(colorScheme: const ColorScheme.light(primary: Color(0xFF42A5F5))), child: child!)));
   }
 
   void _deleteReminder(int index) async {
-    final reminderName = reminders[index].name;
-    if (_protectedReminders.contains(reminderName)) return;
-
-    final confirm = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text("Delete Reminder?"),
-        content: Text("Do you want to remove the '$reminderName' reminder?"),
-        actions: [
-          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text("No")),
-          TextButton(onPressed: () => Navigator.pop(context, true), child: const Text("Delete", style: TextStyle(color: Colors.red))),
-        ],
-      ),
-    );
-
-    if (confirm == true) {
-      setState(() => reminders.removeAt(index));
-      saveReminders(reminders);
-      NotificationService.scheduleAllReminders(reminders);
-    }
+    final name = reminders[index].name;
+    if (_protectedReminders.contains(name)) return;
+    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text("Delete?"), content: Text("Remove '$name'?"), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("No")), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.red)))]));
+    if (confirm == true) { setState(() => reminders.removeAt(index)); saveReminders(reminders); NotificationService.scheduleAllReminders(reminders); }
   }
 
   void _selectTime(MealReminder r) async {
-    TimeOfDay? picked = await _pickTime(TimeOfDay(hour: r.hour, minute: r.minute));
-
-    if (picked != null) {
-      setState(() {
-        r.hour = picked.hour;
-        r.minute = picked.minute;
-      });
-      saveReminders(reminders);
-      NotificationService.scheduleAllReminders(reminders);
-    }
+    final picked = await _pickTime(TimeOfDay(hour: r.hour, minute: r.minute));
+    if (picked != null) { setState(() { r.hour = picked.hour; r.minute = picked.minute; }); saveReminders(reminders); NotificationService.scheduleAllReminders(reminders); }
   }
 
-  Color _getReminderColor(String name) {
-    switch (name) {
-      case "Breakfast": return Colors.orange;
-      case "Lunch": return Colors.green;
-      case "Dinner": return Colors.deepPurple;
-      default: return Colors.blue;
-    }
-  }
-
-  IconData _getReminderIcon(String name) {
-    switch (name) {
-      case "Breakfast": return Icons.wb_sunny_rounded;
-      case "Lunch": return Icons.lunch_dining_rounded;
-      case "Dinner": return Icons.dark_mode_rounded;
-      default: return Icons.alarm_rounded;
-    }
-  }
+  Color _getReminderColor(String name) => name == "Breakfast" ? Colors.orange : (name == "Lunch" ? Colors.green : (name == "Dinner" ? Colors.deepPurple : Colors.blue));
+  IconData _getReminderIcon(String name) => name == "Breakfast" ? Icons.wb_sunny_rounded : (name == "Lunch" ? Icons.lunch_dining_rounded : (name == "Dinner" ? Icons.dark_mode_rounded : Icons.alarm_rounded));
 
   Future<void> saveReminders(List<MealReminder> reminders) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    Map<String, dynamic> data = {
-      "remindersList": reminders.map((r) => r.toMap()).toList(),
-    };
-    await FirebaseFirestore.instance.collection("reminders").doc(uid).set(data);
+    await FirebaseFirestore.instance.collection("reminders").doc(uid).set({"remindersList": reminders.map((r) => r.toMap()).toList()});
   }
 
   Future<List<MealReminder>> loadReminders() async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final doc = await FirebaseFirestore.instance.collection("reminders").doc(uid).get();
     if (!doc.exists) return [];
-    final data = doc.data()!;
-    
-    if (data.containsKey("remindersList")) {
-      final list = data["remindersList"] as List<dynamic>;
-      return list.map((item) => MealReminder.fromMap(Map<String, dynamic>.from(item))).toList();
-    }
-    
-    // Legacy support for fixed fields
-    return [
-      if (data["breakfast"] != null) MealReminder.fromMap(data["breakfast"]),
-      if (data["lunch"] != null) MealReminder.fromMap(data["lunch"]),
-      if (data["dinner"] != null) MealReminder.fromMap(data["dinner"]),
-    ];
+    final list = doc.data()?["remindersList"] as List<dynamic>?;
+    return list?.map((i) => MealReminder.fromMap(Map<String, dynamic>.from(i))).toList() ?? [];
   }
 
-  String _formatTime(int hour, int minute) {
-    final dt = DateTime(0, 0, 0, hour, minute);
-    return DateFormat('hh:mm a').format(dt);
-  }
+  String _formatTime(int h, int m) => DateFormat('hh:mm a').format(DateTime(0, 0, 0, h, m));
 }
+
+// ------------------ NOTIFICATION SERVICE ------------------
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _noti = FlutterLocalNotificationsPlugin();
@@ -527,44 +385,35 @@ class NotificationService {
 
   static Future scheduleAllReminders(List<MealReminder> reminders) async {
     final prefs = await SharedPreferences.getInstance();
+    
+    // Save the current user's ID for background isolate access
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid != null) await prefs.setString('reminders_uid', uid);
+
     final existing = prefs.getStringList('pending_reminders') ?? [];
     existing.clear();
 
     for (int i = 0; i < reminders.length; i++) {
       if (reminders[i].isEnabled) {
         final totalMinutes = reminders[i].hour * 60 + reminders[i].minute;
-        existing.add('$i|${reminders[i].name}|$totalMinutes');
+        // 1. Normal Reminder
+        existing.add('$i|${reminders[i].name}|$totalMinutes|normal');
+        // 2. Early Warning Reminder (1hr before)
+        final earlyMinute = totalMinutes - 60;
+        if (earlyMinute >= 0) {
+          existing.add('${i + 100}|${reminders[i].name}|$earlyMinute|early');
+        }
       }
     }
     await prefs.setStringList('pending_reminders', existing);
 
     if (!_alarmInitialized) {
-      await AndroidAlarmManager.periodic(
-        const Duration(minutes: 1),
-        0,
-        alarmCallback,
-        exact: true,
-        wakeup: true,
-        rescheduleOnReboot: true,
-        allowWhileIdle: true,
-      );
+      await AndroidAlarmManager.periodic(const Duration(minutes: 1), 0, alarmCallback, exact: true, wakeup: true, rescheduleOnReboot: true, allowWhileIdle: true);
       _alarmInitialized = true;
     }
   }
 
   static Future testNotification() async {
-    await _noti.show(
-      999,
-      "Notification Test",
-      "Your FoodWise reminders are working correctly!",
-      const NotificationDetails(
-        android: AndroidNotificationDetails(
-          'meal_channel',
-          'Meal Reminders',
-          importance: Importance.max,
-          priority: Priority.high,
-        ),
-      ),
-    );
+    await _noti.show(999, "Notification Test", "Reminders are configured!", const NotificationDetails(android: AndroidNotificationDetails('meal_channel', 'Meal Reminders', importance: Importance.max, priority: Priority.high)));
   }
 }
