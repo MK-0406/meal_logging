@@ -134,16 +134,6 @@ class _MealDiaryState extends State<MealDiary> {
       fatsIntake += mealDataMap['fat'] * ratio;
     }
 
-    if (proteinIntake == 0 && carbsIntake == 0 && fatsIntake == 0){
-      await FirebaseFirestore.instance
-          .collection('recommendations')
-          .doc(uid)
-          .collection('dates')
-          .doc(tomorrowDate)
-          .delete();
-      return;
-    }
-
     final url = Uri.parse("https://meal-recommender-model.onrender.com/predict");
     final bodyData = {
       "features": [
@@ -179,13 +169,18 @@ class _MealDiaryState extends State<MealDiary> {
     }
 
     results = await _checkBoundaries(results);
+    calculateRecommendationForEachMealPeriod();
+    results = {
+      ...results,
+      ...?mealTargets
+    };
 
     await FirebaseFirestore.instance
         .collection('recommendations')
         .doc(uid)
         .collection('dates')
         .doc(tomorrowDate)
-        .set(results);
+        .set(results, SetOptions(merge: true));
 
     setState(() {
       _isLoadingModel = false;
@@ -230,12 +225,13 @@ class _MealDiaryState extends State<MealDiary> {
 
   void calculateRecommendationForEachMealPeriod(){
     final targets = <String, Map<String, dynamic>>{};
+    final nutrients = {'Calories', 'Protein_g', 'Carbs_g', 'Fats_g'};
 
     mealRatios.forEach((meal, ratio) {
       final mealValues = <String, dynamic>{};
-      results.forEach((nutrient, data) {
-        mealValues[nutrient] = data * ratio;
-      });
+      for (var nutrient in nutrients) {
+        mealValues[nutrient] = results[nutrient] * ratio;
+      }
       targets[meal] = mealValues;
     });
 
@@ -430,29 +426,32 @@ class _MealDiaryState extends State<MealDiary> {
     setState(() {
       includeSnacks = include;
       _isLoadingModel = false;
+      mealRatios = include
+        ? {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.10}
+        : {'Breakfast': 0.22, 'Lunch': 0.33, 'Dinner': 0.45, 'Snack': 0.0};
     });
   }
 
-  void _previousDay(bool needChecking) {
+  Future<void> _previousDay(bool needChecking) async {
+    selectedDate = selectedDate.subtract(const Duration(days: 1));
+    await _loadIncludeSnacksFromDatabase();
+    await _checkAndPromptMissingMeals(needChecking);
+    await _loadRecommendationFromDatabase();
+    await _loadDailyIntake();
     setState(() {
-      selectedDate = selectedDate.subtract(const Duration(days: 1));
-      _checkAndPromptMissingMeals(needChecking);
-      _loadRecommendationFromDatabase();
-      _loadDailyIntake();
       mealTargets = null;
-      _loadIncludeSnacksFromDatabase();
       results.clear();
     });
   }
 
-  void _nextDay() {
+  Future<void> _nextDay() async {
+    selectedDate = selectedDate.add(const Duration(days: 1));
+    await _loadIncludeSnacksFromDatabase();
+    await _checkAndPromptMissingMeals(true);
+    await _loadRecommendationFromDatabase();
+    await _loadDailyIntake();
     setState(() {
-      selectedDate = selectedDate.add(const Duration(days: 1));
-      _checkAndPromptMissingMeals(true);
-      _loadRecommendationFromDatabase();
       mealTargets = null;
-      _loadDailyIntake();
-      _loadIncludeSnacksFromDatabase();
       results.clear();
     });
   }
@@ -531,11 +530,13 @@ class _MealDiaryState extends State<MealDiary> {
     }
 
     // 3. Dinner -> Snack
-    for (var m in metrics) {
-      double target = adjusted['Dinner']?[m] ?? 0.0;
-      double intake = _periodIntake['Dinner']?[m] ?? 0.0;
-      double diff = target - intake;
-      adjusted['Snack']?[m] = (adjusted['Snack']![m] + diff).clamp(0.0, double.infinity);
+    if (includeSnacks) {
+      for (var m in metrics) {
+        double target = adjusted['Dinner']?[m] ?? 0.0;
+        double intake = _periodIntake['Dinner']?[m] ?? 0.0;
+        double diff = target - intake;
+        adjusted['Snack']?[m] = (adjusted['Snack']![m] + diff).clamp(0.0, double.infinity);
+      }
     }
 
     _saveAdjustedTargets(adjusted);
@@ -612,7 +613,7 @@ class _MealDiaryState extends State<MealDiary> {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
-              _headerNavButton(Icons.chevron_left, () => _previousDay(true)),
+              _headerNavButton(Icons.chevron_left, () async => await _previousDay(true)),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 3),
                 decoration: BoxDecoration(
@@ -632,8 +633,7 @@ class _MealDiaryState extends State<MealDiary> {
                 )
               ),
               _headerNavButton(
-                Icons.chevron_right,
-                selectedDate.isBefore(today) ? _nextDay : null,
+                Icons.chevron_right, () async => await _nextDay(),
               ),
               const SizedBox(width: 40), // Balance the trends button
             ],
