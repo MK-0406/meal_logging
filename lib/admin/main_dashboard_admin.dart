@@ -5,6 +5,9 @@ import 'dart:ui';
 import 'manage_meals.dart';
 import 'manage_users.dart';
 import 'manage_admins.dart';
+import 'manage_reports.dart';
+import '../login_screen.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class MainDashboardAdmin extends StatelessWidget {
   const MainDashboardAdmin({super.key});
@@ -30,6 +33,7 @@ class _MainDashboardState extends State<_MainDashboard> {
     UsersPage(),
     AdminRegPage(),
     MealsPage(),
+    ManageReportsPage(),
   ];
 
   void _onDestinationSelected(int index) {
@@ -59,20 +63,6 @@ class _MainDashboardState extends State<_MainDashboard> {
             bottom: false,
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 300),
-              switchInCurve: Curves.easeIn,
-              switchOutCurve: Curves.easeOut,
-              transitionBuilder: (Widget child, Animation<double> animation) {
-                return FadeTransition(
-                  opacity: animation,
-                  child: SlideTransition(
-                    position: Tween<Offset>(
-                      begin: const Offset(0.0, 0.01),
-                      end: Offset.zero,
-                    ).animate(animation),
-                    child: child,
-                  ),
-                );
-              },
               child: KeyedSubtree(
                 key: ValueKey<int>(currentPageIndex),
                 child: _pages[currentPageIndex],
@@ -130,8 +120,8 @@ class _MainDashboardState extends State<_MainDashboard> {
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               destinations: const [
                 NavigationDestination(
-                  selectedIcon: Icon(Icons.dashboard_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.dashboard_outlined, color: Colors.grey),
+                  selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF42A5F5)),
+                  icon: Icon(Icons.home_outlined, color: Colors.grey),
                   label: 'Home',
                 ),
                 NavigationDestination(
@@ -145,9 +135,14 @@ class _MainDashboardState extends State<_MainDashboard> {
                   label: 'Admins',
                 ),
                 NavigationDestination(
-                  selectedIcon: Icon(Icons.restaurant_menu_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.restaurant_menu_outlined, color: Colors.grey),
+                  selectedIcon: Icon(Icons.fastfood_rounded, color: Color(0xFF42A5F5)),
+                  icon: Icon(Icons.fastfood_outlined, color: Colors.grey),
                   label: 'Meals',
+                ),
+                NavigationDestination(
+                  selectedIcon: Icon(Icons.report_rounded, color: Color(0xFF42A5F5)),
+                  icon: Icon(Icons.report_outlined, color: Colors.grey),
+                  label: 'Reports',
                 ),
               ],
             ),
@@ -164,8 +159,7 @@ class _HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Future<Map<String, int>> getDashboardStats() async {
-      final users = await FirebaseFirestore
-          .instance.collection('users')
+      final users = await FirebaseFirestore.instance.collection('users')
           .where('role', isEqualTo: 'user')
           .get();
       final meals = await FirebaseFirestore.instance
@@ -176,65 +170,79 @@ class _HomePage extends StatelessWidget {
           .collection('users')
           .where('registrationStatus', isEqualTo: 'pending')
           .get();
+      final reports = await FirebaseFirestore.instance
+          .collection('reports')
+          .where('status', isEqualTo: 'pending')
+          .get();
 
       return {
         'users': users.docs.length,
         'meals': meals.docs.length,
         'approvals': adminRequests.docs.length,
+        'reports': reports.docs.length,
       };
     }
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.fromLTRB(24, 20, 24, 100),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Admin Dashboard',
-            style: TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-              color: Color(0xFF2C3E50),
-              letterSpacing: -0.5,
-            ),
-          ),
-          const SizedBox(height: 8),
-          const Text(
-            'Monitor application activity and manage data',
-            style: TextStyle(fontSize: 14, color: Colors.grey, fontWeight: FontWeight.w500),
-          ),
-          const SizedBox(height: 32),
-          FutureBuilder<Map<String, int>>(
-            future: getDashboardStats(),
-            builder: (context, snapshot) {
-              final stats = snapshot.data ?? {'users': 0, 'meals': 0, 'approvals': 0};
-              return Column(
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: FutureBuilder<Map<String, int>>(
+        future: getDashboardStats(),
+        builder: (context, snapshot) {
+          final stats = snapshot.data ?? {'users': 0, 'meals': 0, 'approvals': 0, 'reports': 0};
+
+          return ListView(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  _buildDashboardCard(
-                    icon: Icons.person_rounded,
-                    iconColor: Colors.blue,
-                    title: 'Total Active Users',
-                    value: '${stats['users']}',
+                  const Text(
+                    'Admin Dashboard',
+                    style: TextStyle(
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF0D47A1),
+                    ),
                   ),
-                  const SizedBox(height: 16),
-                  _buildDashboardCard(
-                    icon: Icons.fastfood_rounded,
-                    iconColor: Colors.orange,
-                    title: 'Meals in Database',
-                    value: '${stats['meals']}',
-                  ),
-                  const SizedBox(height: 16),
-                  _buildDashboardCard(
-                    icon: Icons.admin_panel_settings_rounded,
-                    iconColor: Colors.redAccent,
-                    title: 'Pending Approvals',
-                    value: '${stats['approvals']}',
+                  IconButton(
+                    icon: const Icon(Icons.logout_rounded, color: Color(0xFF0D47A1)),
+                    onPressed: () async {
+                      await FirebaseAuth.instance.signOut();
+                      if (context.mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                    },
                   ),
                 ],
-              );
-            },
-          ),
-        ],
+              ),
+              const SizedBox(height: 30),
+              _buildDashboardCard(
+                icon: Icons.person,
+                iconColor: Colors.blue.shade600,
+                title: 'Total Users',
+                value: '${stats['users']}',
+              ),
+              const SizedBox(height: 12),
+              _buildDashboardCard(
+                icon: Icons.fastfood,
+                iconColor: Colors.orange.shade600,
+                title: 'Total Meals',
+                value: '${stats['meals']}',
+              ),
+              const SizedBox(height: 12),
+              _buildDashboardCard(
+                icon: Icons.admin_panel_settings,
+                iconColor: Colors.red.shade600,
+                title: 'Pending Admin Approvals',
+                value: '${stats['approvals']}',
+              ),
+              const SizedBox(height: 12),
+              _buildDashboardCard(
+                icon: Icons.report_problem_rounded,
+                iconColor: Colors.purple.shade600,
+                title: 'Total Reports',
+                value: '${stats['reports']}',
+              ),
+            ],
+          );
+        },
       ),
     );
   }
@@ -248,54 +256,35 @@ class _HomePage extends StatelessWidget {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.blue.shade900.withValues(alpha: 0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 8,
+            offset: const Offset(2, 3),
           ),
         ],
       ),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: iconColor.withValues(alpha: 0.1),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, size: 28, color: iconColor),
-            ),
-            const SizedBox(width: 20),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.grey,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2C3E50),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: Colors.grey.shade300),
-          ],
+      child: ListTile(
+        leading: CircleAvatar(
+          backgroundColor: iconColor.withValues(alpha: 0.18),
+          radius: 22,
+          child: Icon(icon, size: 26, color: iconColor),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        trailing: Text(
+          value,
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: iconColor,
+          ),
         ),
       ),
     );
