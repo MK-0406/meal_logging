@@ -162,6 +162,9 @@ class _HomePage extends StatelessWidget {
       final users = await FirebaseFirestore.instance.collection('users')
           .where('role', isEqualTo: 'user')
           .get();
+      final admins = await FirebaseFirestore.instance.collection('users')
+          .where('role', isEqualTo: 'admin')
+          .get();
       final meals = await FirebaseFirestore.instance
           .collection('meals')
           .where('deleted', isEqualTo: false)
@@ -177,6 +180,7 @@ class _HomePage extends StatelessWidget {
 
       return {
         'users': users.docs.length,
+        'admins': admins.docs.length,
         'meals': meals.docs.length,
         'approvals': adminRequests.docs.length,
         'reports': reports.docs.length,
@@ -221,6 +225,13 @@ class _HomePage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _buildDashboardCard(
+                icon: Icons.admin_panel_settings,
+                iconColor: Colors.green.shade600,
+                title: 'Total Admins',
+                value: '${stats['admins']}',
+              ),
+              const SizedBox(height: 12),
+              _buildDashboardCard(
                 icon: Icons.fastfood,
                 iconColor: Colors.orange.shade600,
                 title: 'Total Meals',
@@ -228,7 +239,7 @@ class _HomePage extends StatelessWidget {
               ),
               const SizedBox(height: 12),
               _buildDashboardCard(
-                icon: Icons.admin_panel_settings,
+                icon: Icons.approval,
                 iconColor: Colors.red.shade600,
                 title: 'Pending Admin Approvals',
                 value: '${stats['approvals']}',
