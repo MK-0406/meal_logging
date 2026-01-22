@@ -1302,7 +1302,9 @@ class _MealDiaryState extends State<MealDiary> {
     return SizedBox(
       width: double.infinity,
       child: TextButton.icon(
-        onPressed: () async {
+        onPressed: (mealType == 'Snack' && !includeSnacks)
+          ? null
+          : () async {
           await Navigator.push(
             context,
             MaterialPageRoute(
@@ -1322,8 +1324,8 @@ class _MealDiaryState extends State<MealDiary> {
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           padding: const EdgeInsets.symmetric(vertical: 12),
         ),
-        icon: const Icon(Icons.add, size: 20),
-        label: const Text('Add Food', style: TextStyle(fontWeight: FontWeight.bold)),
+        icon: (mealType == 'Snack' && !includeSnacks) ? null : const Icon(Icons.add, size: 20), //no label if excluded
+        label: Text((mealType == 'Snack' && !includeSnacks) ? 'Excluded' : 'Add Food', style: TextStyle(fontWeight: FontWeight.bold)),
       ),
     );
   }
