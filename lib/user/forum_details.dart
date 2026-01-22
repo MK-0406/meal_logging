@@ -23,6 +23,57 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
   String? _replyToId;
   String? _replyToName;
 
+  void _showReportDialog(String postId, String type, String? commentId) {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text("Report Content", style: TextStyle(fontWeight: FontWeight.bold)),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text("Help us understand why you are reporting this content.", style: TextStyle(fontSize: 14, color: Colors.grey)),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              decoration: InputDecoration(
+                hintText: "Enter reason (optional)...",
+                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+            onPressed: () async {
+              await FirebaseFirestore.instance.collection('reports').add({ //adjusted for admin to delete the post/comment later
+                'postId': postId,
+                'type': type,
+                'commendId': (type == 'post') ? null : commentId,
+                'reporterId': FirebaseAuth.instance.currentUser!.uid,
+                'reason': reasonCtrl.text.trim(),
+                'timestamp': FieldValue.serverTimestamp(),
+                'status': 'pending',
+              });
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Content reported for review."), behavior: SnackBarBehavior.floating),
+              );
+            },
+            child: const Text("Submit Report"),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -76,9 +127,18 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 8),
-          const Text(
-            'Topic Details',
-            style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+          const Expanded(
+            child: Text(
+              'Topic Details',
+              style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+            ),
+          ),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.more_vert, color: Colors.white),
+            onSelected: (val) => _showReportDialog(widget.post.id, 'post', null),
+            itemBuilder: (context) => [
+              const PopupMenuItem(value: 'report', child: Text('Report Post', style: TextStyle(color: Colors.red))),
+            ],
           ),
         ],
       ),
@@ -215,51 +275,84 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
 
   Widget _buildCommentCard(String commentId, Map<String, dynamic> data, bool isReply) {
     return Container(
-      margin: EdgeInsets.only(bottom: 12, left: isReply ? 32 : 0),
-      padding: EdgeInsets.fromLTRB(16, 16, 16, (isReply == false) ? 5 : 16),
+      margin: EdgeInsets.only(bottom: 12, left: isReply ? 32 : 0), //adjusted
+      padding: EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: isReply ? Colors.blue.shade50.withValues(alpha: 0.3) : Colors.white,
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.grey.shade50),
       ),
-      child: Row(
+      child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CircleAvatar(
-            radius: 14,
-            backgroundColor: Colors.grey.shade100,
-            child: Icon(Icons.person_rounded, size: 16, color: Colors.grey.shade400),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          Row(
+            children: [
+              CircleAvatar(
+                radius: 14,
+                backgroundColor: Colors.grey.shade100,
+                child: Icon(Icons.person_rounded, size: 16, color: Colors.grey.shade400),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(data['authorName'] ?? 'Member', style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
-                    Text(timeAgo(data['createdAt']), style: TextStyle(color: Colors.grey.shade400, fontSize: 10)),
+                    Text(
+                      data['authorName'] ?? 'Member',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+                    ),
+                    Text(
+                      timeAgo(data['createdAt']),
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 10),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(data['text'] ?? '', style: TextStyle(color: Colors.grey.shade700, fontSize: 14, height: 1.4)),
-                if (!isReply) 
-                  Align(
-                    alignment: Alignment.centerRight,
-                    child: TextButton(
-                      onPressed: () {
-                        setState(() {
-                          _replyToId = commentId;
-                          _replyToName = data['authorName'] ?? 'Member';
-                        });
-                      },
-                      child: const Text("Reply", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+              ),
+              PopupMenuButton<String>(
+                icon: Icon(Icons.more_horiz, color: Colors.grey.shade400, size: 18),
+                onOpened: null, // Placeholder to avoid error if button logic is outside
+                onSelected: (val) => _showReportDialog(widget.post.id, 'comment', commentId),
+                itemBuilder: (context) => [
+                  const PopupMenuItem(value: 'report', child: Text('Report', style: TextStyle(color: Colors.red, fontSize: 13))),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 40, right: 47),
+                    child: Text(
+                      data['text'] ?? '',
+                      style: TextStyle(color: Colors.grey.shade700, fontSize: 14, height: 1.4),
+                      softWrap: true,
                     ),
                   ),
-              ],
-            ),
-          ),
+              ),
+
+              if (!isReply)
+                Align(
+                  alignment: Alignment.centerLeft, //make it not too right
+                  child: TextButton(
+                    style: TextButton.styleFrom(
+                      padding: EdgeInsets.only(right: 7), //adjusted
+                      minimumSize: const Size(0, 0),
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
+                    onPressed: () {
+                      setState(() {
+                        _replyToId = commentId;
+                        _replyToName = data['authorName'] ?? 'Member';
+                      });
+                    },
+                    child: const Text("Reply", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                  ),
+                ),
+            ]
+          )
         ],
       ),
     );
@@ -267,7 +360,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
 
   Widget _buildCommentInput() {
     return Container(
-      padding: EdgeInsets.fromLTRB(20, (_replyToId != null) ? 5 : 12, 20, 25),
+      padding: EdgeInsets.fromLTRB(20, (_replyToId != null) ? 5 : 12, 20, 25), //adjusted
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, -5))],
@@ -340,8 +433,9 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
       "authorName": userData['name'],
       "createdAt": FieldValue.serverTimestamp(),
       "parentId": _replyToId,
+      'deleted': false
     });
-    await FirebaseFirestore.instance.collection("posts").doc(postId).update({"commentCount": _commentCount});
+    await FirebaseFirestore.instance.collection("posts").doc(postId).update({"commentCount": _commentCount}); //correct value is _commentCount not _commentCount + 1
     _commentCtrl.clear();
     setState(() {
       _isPosting = false;
