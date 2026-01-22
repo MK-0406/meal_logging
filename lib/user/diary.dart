@@ -734,7 +734,7 @@ class _MealDiaryState extends State<MealDiary> {
   Widget _buildDailyDashboard() {
     if (_isLoadingIntake || _dailyIntake == null) {
       return Container(
-        height: 180,
+        height: 293, //so that the container wont too small
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(24),
@@ -991,7 +991,7 @@ class _MealDiaryState extends State<MealDiary> {
   }
 
   void _showWaterLoggingDialog() {
-    final TextEditingController _waterController = TextEditingController(text: "250");
+    final TextEditingController waterController = TextEditingController(text: "250");
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
@@ -1003,7 +1003,7 @@ class _MealDiaryState extends State<MealDiary> {
             const Text("How much water did you drink?", style: TextStyle(color: Colors.grey, fontSize: 14)),
             const SizedBox(height: 20),
             TextField(
-              controller: _waterController,
+              controller: waterController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
                 labelText: "Amount (ml)",
@@ -1024,7 +1024,7 @@ class _MealDiaryState extends State<MealDiary> {
                 backgroundColor: Colors.blue.shade50,
                 labelStyle: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 11),
                 onPressed: () {
-                  _waterController.text = ml.toString();
+                  waterController.text = ml.toString();
                 },
               )).toList(),
             ),
@@ -1034,7 +1034,7 @@ class _MealDiaryState extends State<MealDiary> {
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
-              final amount = int.tryParse(_waterController.text) ?? 0;
+              final amount = int.tryParse(waterController.text) ?? 0;
               if (amount > 0) {
                 _logWater(amount);
                 Navigator.pop(context);
