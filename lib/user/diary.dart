@@ -895,7 +895,16 @@ class _MealDiaryState extends State<MealDiary> {
   }
 
   Widget _buildHydrationCard() {
-
+    if (_isLoadingIntake || _dailyIntake == null) {
+      return Container(
+        height: 153,
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(28),
+        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
+      );
+    }
     int totalWaterIntake = _waterIntakeMl + _dailyIntake!['water']!.round(); // include water from meal
     final percent = (totalWaterIntake / _waterTargetMl).clamp(0.0, 1.0);
     
@@ -1069,15 +1078,28 @@ class _MealDiaryState extends State<MealDiary> {
           Switch(
             value: includeSnacks,
             activeThumbColor: const Color(0xFF42A5F5),
-            onChanged: (value) {
+            onChanged: (value) async {
               setState(() {
                 includeSnacks = value;
                 mealRatios = includeSnacks
                     ? {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.1}
                     : {'Breakfast': 0.22, 'Lunch': 0.33, 'Dinner': 0.45, 'Snack': 0.0};
+
                 calculateRecommendationForEachMealPeriod();
                 saveIncludeSnacksIntoDatabase();
               });
+              if (includeSnacks == false) { //if switch off then move the logged snacks to dinner
+                final snacks = await mealLogs.where(
+                    'mealType', isEqualTo: 'Snack').get();
+
+                for (final doc in snacks.docs) {
+                  mealLogs.doc(doc.id).update(
+                      {
+                        'mealType': 'Dinner',
+                      }
+                  );
+                }
+              }
             },
           ),
         ],
@@ -1387,7 +1409,7 @@ class _MealDiaryState extends State<MealDiary> {
       setState(() => _periodIntake = periodIntake);
       return {'calories': tCal, 'protein': tProt, 'carbs': tCarb, 'fats': tFat, 'water': tWater}; // add water
     } catch (e) {
-      return {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0};
+      return {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0, 'water': 0}; // add water
     }
   }
 }
