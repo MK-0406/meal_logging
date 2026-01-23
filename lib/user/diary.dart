@@ -596,6 +596,21 @@ class _MealDiaryState extends State<MealDiary> {
         double intake = _periodIntake['Dinner']?[m] ?? 0.0;
         double diff = target - intake;
         adjusted['Snack']?[m] = (adjusted['Snack']![m] + diff).clamp(0.0, double.infinity);
+        if (diff > (adjusted['Snack']![m] - _periodIntake['Snack']![m])) {
+          adjusted['Dinner']?[m] = adjusted['Snack']![m] - _periodIntake['Snack']![m];
+        }
+      }
+    }
+
+    for (var m in metrics) {
+      if ((adjusted['Lunch']![m] - _periodIntake['Lunch']![m]) > (adjusted['Dinner']![m] - _periodIntake['Dinner']![m])) {
+        adjusted['Lunch']?[m] = (adjusted['Dinner']![m] - _periodIntake['Dinner']![m]);
+      }
+    }
+
+    for (var m in metrics) {
+      if ((adjusted['Breakfast']![m] - _periodIntake['Breakfast']![m]) > (adjusted['Lunch']![m] - _periodIntake['Lunch']![m])) {
+        adjusted['Breakfast']?[m] = (adjusted['Lunch']![m] - _periodIntake['Lunch']![m]);
       }
     }
 
