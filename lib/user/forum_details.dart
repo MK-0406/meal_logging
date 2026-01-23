@@ -229,6 +229,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           .collection('posts')
           .doc(widget.post.id)
           .collection('comments')
+          .where('deleted', isEqualTo: false)
           .orderBy('createdAt', descending: false)
           .snapshots(),
       builder: (context, snapshot) {
