@@ -134,6 +134,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('posts')
+          .where('deleted', isEqualTo: false)
           .orderBy(orderByField, descending: true)
           .snapshots(),
       builder: (context, snapshot) {
