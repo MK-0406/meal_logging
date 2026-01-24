@@ -27,7 +27,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -51,6 +51,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
                 children: [
                   _buildPostList('likeCount'), // Trending
                   _buildPostList('createdAt'), // Latest
+                  _buildMyPostList() // My Posts
                 ],
               ),
             ),
@@ -125,8 +126,40 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
         tabs: const [
           Tab(text: "Trending"),
           Tab(text: "Latest"),
+          Tab(text: "My Posts"), // add my posts
         ],
       ),
+    );
+  }
+
+  Widget _buildMyPostList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('posts')
+          .where('deleted', isEqualTo: false)
+          .where('userId', isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+          .orderBy('createdAt', descending: true)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        final posts = snapshot.data!.docs;
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          itemCount: posts.length > _itemCount ? _itemCount + 1 : posts.length,
+          itemBuilder: (context, index) {
+            if (index == _itemCount && posts.length > _itemCount) {
+              return _buildLoadMoreButton();
+            }
+            return _buildPostCard(posts[index]);
+          },
+        );
+      },
     );
   }
 
