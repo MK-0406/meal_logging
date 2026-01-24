@@ -8,8 +8,36 @@ class UsersPage extends StatefulWidget {
   State<UsersPage> createState() => _UsersPageState();
 }
 
-class _UsersPageState extends State<UsersPage> {
+class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMixin { //add tab
   final CollectionReference users = FirebaseFirestore.instance.collection('users');
+  late Map<String, Map<String, dynamic>> usersData;
+  int banCount = 0;
+  int activeCount = 0;
+
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    _loadCounts();
+    _tabController = TabController(length: 2, vsync: this);
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _tabController.dispose();
+  }
+
+  Future<void> _loadCounts() async {
+    final bannedUsers = await FirebaseFirestore.instance.collection('usersInfo').where('ban', isEqualTo: true).get();
+    final activeUsers = await FirebaseFirestore.instance.collection('usersInfo').where('ban', isEqualTo: false).get();
+
+    setState(() {
+      banCount = bannedUsers.docs.length;
+      activeCount = activeUsers.docs.length;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -18,29 +46,14 @@ class _UsersPageState extends State<UsersPage> {
       body: Column(
         children: [
           _buildHeader(),
+          _buildTabBar(),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: users.where('role', isEqualTo: 'user').orderBy('email').snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) return const Center(child: Text('Error loading users'));
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                }
-
-                final data = snapshot.data!.docs.map((doc) {
-                  final user = doc.data() as Map<String, dynamic>;
-                  user['id'] = doc.id;
-                  return user;
-                }).toList();
-
-                if (data.isEmpty) return const Center(child: Text('No users found.'));
-
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: data.length,
-                  itemBuilder: (context, index) => _buildUserCard(data[index]),
-                );
-              },
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUserList(false),
+                _buildUserList(true),
+              ],
             ),
           ),
         ],
@@ -66,12 +79,91 @@ class _UsersPageState extends State<UsersPage> {
     );
   }
 
-  Widget _buildUserCard(Map<String, dynamic> user) {
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: const Color(0xFF42A5F5).withValues(alpha: 0.1),
+        ),
+        labelColor: const Color(0xFF1E88E5),
+        unselectedLabelColor: Colors.grey,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        tabs: const [
+          Tab(text: "Active"),
+          Tab(text: "Banned"),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildUserList(bool showBan) {
+    if (showBan == true && banCount == 0) {
+      return Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(Icons.block_outlined, size: 80, color: Colors.grey.shade200),
+          const SizedBox(height: 16),
+          const Text("No banned users found", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
+          const SizedBox(height: 100),
+        ]
+      );
+    }
+    if (showBan == false && activeCount == 0) {
+      return Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.person_off_outlined, size: 80, color: Colors.grey.shade200),
+            const SizedBox(height: 16),
+            const Text("No active users found", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
+            const SizedBox(height: 100),
+          ]
+      );
+    }
+    return StreamBuilder<QuerySnapshot>(
+      stream: users.where('role', isEqualTo: 'user').orderBy('email').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return const Center(child: Text('Error loading users'));
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        }
+
+        final data = snapshot.data!.docs.map((doc) {
+          final user = doc.data() as Map<String, dynamic>;
+          user['id'] = doc.id;
+            return user;
+        }).toList();
+
+        if (data.isEmpty) return const Center(child: Text('No users found.'));
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: data.length,
+          itemBuilder: (context, index) => _buildUserCard(data[index], showBan),
+        );
+      },
+    );
+  }
+
+  Widget _buildUserCard(Map<String, dynamic> user, bool showBan) {
     return FutureBuilder<DocumentSnapshot>(
       future: FirebaseFirestore.instance.collection('usersInfo').doc(user['id']).get(),
       builder: (context, snapshot) {
         final info = snapshot.data?.data() as Map<String, dynamic>? ?? {};
         final isBanned = info['ban'] == true;
+        if (isBanned != showBan) {
+          return const SizedBox.shrink();
+        }
 
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
@@ -128,7 +220,9 @@ class _UsersPageState extends State<UsersPage> {
                     child: OutlinedButton.icon(
                       onPressed: () async {
                         await FirebaseFirestore.instance.collection('usersInfo').doc(user['id']).update({'ban': !isBanned, 'updatedAt': FieldValue.serverTimestamp()});
-                        setState(() {});
+                        setState(() {
+                          _loadCounts();
+                        });
                         if (context.mounted) Navigator.pop(context);
                       },
                       icon: Icon(isBanned ? Icons.check_circle_outline : Icons.block_flipped, size: 18),
