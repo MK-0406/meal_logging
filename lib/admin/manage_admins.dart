@@ -9,8 +9,21 @@ class AdminRegPage extends StatefulWidget {
   State<AdminRegPage> createState() => _AdminRegPageState();
 }
 
-class _AdminRegPageState extends State<AdminRegPage> {
+class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderStateMixin{
   final CollectionReference users = FirebaseFirestore.instance.collection('users');
+  late TabController _tabController;
+  
+  @override
+  void initState() {
+    _tabController = TabController(length: 3, vsync: this);
+    super.initState();
+  }
+  
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -19,29 +32,15 @@ class _AdminRegPageState extends State<AdminRegPage> {
       body: Column(
         children: [
           _buildHeader(),
+          _buildTabBar(),
           Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: users.where('role', isEqualTo: 'admin').orderBy('registrationStatus', descending: true).snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) return const Center(child: Text('Error loading admins'));
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                }
-
-                final data = snapshot.data!.docs.map((doc) {
-                  final user = doc.data() as Map<String, dynamic>;
-                  user['id'] = doc.id;
-                  return user;
-                }).toList();
-
-                if (data.isEmpty) return const Center(child: Text('No admin requests found.'));
-
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
-                  itemCount: data.length,
-                  itemBuilder: (context, index) => _buildAdminCard(data[index]),
-                );
-              },
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildAdminList('pending'),
+                _buildAdminList('approved'),
+                _buildAdminList('declined'),
+              ],
             ),
           ),
         ],
@@ -64,6 +63,61 @@ class _AdminRegPageState extends State<AdminRegPage> {
           Text("Review and approve admin registrations", style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
         ],
       ),
+    );
+  }
+
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: const Color(0xFF42A5F5).withValues(alpha: 0.1),
+        ),
+        labelColor: const Color(0xFF1E88E5),
+        unselectedLabelColor: Colors.grey,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        tabs: const [
+          Tab(text: "Pending"),
+          Tab(text: "Active"),
+          Tab(text: 'Declined'),
+        ],
+      ),
+    );
+  }
+  
+  Widget _buildAdminList(String status) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: users.where('role', isEqualTo: 'admin').where('registrationStatus', isEqualTo: status).orderBy('updatedAt').snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.hasError) return const Center(child: Text('Error loading admins'));
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        }
+
+        final data = snapshot.data!.docs.map((doc) {
+          final user = doc.data() as Map<String, dynamic>;
+          user['id'] = doc.id;
+          return user;
+        }).toList();
+
+        if (data.isEmpty) return const Center(child: Text('No admin requests found.'));
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+          itemCount: data.length,
+          itemBuilder: (context, index) => _buildAdminCard(data[index]),
+        );
+      },
     );
   }
 
