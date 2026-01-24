@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
+
 class MealsPage extends StatefulWidget {
   const MealsPage({super.key});
 
@@ -10,6 +11,8 @@ class MealsPage extends StatefulWidget {
 
 class _MealsPageState extends State<MealsPage> {
   final CollectionReference meals = FirebaseFirestore.instance.collection('meals');
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   // Controllers for the Dialog
   final _formKey = GlobalKey<FormState>();
@@ -86,6 +89,7 @@ class _MealsPageState extends State<MealsPage> {
       body: Column(
         children: [
           _buildHeader(),
+          _buildSearchBar(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: meals.where('deleted', isEqualTo: false).orderBy('name').snapshots(),
@@ -95,16 +99,19 @@ class _MealsPageState extends State<MealsPage> {
                   return const Center(child: CircularProgressIndicator(strokeWidth: 2));
                 }
 
-                final data = snapshot.data!.docs.map((doc) {
+                final allDocs = snapshot.data!.docs;
+                final data = allDocs.map((doc) {
                   final meal = doc.data() as Map<String, dynamic>;
                   meal['id'] = doc.id;
                   return meal;
+                }).where((meal) {
+                  return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
                 }).toList();
 
                 if (data.isEmpty) return const Center(child: Text('No meals found.'));
 
                 return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
                   itemCount: data.length,
                   itemBuilder: (context, index) => _buildMealCard(data[index]),
                 );
@@ -113,7 +120,7 @@ class _MealsPageState extends State<MealsPage> {
           ),
         ],
       ),
-      floatingActionButton: Padding(
+      floatingActionButton: _searchQuery.isNotEmpty ? null : Padding(
         padding: const EdgeInsets.only(bottom: 85),
         child: FloatingActionButton.extended(
           onPressed: () => _showMealDialog(isEditing: false),
@@ -145,9 +152,37 @@ class _MealsPageState extends State<MealsPage> {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchQuery = val),
+        decoration: InputDecoration(
+          hintText: "Search for meals...",
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          suffixIcon: _searchQuery.isNotEmpty 
+            ? IconButton(icon: const Icon(Icons.close), onPressed: () {
+                _searchController.clear();
+                setState(() => _searchQuery = "");
+              }) 
+            : null,
+        ),
+      ),
+    );
+  }
+
   Widget _buildMealCard(Map<String, dynamic> meal) {
     return Container(
-      margin: const EdgeInsets.only(bottom: 16),
+      margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
