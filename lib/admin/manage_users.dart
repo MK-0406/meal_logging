@@ -1,5 +1,7 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 
 class UsersPage extends StatefulWidget {
   const UsersPage({super.key});
@@ -213,17 +215,32 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
               _detailRow("Gender", info['gender']),
               _detailRow("Age", "${info['age'] ?? '-'} years"),
               _detailRow("Status", isBanned ? "Banned" : "Active", color: isBanned ? Colors.red : Colors.green),
-              const SizedBox(height: 32),
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                    onPressed: () async {
+                      final data = await FirebaseFirestore.instance
+                          .collection('usersInfo')
+                          .doc(user['id'])
+                          .collection('logs')
+                          .orderBy('updatedAt').get();
+                      final snapshots = data.docs;
+                      List<QueryDocumentSnapshot> timelines = snapshots.map((doc) => doc).toList();
+                      _showTimelineDialog(timelines);
+                    },
+                    child: Text('View Timeline >', style: TextStyle(color: Colors.blue.shade500, fontSize: 14))
+                ),
+              ),
+              const SizedBox(height: 10),
               Row(
                 children: [
                   Expanded(
                     child: OutlinedButton.icon(
-                      onPressed: () async {
-                        await FirebaseFirestore.instance.collection('usersInfo').doc(user['id']).update({'ban': !isBanned, 'updatedAt': FieldValue.serverTimestamp()});
-                        setState(() {
-                          _loadCounts();
-                        });
-                        if (context.mounted) Navigator.pop(context);
+                      onPressed: () {
+                        if (info.isNotEmpty) {
+                          _showBanDialog(user, isBanned);
+                        }
+                        //if (context.mounted) Navigator.pop(context);
                       },
                       icon: Icon(isBanned ? Icons.check_circle_outline : Icons.block_flipped, size: 18),
                       label: Text(isBanned ? "Unban" : "Ban"),
@@ -266,6 +283,159 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
         children: [
           Text(label, style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
           Text(value?.toString() ?? "-", style: TextStyle(fontWeight: FontWeight.bold, color: color ?? const Color(0xFF2C3E50))),
+        ],
+      ),
+    );
+  }
+
+  void _showTimelineDialog(List<QueryDocumentSnapshot> timelines) {
+    showDialog(
+      context: context,
+      builder: (logContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          "Timeline",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: SingleChildScrollView(
+          child: timelines.isEmpty
+              ? Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.timeline_outlined, size: 80, color: Colors.grey.shade200),
+              const SizedBox(height: 16),
+              const Text("No timeline found", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
+            ]
+          )
+              : Column(
+            mainAxisSize: MainAxisSize.min,
+            children: timelines.map((doc) => _buildTimeline(doc)).toList(),
+          )
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(logContext),
+            child: const Text("Cancel"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildTimeline(QueryDocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    final time = data['updatedAt'];
+    final status = data['ban'] ? " Banned  " : "Unbanned"; //put extra spaces for better interface
+    final reason = data['reason'] == '' ? "No reason" : data['reason'];
+    final updatedBy = data['updatedBy'] ?? "Unknown";
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+      ),
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(7),
+        leading: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(data['ban'] ? Icons.block_rounded : Icons.check_circle_rounded, size: 32, color: data['ban'] ? Colors.red : Colors.green),
+            Text(status, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          ]
+        ),
+        title: Text(time, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C3E50))),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Reason: $reason', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+            Text('Done by: $updatedBy', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
+          ]
+        ),
+      ),
+    );
+  }
+
+  void _showBanDialog(Map<String, dynamic> user, bool isBanned) {
+    final reasonCtrl = TextEditingController();
+    showDialog(
+      context: context,
+      builder: (logContext) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: Text(
+          isBanned ? "Unban User" : "Ban User",
+          style: const TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              isBanned ? "Are you sure you want to unban this user?" : "Why you are banning this user?",
+              style: const TextStyle(fontSize: 14, color: Colors.grey),
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: reasonCtrl,
+              maxLines: 2,
+              decoration: InputDecoration(
+                hintText: "Enter reason (optional)...",
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+                filled: true,
+                fillColor: Colors.grey.shade50,
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(logContext),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: isBanned ? Colors.green : Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              final admin = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).get();
+              final adminData = admin.data() as Map<String, dynamic>;
+
+              await FirebaseFirestore.instance.collection('usersInfo').doc(user['id']).update({
+                'ban': !isBanned,
+                'updatedAt': FieldValue.serverTimestamp()
+              });
+              await FirebaseFirestore.instance
+                  .collection('usersInfo')
+                  .doc(user['id'])
+                  .collection('logs')
+                  .doc(DateFormat('yyyyMMddHHmmss').format(DateTime.now()))
+                  .set({
+                'ban': !isBanned,
+                'updatedAt': DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now()),
+                'reason': reasonCtrl.text,
+                'updatedBy': adminData['email'].split('@')[0],
+              });
+
+              setState(() {
+                _loadCounts();
+              });
+
+              if (!logContext.mounted) return;
+              Navigator.pop(logContext);
+              if (!mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("User banned successfully"),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: Text(isBanned ? "Unban" : "Ban"),
+          ),
         ],
       ),
     );
