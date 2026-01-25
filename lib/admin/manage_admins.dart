@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import '../functions.dart';
 
@@ -133,7 +134,14 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: ListTile(
-        onTap: () => _showAdminDetails(admin),
+        onTap: () async {
+          Map<String, dynamic>? inChargedAdmin;
+          if (admin['registrationStatus'] != 'pending') {
+            final data = await FirebaseFirestore.instance.collection('users').doc(admin['admin']).get();
+            inChargedAdmin = data.data();
+          }
+          _showAdminDetails(admin, inChargedAdmin);
+        },
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
         leading: CircleAvatar(
           radius: 24,
@@ -157,7 +165,7 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
     );
   }
 
-  void _showAdminDetails(Map<String, dynamic> admin) {
+  void _showAdminDetails(Map<String, dynamic> admin, Map<String, dynamic>? inChargedAdmin) {
     final status = admin['registrationStatus'] ?? 'pending';
     final color = _getStatusColor(status);
 
@@ -181,6 +189,7 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
               const SizedBox(height: 24),
               _detailRow("Current Status", status.toUpperCase(), color: color),
               _detailRow("Role", "ADMIN"),
+              ?(status == 'pending') ? null : _detailRow(status == 'approved' ? 'Approved by' : 'Declined by', inChargedAdmin?['email'].split('@')[0]),
               const SizedBox(height: 32),
               Row(
                 children: [
@@ -188,7 +197,7 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
                     Expanded(
                       child: OutlinedButton(
                         onPressed: () async {
-                          await Database.setItems('users', admin['id'], {'registrationStatus': 'declined', 'updatedAt': FieldValue.serverTimestamp()});
+                          await Database.setItems('users', admin['id'], {'registrationStatus': 'declined', 'admin': FirebaseAuth.instance.currentUser?.uid, 'updatedAt': FieldValue.serverTimestamp()});
                           if (context.mounted) Navigator.pop(context);
                         },
                         style: OutlinedButton.styleFrom(
@@ -204,7 +213,7 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
                     Expanded(
                       child: ElevatedButton(
                         onPressed: () async {
-                          await Database.setItems('users', admin['id'], {'registrationStatus': 'approved', 'updatedAt': FieldValue.serverTimestamp()});
+                          await Database.setItems('users', admin['id'], {'registrationStatus': 'approved', 'admin': FirebaseAuth.instance.currentUser?.uid, 'updatedAt': FieldValue.serverTimestamp()});
                           if (context.mounted) Navigator.pop(context);
                         },
                         style: ElevatedButton.styleFrom(
