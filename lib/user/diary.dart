@@ -22,7 +22,12 @@ class _MealDiaryState extends State<MealDiary> {
   Map<String, Map<String, dynamic>>? mealTargets;
   bool _isLoadingModel = true;
   Map<String, double>? _dailyIntake;
-  Map<String, Map<String, double>> _periodIntake = {};
+  Map<String, Map<String, double>> _periodIntake = {
+    'Breakfast': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+    'Lunch': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+    'Dinner': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+    'Snack': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+  };
   bool _isLoadingIntake = false;
   final bool _previousDayAvailable = true;
   bool includeSnacks = true;
@@ -596,7 +601,7 @@ class _MealDiaryState extends State<MealDiary> {
         double intake = _periodIntake['Dinner']?[m] ?? 0.0;
         double diff = target - intake;
         adjusted['Snack']?[m] = (adjusted['Snack']![m] + diff).clamp(0.0, double.infinity);
-        if (diff > (adjusted['Snack']![m] - _periodIntake['Snack']![m])) {
+        if (diff > (adjusted['Snack']![m] - _periodIntake['Snack']![m] ?? 0.0)) {
           adjusted['Dinner']?[m] = adjusted['Snack']![m] - _periodIntake['Snack']![m];
         }
       }
@@ -1384,6 +1389,9 @@ class _MealDiaryState extends State<MealDiary> {
   }
 
   Future<Map<String, double>> _calculateDailyIntake() async {
+    setState(() {
+      _isLoadingModel = true;
+    });
     try {
       double tCal = 0, tProt = 0, tCarb = 0, tFat = 0, tWater = 0; //add water
       Map<String, Map<String, double>> periodIntake = {
@@ -1423,7 +1431,10 @@ class _MealDiaryState extends State<MealDiary> {
         }
       }
       
-      setState(() => _periodIntake = periodIntake);
+      setState(() {
+        _periodIntake = periodIntake;
+        _isLoadingModel = false;
+      });
       return {'calories': tCal, 'protein': tProt, 'carbs': tCarb, 'fats': tFat, 'water': tWater}; // add water
     } catch (e) {
       return {'calories': 0, 'protein': 0, 'carbs': 0, 'fats': 0, 'water': 0}; // add water
