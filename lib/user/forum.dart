@@ -40,23 +40,21 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FBFF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildTabBar(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildPostList('likeCount'), // Trending
-                  _buildPostList('createdAt'), // Latest
-                  _buildMyPostList() // My Posts
-                ],
-              ),
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildTabBar(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildPostList('likeCount'), // Trending
+                _buildPostList('createdAt'), // Latest
+                _buildMyPostList() // My Posts
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 85),
