@@ -19,6 +19,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
   bool _isPosting = false;
   String? _replyToId;
   String? _replyToName;
+  late final _postData = widget.post.data() as Map<String, dynamic>;
 
   void _showReportDialog(String postId, String type, String? commentId) {
     final reasonCtrl = TextEditingController();
@@ -125,9 +126,10 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                     .collection('comments')
                     .doc(commentId)
                     .update({'deleted': true});
-                await FirebaseFirestore.instance.collection('posts').doc(postId).update({
-                  'commentCount': FieldValue.increment(-1),
-                });
+                await FirebaseFirestore.instance
+                    .collection('posts')
+                    .doc(postId)
+                    .update({'commentCount': FieldValue.increment(-1)});
               } else if (type == 'post') {
                 await FirebaseFirestore.instance
                     .collection('posts')
@@ -146,6 +148,98 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
               );
             },
             child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditPostDialog(Map<String, dynamic> postData, String type) {
+    final titleCtrl = TextEditingController(text: postData['title']);
+    final contentCtrl = TextEditingController(text: postData['content']);
+    final editKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          "Edit Content",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Form(
+          key: editKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: titleCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  label: Text('Title'),
+                  hintText: "Edit title...",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                validator: (val) {
+                  if (val!.isEmpty) return 'Title cannot be empty';
+                  return null;
+                }
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: contentCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  label: Text('Content'),
+                  hintText: "Edit content...",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                validator: (val) {
+                  if (val!.isEmpty) return 'Content cannot be empty';
+                  return null;
+                }
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (!editKey.currentState!.validate()) return;
+              await FirebaseFirestore.instance.collection('posts').doc(widget.post.id).update({
+                'title': titleCtrl.text.trim(),
+                'content': contentCtrl.text.trim(),
+              });
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              setState(() {
+                _postData['title'] = titleCtrl.text.trim();
+                _postData['content'] = contentCtrl.text.trim();
+              });
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Content edited."),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text("Save Changes"),
           ),
         ],
       ),
@@ -232,6 +326,8 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 _showReportDialog(widget.post.id, 'post', null);
               } else if (val == 'delete') {
                 _showDeleteDialog(widget.post.id, 'post', null);
+              } else if (val == 'edit') {
+                _showEditPostDialog(_postData, 'post');
               }
             },
             itemBuilder: (context) => [
@@ -249,6 +345,16 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                       ),
                     )
                   : null,
+              ?(widget.post.data() as Map<String, dynamic>)['userId'] ==
+                      FirebaseAuth.instance.currentUser!.uid
+                  ? const PopupMenuItem(
+                      value: 'edit',
+                      child: Text(
+                        'Edit Post',
+                        style: TextStyle(color: Colors.black),
+                      ),
+                    )
+                  : null,
             ],
           ),
         ],
@@ -257,7 +363,6 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
   }
 
   Widget _buildMainPost() {
-    final data = widget.post.data() as Map<String, dynamic>;
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.all(24),
@@ -292,14 +397,14 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      data['username'] ?? "Member",
+                      _postData['username'] ?? "Member",
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
                       ),
                     ),
                     Text(
-                      timeAgo(data['createdAt']),
+                      timeAgo(_postData['createdAt']),
                       style: TextStyle(
                         color: Colors.grey.shade500,
                         fontSize: 12,
@@ -313,7 +418,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           ),
           const SizedBox(height: 20),
           Text(
-            data['title'] ?? "",
+            _postData['title'] ?? "",
             style: const TextStyle(
               fontSize: 22,
               fontWeight: FontWeight.bold,
@@ -323,7 +428,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           ),
           const SizedBox(height: 12),
           Text(
-            data['content'] ?? "",
+            _postData['content'] ?? "",
             style: TextStyle(
               fontSize: 15,
               color: Colors.grey.shade700,
