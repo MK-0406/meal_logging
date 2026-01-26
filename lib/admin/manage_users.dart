@@ -17,6 +17,8 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
   int activeCount = 0;
 
   late TabController _tabController;
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   @override
   void initState() {
@@ -48,6 +50,7 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
       body: Column(
         children: [
           _buildHeader(),
+          _buildSearchBar(),
           _buildTabBar(),
           Expanded(
             child: TabBarView(
@@ -81,9 +84,37 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchQuery = val),
+        decoration: InputDecoration(
+          hintText: "Search for emails...",
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(icon: const Icon(Icons.close), onPressed: () {
+            _searchController.clear();
+            setState(() => _searchQuery = "");
+          })
+              : null,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabBar() {
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      margin: const EdgeInsets.symmetric(horizontal: 21, vertical: 10),
       height: 45,
       decoration: BoxDecoration(
         color: Colors.white,
@@ -144,6 +175,8 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
           final user = doc.data() as Map<String, dynamic>;
           user['id'] = doc.id;
             return user;
+        }).where((user) {
+          return user['email'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
         }).toList();
 
         if (data.isEmpty) return const Center(child: Text('No users found.'));
@@ -183,8 +216,8 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
               backgroundColor: isBanned ? Colors.red.shade50 : const Color(0xFF42A5F5).withValues(alpha: 0.1),
               child: Icon(isBanned ? Icons.block_rounded : Icons.person_rounded, color: isBanned ? Colors.redAccent : const Color(0xFF1E88E5)),
             ),
-            title: Text(info['name'] ?? user['email'].split('@')[0], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            subtitle: Text(user['email'], style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
+            title: Text(user['email'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            subtitle: Text(info['name'] ?? user['email'].split('@')[0], style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
             trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey.shade300),
           ),
         );
