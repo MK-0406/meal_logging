@@ -187,7 +187,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 validator: (val) {
                   if (val!.isEmpty) return 'Title cannot be empty';
                   return null;
-                }
+                },
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -205,7 +205,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 validator: (val) {
                   if (val!.isEmpty) return 'Content cannot be empty';
                   return null;
-                }
+                },
               ),
             ],
           ),
@@ -222,10 +222,13 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
             ),
             onPressed: () async {
               if (!editKey.currentState!.validate()) return;
-              await FirebaseFirestore.instance.collection('posts').doc(widget.post.id).update({
-                'title': titleCtrl.text.trim(),
-                'content': contentCtrl.text.trim(),
-              });
+              await FirebaseFirestore.instance
+                  .collection('posts')
+                  .doc(widget.post.id)
+                  .update({
+                    'title': titleCtrl.text.trim(),
+                    'content': contentCtrl.text.trim(),
+                  });
               if (!context.mounted) return;
               Navigator.pop(context);
               setState(() {
@@ -235,6 +238,74 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text("Content edited."),
+                  behavior: SnackBarBehavior.floating,
+                ),
+              );
+            },
+            child: const Text("Save Changes"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEditCommentDialog(String postId, String type, String commentId, String currentComment) {
+    final commentCtrl = TextEditingController(text: currentComment);
+    final editKey = GlobalKey<FormState>();
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+        title: const Text(
+          "Edit Comment",
+          style: TextStyle(fontWeight: FontWeight.bold),
+        ),
+        content: Form(
+          key: editKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: commentCtrl,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  label: Text('Comment'),
+                  hintText: "Enter comment...",
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  filled: true,
+                  fillColor: Colors.grey.shade50,
+                ),
+                validator: (val) {
+                  if (val!.isEmpty) return 'Comment cannot be empty';
+                  return null;
+                },
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.red,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () async {
+              if (!editKey.currentState!.validate()) return;
+              await FirebaseFirestore.instance.collection('posts').doc(postId).collection('comments').doc(commentId).update({
+                'text': commentCtrl.text.trim(),
+              });
+              if (!context.mounted) return;
+              Navigator.pop(context);
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text("Comment saved."),
                   behavior: SnackBarBehavior.floating,
                 ),
               );
@@ -606,8 +677,10 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 onSelected: (val) {
                   if (val == 'report') {
                     _showReportDialog(widget.post.id, 'comment', commentId);
-                  } else {
+                  } else if (val == 'delete') {
                     _showDeleteDialog(widget.post.id, 'comment', commentId);
+                  } else if (val == 'edit') {
+                    _showEditCommentDialog(widget.post.id, 'comment', commentId, data['text']);
                   }
                 },
                 itemBuilder: (context) => [
@@ -624,6 +697,15 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                           child: Text(
                             'Delete',
                             style: TextStyle(color: Colors.red, fontSize: 13),
+                          ),
+                        )
+                      : null,
+                  ?(data['authorId'] == FirebaseAuth.instance.currentUser!.uid)
+                      ? const PopupMenuItem(
+                          value: 'edit',
+                          child: Text(
+                            'Edit',
+                            style: TextStyle(color: Colors.black, fontSize: 13),
                           ),
                         )
                       : null,
