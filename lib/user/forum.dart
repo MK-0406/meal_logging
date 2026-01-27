@@ -24,6 +24,8 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
   late TabController _tabController;
   int _itemCount = 5;
   late List<String> _savedPosts = [];
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
 
   @override
   void initState() {
@@ -55,6 +57,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
       body: Column(
         children: [
           _buildHeader(),
+          _buildSearchBar(),
           _buildTabBar(),
           Expanded(
             child: TabBarView(
@@ -114,6 +117,34 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchQuery = val),
+        decoration: InputDecoration(
+          hintText: "Search for post titles...",
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(icon: const Icon(Icons.close), onPressed: () {
+            _searchController.clear();
+            setState(() => _searchQuery = "");
+          })
+              : null,
+        ),
+      ),
+    );
+  }
+
   Widget _buildTabBar() {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
@@ -160,7 +191,13 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
           return _buildEmptyState();
         }
 
-        final posts = snapshot.data!.docs;
+        var posts = snapshot.data!.docs;
+        if (_searchQuery.isNotEmpty) {
+          posts = posts.where((post) =>
+              post['title'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase())).toList();
+        }
+
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           itemCount: posts.length > _itemCount ? _itemCount + 1 : posts.length,
@@ -189,25 +226,30 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
           return _buildEmptyState();
         }
 
-        final posts = snapshot.data!.docs;
+        var posts = snapshot.data!.docs;
+        if (_searchQuery.isNotEmpty) {
+          posts = posts.where((post) =>
+              post['title'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase())).toList();
+        }
+
+        final filteredSavedPosts = [];
+        for (var post in posts) {
+          for (var savedPost in _savedPosts) {
+            if (post.id == savedPost) {
+              filteredSavedPosts.add(post);
+            }
+          }
+        }
+
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          itemCount: _savedPosts.length > _itemCount ? _itemCount + 1 : _savedPosts.length,
+          itemCount: filteredSavedPosts.length > _itemCount ? _itemCount + 1 : filteredSavedPosts.length,
           itemBuilder: (context, index) {
-            if (index == _itemCount && posts.length > _itemCount) {
+            if (index == _itemCount && filteredSavedPosts.length > _itemCount) {
               return _buildLoadMoreButton();
             }
-
-            int idx = 0;
-            if (_savedPosts.isNotEmpty){
-              for (var post in posts) {
-                if (_savedPosts[index] == post.id) {
-                  break;
-                }
-                idx++;
-              }
-            }
-            return _buildPostCard(posts[idx]);
+            return _buildPostCard(filteredSavedPosts[index]);
           },
         );
       },
@@ -229,7 +271,13 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
           return _buildEmptyState();
         }
 
-        final posts = snapshot.data!.docs;
+        var posts = snapshot.data!.docs;
+        if (_searchQuery.isNotEmpty) {
+          posts = posts.where((post) =>
+              post['title'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase())).toList();
+        }
+
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           itemCount: posts.length > _itemCount ? _itemCount + 1 : posts.length,
