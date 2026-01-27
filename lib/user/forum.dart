@@ -23,17 +23,29 @@ class _ForumPage extends StatefulWidget {
 class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _itemCount = 5;
+  late List<String> _savedPosts = [];
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 4, vsync: this);
+    _loadSavedPosts();
   }
 
   @override
   void dispose() {
     _tabController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadSavedPosts() async {
+    final savedDoc = await FirebaseFirestore.instance
+        .collection('saved_posts')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .collection('posts')
+        .where('saved', isEqualTo: true)
+        .get();
+    _savedPosts = savedDoc.docs.map((e) => e.id).toList();
   }
 
   @override
@@ -50,6 +62,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
               children: [
                 _buildPostList('likeCount'), // Trending
                 _buildPostList('createdAt'), // Latest
+                _buildSavedPostList(),
                 _buildMyPostList() // My Posts
               ],
             ),
@@ -124,7 +137,8 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
         tabs: const [
           Tab(text: "Trending"),
           Tab(text: "Latest"),
-          Tab(text: "My Posts"), // add my posts
+          Tab(text: "Saved"),
+          Tab(text: "My Posts"),
         ],
       ),
     );
@@ -161,6 +175,45 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
     );
   }
 
+  Widget _buildSavedPostList() {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('posts')
+          .where('deleted', isEqualTo: false)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+        }
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty || _savedPosts.isEmpty) {
+          return _buildEmptyState();
+        }
+
+        final posts = snapshot.data!.docs;
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          itemCount: _savedPosts.length > _itemCount ? _itemCount + 1 : _savedPosts.length,
+          itemBuilder: (context, index) {
+            if (index == _itemCount && posts.length > _itemCount) {
+              return _buildLoadMoreButton();
+            }
+
+            int idx = 0;
+            if (_savedPosts.isNotEmpty){
+              for (var post in posts) {
+                if (_savedPosts[index] == post.id) {
+                  break;
+                }
+                idx++;
+              }
+            }
+            return _buildPostCard(posts[idx]);
+          },
+        );
+      },
+    );
+  }
+
   Widget _buildPostList(String orderByField) {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -191,7 +244,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
     );
   }
 
-  Widget _buildPostCard(QueryDocumentSnapshot post) {
+  Widget _buildPostCard(QueryDocumentSnapshot post, {bool? isEmpty = false}) {
     final data = post.data() as Map<String, dynamic>;
     final uid = FirebaseAuth.instance.currentUser?.uid;
 
@@ -214,7 +267,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
               BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
             ],
           ),
-          child: ClipRRect(
+          child: isEmpty == true ? const SizedBox.shrink() : ClipRRect(
             borderRadius: BorderRadius.circular(20),
             child: Container(
               decoration: BoxDecoration(
@@ -229,7 +282,18 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
                 onTap: () async {
                   await _markAsRead(post.id);
                   if (context.mounted) {
-                    Navigator.push(context, MaterialPageRoute(builder: (_) => ForumPostDetailPage(post: post)));
+                    bool saved = await Navigator.push(context, MaterialPageRoute(builder: (_) => ForumPostDetailPage(post: post)));
+                    setState(() {
+                      if (saved) {
+                        if (!_savedPosts.contains(post.id)) {
+                          _savedPosts.add(post.id);
+                        }
+                      } else {
+                        if (_savedPosts.contains(post.id)) {
+                          _savedPosts.remove(post.id);
+                        }
+                      }
+                    });
                   }
                 },
                 child: Padding(
