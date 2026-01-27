@@ -22,7 +22,10 @@ class _ForumPage extends StatefulWidget {
 
 class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  int _itemCount = 5;
+  int _savedItemCount = 5;
+  int _trendingItemCount = 5;
+  int _myPostsItemCount = 5;
+  int _latestItemCount = 5;
   late List<String> _savedPosts = [];
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
@@ -200,10 +203,10 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          itemCount: posts.length > _itemCount ? _itemCount + 1 : posts.length,
+          itemCount: posts.length > _myPostsItemCount ? _myPostsItemCount + 1 : posts.length,
           itemBuilder: (context, index) {
-            if (index == _itemCount && posts.length > _itemCount) {
-              return _buildLoadMoreButton();
+            if (index == _myPostsItemCount && posts.length > _myPostsItemCount) {
+              return _buildLoadMoreButton(onPressed: () => _myPostsItemCount += 5);
             }
             return _buildPostCard(posts[index]);
           },
@@ -244,10 +247,10 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          itemCount: filteredSavedPosts.length > _itemCount ? _itemCount + 1 : filteredSavedPosts.length,
+          itemCount: filteredSavedPosts.length > _savedItemCount ? _savedItemCount + 1 : filteredSavedPosts.length,
           itemBuilder: (context, index) {
-            if (index == _itemCount && filteredSavedPosts.length > _itemCount) {
-              return _buildLoadMoreButton();
+            if (index == _savedItemCount && filteredSavedPosts.length > _savedItemCount) {
+              return _buildLoadMoreButton(onPressed: () => setState(() => _savedItemCount += 5));
             }
             return _buildPostCard(filteredSavedPosts[index]);
           },
@@ -257,6 +260,16 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
   }
 
   Widget _buildPostList(String orderByField) {
+    int itemCount = 0;
+    switch (orderByField) {
+      case 'likeCount':
+        itemCount = _trendingItemCount;
+        break;
+      case 'createdAt':
+        itemCount = _latestItemCount;
+        break;
+    }
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('posts')
@@ -280,10 +293,10 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          itemCount: posts.length > _itemCount ? _itemCount + 1 : posts.length,
+          itemCount: posts.length > itemCount ? itemCount + 1 : posts.length,
           itemBuilder: (context, index) {
-            if (index == _itemCount && posts.length > _itemCount) {
-              return _buildLoadMoreButton();
+            if (index == itemCount && posts.length > itemCount) {
+              return _buildLoadMoreButton(onPressed: () => setState(() => orderByField == 'likeCount' ? _trendingItemCount += 5 : _latestItemCount += 5));
             }
             return _buildPostCard(posts[index]);
           },
@@ -458,12 +471,12 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
     );
   }
 
-  Widget _buildLoadMoreButton() {
+  Widget _buildLoadMoreButton({VoidCallback? onPressed}) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Center(
         child: TextButton.icon(
-          onPressed: () => setState(() => _itemCount += 5),
+          onPressed: onPressed,
           icon: const Icon(Icons.expand_more),
           label: const Text("Load more posts", style: TextStyle(fontWeight: FontWeight.bold)),
         ),
