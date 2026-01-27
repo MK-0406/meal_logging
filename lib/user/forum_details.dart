@@ -20,6 +20,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
   String? _replyToId;
   String? _replyToName;
   late final _postData = widget.post.data() as Map<String, dynamic>;
+  bool _saved = false;
 
   void _showReportDialog(String postId, String type, String? commentId) {
     final reasonCtrl = TextEditingController();
@@ -249,7 +250,12 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
     );
   }
 
-  void _showEditCommentDialog(String postId, String type, String commentId, String currentComment) {
+  void _showEditCommentDialog(
+    String postId,
+    String type,
+    String commentId,
+    String currentComment,
+  ) {
     final commentCtrl = TextEditingController(text: currentComment);
     final editKey = GlobalKey<FormState>();
 
@@ -298,9 +304,12 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
             ),
             onPressed: () async {
               if (!editKey.currentState!.validate()) return;
-              await FirebaseFirestore.instance.collection('posts').doc(postId).collection('comments').doc(commentId).update({
-                'text': commentCtrl.text.trim(),
-              });
+              await FirebaseFirestore.instance
+                  .collection('posts')
+                  .doc(postId)
+                  .collection('comments')
+                  .doc(commentId)
+                  .update({'text': commentCtrl.text.trim()});
               if (!context.mounted) return;
               Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
@@ -372,11 +381,11 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
         children: [
           IconButton(
             icon: const Icon(
-              Icons.arrow_back_ios_new,
+              Icons.arrow_back,
               color: Colors.white,
               size: 20,
             ),
-            onPressed: () => Navigator.pop(context),
+            onPressed: () => Navigator.pop(context, _saved),
           ),
           const SizedBox(width: 8),
           const Expanded(
@@ -453,17 +462,22 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
         children: [
           Row(
             children: [
-              CircleAvatar(
-                radius: 20,
-                backgroundColor: Colors.blue.shade50,
-                child: Icon(
-                  Icons.person_rounded,
-                  color: Colors.blue.shade400,
-                  size: 22,
+              Expanded(
+                flex: 1,
+                child: CircleAvatar(
+                  radius: 20,
+                  backgroundColor: Colors.blue.shade50,
+                  child: Icon(
+                    Icons.person_rounded,
+                    color: Colors.blue.shade400,
+                    size: 22,
+                  ),
                 ),
               ),
+
               const SizedBox(width: 12),
               Expanded(
+                flex: 4,
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
@@ -484,7 +498,9 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                   ],
                 ),
               ),
-              _buildLikeButton(),
+              Expanded(flex: 1, child: _buildSaveButton()),
+              const SizedBox(width: 12),
+              Expanded(flex: 1, child: _buildLikeButton()),
             ],
           ),
           const SizedBox(height: 20),
@@ -528,7 +544,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           ),
           child: IconButton(
             icon: Icon(
-              liked ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+              liked ? Icons.favorite_rounded : Icons.favorite,
               color: liked ? Colors.red : Colors.grey,
               size: 24,
             ),
@@ -538,6 +554,48 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                     FirebaseAuth.instance.currentUser!.uid,
                   )
                 : likePost(
+                    widget.post.id,
+                    FirebaseAuth.instance.currentUser!.uid,
+                  ),
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildSaveButton() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection("saved_posts")
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .collection("posts")
+          .doc(widget.post.id)
+          .snapshots(),
+      builder: (context, snapshot) {
+        var saved = snapshot.data?.exists ?? false;
+        if (saved) {
+          final savedData = snapshot.data?.data() as Map<String, dynamic>;
+          saved = savedData['saved'] ?? false;
+        }
+        _saved = saved;
+
+        return Container(
+          decoration: BoxDecoration(
+            color: saved ? Colors.purple.shade50 : Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: IconButton(
+            icon: Icon(
+              saved ? Icons.bookmark : Icons.bookmark_border,
+              color: saved ? Colors.purple : Colors.grey,
+              size: 24,
+            ),
+            onPressed: () => saved
+                ? unsavePost(
+                    widget.post.id,
+                    FirebaseAuth.instance.currentUser!.uid,
+                  )
+                : savePost(
                     widget.post.id,
                     FirebaseAuth.instance.currentUser!.uid,
                   ),
@@ -680,7 +738,12 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                   } else if (val == 'delete') {
                     _showDeleteDialog(widget.post.id, 'comment', commentId);
                   } else if (val == 'edit') {
-                    _showEditCommentDialog(widget.post.id, 'comment', commentId, data['text']);
+                    _showEditCommentDialog(
+                      widget.post.id,
+                      'comment',
+                      commentId,
+                      data['text'],
+                    );
                   }
                 },
                 itemBuilder: (context) => [
@@ -902,6 +965,25 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
     final postRef = FirebaseFirestore.instance.collection('posts').doc(postId);
     await postRef.collection('likes').doc(userId).delete();
     await postRef.update({'likeCount': FieldValue.increment(-1)});
+  }
+
+  Future<void> savePost(String postId, String userId) async {
+    final postRef = FirebaseFirestore.instance
+        .collection('saved_posts')
+        .doc(userId);
+    await postRef.collection('posts').doc(postId).set({
+      'saved': true,
+      'savedAt': FieldValue.serverTimestamp(),
+    });
+    _saved = true;
+  }
+
+  Future<void> unsavePost(String postId, String userId) async {
+    final postRef = FirebaseFirestore.instance
+        .collection('saved_posts')
+        .doc(userId);
+    await postRef.collection('posts').doc(postId).delete();
+    _saved = false;
   }
 
   String timeAgo(dynamic timestamp) {
