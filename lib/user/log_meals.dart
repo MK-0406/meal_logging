@@ -23,7 +23,8 @@ class MealLogPage extends StatefulWidget {
   State<MealLogPage> createState() => _MealLogPageState();
 }
 
-class _MealLogPageState extends State<MealLogPage> {
+class _MealLogPageState extends State<MealLogPage>
+    with SingleTickerProviderStateMixin {
   final TextEditingController _searchController = TextEditingController();
   List<QueryDocumentSnapshot> _allMeals = [];
   List<QueryDocumentSnapshot> _allRandomMeals = [];
@@ -35,6 +36,7 @@ class _MealLogPageState extends State<MealLogPage> {
   bool _isLoading = true;
   bool _isSearching = false;
   final _logFormKey = GlobalKey<FormState>();
+  late TabController _tabController;
 
   Map<String, double> _consumed = {
     'Calories': 0,
@@ -48,11 +50,18 @@ class _MealLogPageState extends State<MealLogPage> {
   @override
   void initState() {
     super.initState();
+    _tabController = TabController(length: 3, vsync: this);
     _loadRandomMeals();
     _loadCustomMeals();
     _loadFavMeals();
     _loadConsumed();
     _sizeController.text = '100';
+  }
+
+  @override
+  void dispose() {
+    super.dispose();
+    _tabController.dispose();
   }
 
   Future<void> _loadConsumed() async {
@@ -141,16 +150,7 @@ class _MealLogPageState extends State<MealLogPage> {
     if (_allFavMeals.isNotEmpty) {
       var shuffled = List<QueryDocumentSnapshot>.from(_allFavMeals)
         ..shuffle(Random());
-      _favMeals = shuffled
-          .where(
-            (meal) =>
-                (meal['foodCategory'] ?? '').toString().contains(
-                  widget.mealType,
-                ) ||
-                (meal['foodCategory'] ?? '').toString().contains('Anytime'),
-          )
-          .take(5)
-          .toList();
+      _favMeals = shuffled.toList();
     } else {
       _favMeals = [];
     }
@@ -170,16 +170,7 @@ class _MealLogPageState extends State<MealLogPage> {
     if (_allCustomMeals.isNotEmpty) {
       var shuffled = List<QueryDocumentSnapshot>.from(_allCustomMeals)
         ..shuffle(Random());
-      _customMeals = shuffled
-          .where(
-            (meal) =>
-                (meal['foodCategory'] ?? '').toString().contains(
-                  widget.mealType,
-                ) ||
-                (meal['foodCategory'] ?? '').toString().contains('Anytime'),
-          )
-          .take(5)
-          .toList();
+      _customMeals = shuffled.toList();
     } else {
       _customMeals = [];
     }
@@ -202,7 +193,7 @@ class _MealLogPageState extends State<MealLogPage> {
                 (meal['foodCategory'] ?? '').toString().contains('Anytime') &&
                     meal['deleted'] == false,
           )
-          .take(5)
+          .take(10)
           .toList();
     }
     setState(() => _isLoading = false);
@@ -249,59 +240,74 @@ class _MealLogPageState extends State<MealLogPage> {
       body: Column(
         children: [
           _buildHeader(),
+          _buildTargetSummary(),
+          _buildSearchBar(),
           Expanded(
-            child: _isLoading
-                ? _buildLoadingState()
-                : ListView(
+            child: _isSearching
+                ? ListView(
                     padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                     children: [
-                      if (widget.nutritionalTargets != null)
-                        _buildTargetSummary(),
                       const SizedBox(height: 20),
-                      _buildSearchBar(),
-                      const SizedBox(height: 24),
-                      if (_isSearching) ...[
-                        _buildSectionHeader(
-                          "Search Results",
-                          "${_displayedMeals.length} found",
+                      _buildSectionHeader(
+                        "Search Results",
+                        "${_displayedMeals.length} found",
+                      ),
+                      const SizedBox(height: 12),
+                      _displayedMeals.isEmpty
+                          ? _buildSearchEmptyState()
+                          : _buildMealList(_displayedMeals),
+                    ],
+                  )
+                : _isLoading
+                ? _buildLoadingState()
+                : Column(
+                    children: [
+                      _buildTabBar(),
+                      Expanded(
+                        child: TabBarView(
+                          controller: _tabController,
+                          children: [
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+                              child: Column(
+                                children: [
+                                  _buildSectionHeader('Recommended For You', 'Based on your needs'),
+                                  const SizedBox(height: 16),
+                                  MealRecommender(
+                                    nutritionalTargets: _calculateBalance(),
+                                    mealType: widget.mealType,
+                                    logDate: widget.logDate,
+                                    onMealLogged: () {
+                                      _loadConsumed(); // Refresh balance dashboard
+                                    },
+                                  ),
+                                ]
+                              )
+                            ),
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+                              child: Column(
+                                children: [
+                                  _buildSectionHeader('Favourite Meals', 'Your favourites'),
+                                  const SizedBox(height: 16),
+                                  _buildMealList(_favMeals),
+                                ]
+                              )
+                            ),
+                            SingleChildScrollView(
+                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+                              child: Column(
+                                children: [
+                                  _buildCustomMealsSection(),
+                                  const SizedBox(height: 16),
+                                  _buildMealList(_customMeals),
+                                ]
+                              )
+                            )
+                          ],
                         ),
-                        const SizedBox(height: 12),
-                        _displayedMeals.isEmpty
-                            ? _buildSearchEmptyState()
-                            : _buildMealList(_displayedMeals),
-                      ] else ...[
-                        _buildSectionHeader(
-                          "Recommended For You",
-                          "Based on your needs",
-                        ),
-                        const SizedBox(height: 12),
-                        MealRecommender(
-                          nutritionalTargets: _calculateBalance(),
-                          mealType: widget.mealType,
-                          logDate: widget.logDate,
-                          onMealLogged: () {
-                            _loadConsumed(); // Refresh balance dashboard
-                          },
-                        ),
-                        const SizedBox(height: 32),
-                        _buildSectionHeader(
-                          "Favourite Meals",
-                          "Your favourites",
-                        ),
-                        const SizedBox(height: 12),
-                        _buildMealList(_favMeals),
-                        const SizedBox(height: 32),
-                        _buildSectionHeader(
-                          "Discover Meals",
-                          "Try something new",
-                        ),
-                        const SizedBox(height: 12),
-                        _buildMealList(_displayedMeals),
-                        const SizedBox(height: 32),
-                        _buildCustomMealsSection(),
-                        const SizedBox(height: 12),
-                        _buildMealList(_customMeals),
-                      ],
+                      ),
+                      const SizedBox(height: 10),
                     ],
                   ),
           ),
@@ -337,7 +343,7 @@ class _MealLogPageState extends State<MealLogPage> {
   Widget _buildHeader() {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 18),
       decoration: const BoxDecoration(
         gradient: LinearGradient(
           colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
@@ -401,12 +407,47 @@ class _MealLogPageState extends State<MealLogPage> {
     );
   }
 
+  Widget _buildTabBar() {
+    return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+      height: 45,
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: TabBar(
+        controller: _tabController,
+        indicator: BoxDecoration(
+          borderRadius: BorderRadius.circular(10),
+          color: const Color(0xFF42A5F5).withValues(alpha: 0.1),
+        ),
+        labelColor: const Color(0xFF1E88E5),
+        unselectedLabelColor: Colors.grey,
+        labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+        indicatorSize: TabBarIndicatorSize.tab,
+        dividerColor: Colors.transparent,
+        tabs: const [
+          Tab(text: "Recommended"),
+          Tab(text: "Favourite"),
+          Tab(text: "Custom"),
+        ],
+      ),
+    );
+  }
+
   Widget _buildTargetSummary() {
     final t = widget.nutritionalTargets;
     if (t == null) return const SizedBox.shrink();
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+      padding: const EdgeInsets.all(15),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(24),
@@ -422,23 +463,12 @@ class _MealLogPageState extends State<MealLogPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              Icon(
-                Icons.track_changes_rounded,
-                color: Colors.orange.shade400,
-                size: 20,
-              ),
-              const SizedBox(width: 8),
               const Text(
-                "Meal Period Balance",
+                "Balance:",
                 style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
               ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
               _miniTarget(
                 'Calories',
                 t['Calories'],
@@ -495,7 +525,7 @@ class _MealLogPageState extends State<MealLogPage> {
           ),
         ),
         Text(
-          "$label Bal",
+          "$label",
           style: TextStyle(
             fontSize: 10,
             color: Colors.grey.shade500,
@@ -512,6 +542,7 @@ class _MealLogPageState extends State<MealLogPage> {
 
   Widget _buildSearchBar() {
     return Container(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
@@ -601,7 +632,7 @@ class _MealLogPageState extends State<MealLogPage> {
                 ),
               ),
             );
-            _loadCustomMeals();
+            //_loadCustomMeals();
           },
           icon: const Icon(Icons.add_circle_outline, size: 18),
           label: const Text(
