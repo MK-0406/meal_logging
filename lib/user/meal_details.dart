@@ -130,10 +130,10 @@ class _MealDetailsPage extends State<MealDetailsPage> {
   Widget _buildLikeButton() {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
+          .collection("fav_meals")
+          .doc(FirebaseAuth.instance.currentUser!.uid)
           .collection("meals")
           .doc(widget.mealId)
-          .collection("likes")
-          .doc(FirebaseAuth.instance.currentUser!.uid)
           .snapshots(),
       builder: (context, snapshot) {
         final liked = snapshot.data?.exists ?? false;
@@ -250,9 +250,9 @@ class _MealDetailsPage extends State<MealDetailsPage> {
 
   Future<void> likeMeal() async {
     final postRef = FirebaseFirestore.instance
-        .collection('meals')
-        .doc(widget.mealId);
-    await postRef.collection('likes').doc(FirebaseAuth.instance.currentUser!.uid).set({
+        .collection('fav_meals')
+        .doc(FirebaseAuth.instance.currentUser!.uid);
+    await postRef.collection('meals').doc(widget.mealId).set({
       'liked': true,
       'createdAt': FieldValue.serverTimestamp(),
     });
@@ -260,8 +260,8 @@ class _MealDetailsPage extends State<MealDetailsPage> {
 
   Future<void> unlikeMeal() async {
     final postRef = FirebaseFirestore.instance
-        .collection('meals')
-        .doc(widget.mealId);
-    await postRef.collection('likes').doc(FirebaseAuth.instance.currentUser!.uid).delete();
+        .collection('fav_meals')
+        .doc(FirebaseAuth.instance.currentUser!.uid);
+    await postRef.collection('meals').doc(widget.mealId).delete();
   }
 }
