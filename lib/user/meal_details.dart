@@ -1,10 +1,18 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-class MealDetailsPage extends StatelessWidget {
+class MealDetailsPage extends StatefulWidget {
   final Map<String, dynamic> data;
+  final String mealId;
 
-  const MealDetailsPage({super.key, required this.data});
+  const MealDetailsPage({super.key, required this.data, required this.mealId});
 
+  @override
+  State<MealDetailsPage> createState() => _MealDetailsPage();
+}
+
+class _MealDetailsPage extends State<MealDetailsPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -79,20 +87,26 @@ class MealDetailsPage extends StatelessWidget {
       child: Column(
         children: [
           Text(
-            data['name'] ?? 'Unnamed Meal',
+            widget.data['name'] ?? 'Unnamed Meal',
             textAlign: TextAlign.center,
             style: const TextStyle(fontSize: 26, fontWeight: FontWeight.bold, color: Color(0xFF2C3E50), height: 1.2),
           ),
           const SizedBox(height: 16),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            alignment: WrapAlignment.center,
+          Row(
+            mainAxisAlignment: widget.data['type'] == null ? MainAxisAlignment.spaceBetween : MainAxisAlignment.center,
             children: [
-              _buildModernChip(data['foodCategory'] ?? 'Unknown', Colors.blue),
-              _buildModernChip(data['foodGroup'] ?? 'General', Colors.orange),
-            ],
-          ),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
+                children: [
+                  _buildModernChip(widget.data['foodCategory'] ?? 'Unknown', Colors.blue),
+                  _buildModernChip(widget.data['foodGroup'] ?? 'General', Colors.orange),
+                ],
+              ),
+              widget.data['type'] == null ? _buildLikeButton() : const SizedBox.shrink(),
+            ]
+          )
         ],
       ),
     );
@@ -113,6 +127,31 @@ class MealDetailsPage extends StatelessWidget {
     );
   }
 
+  Widget _buildLikeButton() {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection("meals")
+          .doc(widget.mealId)
+          .collection("likes")
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final liked = snapshot.data?.exists ?? false;
+        return IconButton(
+          icon: Icon(
+            liked ? Icons.favorite_rounded : Icons.favorite_border,
+            color: liked ? Colors.red : Colors.grey,
+            size: 28,
+          ),
+
+          onPressed: () => liked
+              ? unlikeMeal()
+              : likeMeal(),
+        );
+      },
+    );
+  }
+
   Widget _buildSectionTitle(String title) {
     return Padding(
       padding: const EdgeInsets.only(left: 4),
@@ -126,13 +165,13 @@ class MealDetailsPage extends StatelessWidget {
   Widget _buildQuickNutritionGrid() {
     return Row(
       children: [
-        Expanded(child: _buildMacroCard('🔥', 'Calories', '${data['calorie'] ?? 0}', 'kcal', Colors.orange)),
+        Expanded(child: _buildMacroCard('🔥', 'Calories', '${widget.data['calorie'] ?? 0}', 'kcal', Colors.orange)),
         const SizedBox(width: 12),
-        Expanded(child: _buildMacroCard('🥩', 'Protein', '${data['protein'] ?? 0}', 'g', Colors.blue)),
+        Expanded(child: _buildMacroCard('🥩', 'Protein', '${widget.data['protein'] ?? 0}', 'g', Colors.blue)),
         const SizedBox(width: 12),
-        Expanded(child: _buildMacroCard('🍞', 'Carbs', '${data['carb'] ?? 0}', 'g', Colors.brown)),
+        Expanded(child: _buildMacroCard('🍞', 'Carbs', '${widget.data['carb'] ?? 0}', 'g', Colors.brown)),
         const SizedBox(width: 12),
-        Expanded(child: _buildMacroCard('🥑', 'Fat', '${data['fat'] ?? 0}', 'g', Colors.green)),
+        Expanded(child: _buildMacroCard('🥑', 'Fat', '${widget.data['fat'] ?? 0}', 'g', Colors.green)),
       ],
     );
   }
@@ -168,21 +207,21 @@ class MealDetailsPage extends StatelessWidget {
       ),
       child: Column(
         children: [
-          _nutrientRow("Water", "${data['water'] ?? 0} g", Colors.lightBlue),
+          _nutrientRow("Water", "${widget.data['water'] ?? 0} g", Colors.lightBlue),
           _divider(),
-          _nutrientRow("Fibre", "${data['fibre'] ?? 0} g", Colors.green),
+          _nutrientRow("Fibre", "${widget.data['fibre'] ?? 0} g", Colors.green),
           _divider(),
-          _nutrientRow("Iron", "${data['iron'] ?? 0} mg", Colors.redAccent),
+          _nutrientRow("Iron", "${widget.data['iron'] ?? 0} mg", Colors.redAccent),
           _divider(),
-          _nutrientRow("Calcium", "${data['calcium'] ?? 0} mg", Colors.indigo),
+          _nutrientRow("Calcium", "${widget.data['calcium'] ?? 0} mg", Colors.indigo),
           _divider(),
-          _nutrientRow("Sodium", "${data['sodium'] ?? 0} mg", Colors.blueGrey),
+          _nutrientRow("Sodium", "${widget.data['sodium'] ?? 0} mg", Colors.blueGrey),
           _divider(),
-          _nutrientRow("Potassium", "${data['potassium'] ?? 0} mg", Colors.teal),
+          _nutrientRow("Potassium", "${widget.data['potassium'] ?? 0} mg", Colors.teal),
           _divider(),
-          _nutrientRow("Phosphorus", "${data['phosphorus'] ?? 0} mg", Colors.deepPurple),
+          _nutrientRow("Phosphorus", "${widget.data['phosphorus'] ?? 0} mg", Colors.deepPurple),
           _divider(),
-          _nutrientRow("Ash", "${data['ash'] ?? 0} g", Colors.brown),
+          _nutrientRow("Ash", "${widget.data['ash'] ?? 0} g", Colors.brown),
         ],
       ),
     );
@@ -207,5 +246,22 @@ class MealDetailsPage extends StatelessWidget {
 
   Widget _divider() {
     return Divider(height: 1, thickness: 1, color: Colors.grey.shade100);
+  }
+
+  Future<void> likeMeal() async {
+    final postRef = FirebaseFirestore.instance
+        .collection('meals')
+        .doc(widget.mealId);
+    await postRef.collection('likes').doc(FirebaseAuth.instance.currentUser!.uid).set({
+      'liked': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  Future<void> unlikeMeal() async {
+    final postRef = FirebaseFirestore.instance
+        .collection('meals')
+        .doc(widget.mealId);
+    await postRef.collection('likes').doc(FirebaseAuth.instance.currentUser!.uid).delete();
   }
 }

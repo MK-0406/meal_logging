@@ -1229,7 +1229,7 @@ class _MealDiaryState extends State<MealDiary> {
         if (!mealDoc.exists) {
           mealDoc = await customMealsCol.doc(m['mealID']).get();
         }
-        return {'log': m, 'mealData': mealDoc.exists ? mealDoc.data() : {}};
+        return {'log': m, 'mealData': mealDoc.exists ? mealDoc.data() : {}, 'mealId': mealDoc.id};
       })),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2));
@@ -1254,7 +1254,7 @@ class _MealDiaryState extends State<MealDiary> {
                 border: Border.all(color: Colors.grey.shade100),
               ),
               child: InkWell(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: mealData))),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: mealData, mealId: item['mealId']))),
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.all(12),

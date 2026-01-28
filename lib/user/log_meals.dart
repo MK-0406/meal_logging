@@ -410,7 +410,7 @@ class _MealLogPageState extends State<MealLogPage> {
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: ListTile(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data))),
+        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data, mealId: doc.id))),
         contentPadding: const EdgeInsets.all(7),
         leading: Container(
           margin: const EdgeInsets.only(left: 12),

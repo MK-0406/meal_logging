@@ -590,7 +590,7 @@ class UserMealsList extends StatelessWidget {
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
               child: ListTile(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data))),
+                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data, mealId: docs[i].id,))),
                 title: Text(data['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text("${data['calorie'].toStringAsFixed(0)} kcal per 100g"),
                 trailing: Row(mainAxisSize: MainAxisSize.min, children: [
