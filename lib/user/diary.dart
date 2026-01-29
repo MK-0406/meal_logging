@@ -330,7 +330,7 @@ class _MealDiaryState extends State<MealDiary> {
     if (!hasDinner) missing.add('Dinner');
     if (missing.isEmpty) return;
 
-    Future.delayed(const Duration(milliseconds: 600), () {
+    Future.delayed(const Duration(milliseconds: 100), () {
       if (mounted) {
         if (querySnapshot.docs.isEmpty && selectedDate.day == DateTime.now().day){
           showDialog(
@@ -364,8 +364,12 @@ class _MealDiaryState extends State<MealDiary> {
                 TextButton(
                   onPressed: () async {
                     Navigator.pop(context);
-                    results = await _checkBoundaries({});
-                    calculateRecommendationForEachMealPeriod();
+                    try {
+                      results = await _checkBoundaries({});
+                      calculateRecommendationForEachMealPeriod();
+                    } catch (e) {
+                      return;
+                    }
                     await FirebaseFirestore.instance
                         .collection('recommendations')
                         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -385,7 +389,11 @@ class _MealDiaryState extends State<MealDiary> {
                   ),
                   onPressed: () {
                     Navigator.pop(context);
-                    _previousDay(false);
+                    try {
+                      _previousDay(false);
+                    } catch (e) {
+                      return;
+                    }
                   },
                   child: const Text("Log Now", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
@@ -395,7 +403,7 @@ class _MealDiaryState extends State<MealDiary> {
         } else {
           showDialog(
             context: context,
-            builder: (_) => AlertDialog(
+            builder: (missingContext) => AlertDialog(
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
               title: Row(
                 children: [
@@ -418,11 +426,16 @@ class _MealDiaryState extends State<MealDiary> {
               actions: [
                 TextButton(
                   onPressed: () async {
-                    Navigator.pop(context);
+                    Navigator.pop(missingContext);
+                    try {
+                      results = await _checkBoundaries({});
+                      setState(() {
+                        calculateRecommendationForEachMealPeriod();
+                      });
+                    } catch (e) {
+                      return;
+                    }
                     results = await _checkBoundaries(results);
-                    setState(() {
-                      calculateRecommendationForEachMealPeriod();
-                    });
                     await FirebaseFirestore.instance
                         .collection('recommendations')
                         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -441,8 +454,12 @@ class _MealDiaryState extends State<MealDiary> {
                     elevation: 0,
                   ),
                   onPressed: () {
-                    Navigator.pop(context);
-                    _previousDay(false);
+                    Navigator.pop(missingContext);
+                    try {
+                      _previousDay(false);
+                    } catch (e) {
+                      return;
+                    }
                   },
                   child: const Text("Log Now", style: TextStyle(fontWeight: FontWeight.bold)),
                 ),
