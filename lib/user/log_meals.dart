@@ -34,6 +34,7 @@ class _MealLogPageState extends State<MealLogPage>
   List<QueryDocumentSnapshot> _customMeals = [];
   List<QueryDocumentSnapshot> _favMeals = [];
   bool _isLoading = true;
+  bool _isCalculatingConsumed = true;
   bool _isSearching = false;
   final _logFormKey = GlobalKey<FormState>();
   late TabController _tabController;
@@ -50,17 +51,12 @@ class _MealLogPageState extends State<MealLogPage>
   @override
   void initState() {
     super.initState();
-    setState(() {
-      _isLoading = true;
-    });
     _tabController = TabController(length: 3, vsync: this);
+    _loadConsumed();
+    _loadFavMeals();
     _loadRandomMeals();
     _loadCustomMeals();
-    _loadConsumed();
     _sizeController.text = '100';
-    setState(() {
-      _isLoading = false;
-    });
   }
 
   @override
@@ -70,6 +66,9 @@ class _MealLogPageState extends State<MealLogPage>
   }
 
   Future<void> _loadConsumed() async {
+    setState(() {
+      _isCalculatingConsumed = true;
+    });
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
 
@@ -123,9 +122,15 @@ class _MealLogPageState extends State<MealLogPage>
     } catch (e) {
       debugPrint("Error loading consumed nutrients: $e");
     }
+    setState(() {
+      _isCalculatingConsumed = false;
+    });
   }
 
   Future<void> _loadFavMeals() async {
+    setState(() {
+      _isLoading = true;
+    });
     QuerySnapshot allSnapshot = await FirebaseFirestore.instance
         .collection('meals')
         .where('deleted', isEqualTo: false)
@@ -158,9 +163,15 @@ class _MealLogPageState extends State<MealLogPage>
     } else {
       _favMeals = [];
     }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Future<void> _loadCustomMeals() async {
+    setState(() {
+      _isLoading = true;
+    });
     QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('custom_meal')
         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -176,9 +187,15 @@ class _MealLogPageState extends State<MealLogPage>
     } else {
       _customMeals = [];
     }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   Future<void> _loadRandomMeals() async {
+    setState(() {
+      _isLoading = true;
+    });
     final snapshot = await Database.getSnapshotNoOrder('meals');
     _allRandomMeals = snapshot.docs;
 
@@ -196,6 +213,9 @@ class _MealLogPageState extends State<MealLogPage>
           .take(10)
           .toList();
     }
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   void _searchMeals(String query) {
@@ -257,7 +277,7 @@ class _MealLogPageState extends State<MealLogPage>
                           : _buildMealList(_displayedMeals),
                     ],
                   )
-                : _isLoading
+                : _isLoading || _isCalculatingConsumed
                 ? _buildLoadingState()
                 : Column(
                     children: [
@@ -267,10 +287,18 @@ class _MealLogPageState extends State<MealLogPage>
                           controller: _tabController,
                           children: [
                             SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                16,
+                                16,
+                                30,
+                              ),
                               child: Column(
                                 children: [
-                                  _buildSectionHeader('Recommended For You', 'Based on your needs'),
+                                  _buildSectionHeader(
+                                    'Recommended For You',
+                                    'Based on your needs',
+                                  ),
                                   const SizedBox(height: 16),
                                   MealRecommender(
                                     nutritionalTargets: _calculateBalance(),
@@ -280,29 +308,42 @@ class _MealLogPageState extends State<MealLogPage>
                                       _loadConsumed(); // Refresh balance dashboard
                                     },
                                   ),
-                                ]
-                              )
+                                ],
+                              ),
                             ),
                             SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                16,
+                                16,
+                                30,
+                              ),
                               child: Column(
                                 children: [
-                                  _buildSectionHeader('Favourite Meals', 'Your favourites'),
+                                  _buildSectionHeader(
+                                    'Favourite Meals',
+                                    'Your favourites',
+                                  ),
                                   const SizedBox(height: 16),
                                   _buildMealList(_favMeals),
-                                ]
-                              )
+                                ],
+                              ),
                             ),
                             SingleChildScrollView(
-                              padding: const EdgeInsets.fromLTRB(16, 16, 16, 30),
+                              padding: const EdgeInsets.fromLTRB(
+                                16,
+                                16,
+                                16,
+                                30,
+                              ),
                               child: Column(
                                 children: [
                                   _buildCustomMealsSection(),
                                   const SizedBox(height: 16),
                                   _buildMealList(_customMeals),
-                                ]
-                              )
-                            )
+                                ],
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -395,16 +436,10 @@ class _MealLogPageState extends State<MealLogPage>
               backgroundColor: Colors.white.withValues(alpha: 0.15),
             ),
             onPressed: () {
-              setState(() {
-                _isLoading = true;
-              });
               _loadRandomMeals();
               _loadCustomMeals();
               _loadFavMeals();
               _loadConsumed();
-              setState(() {
-                _isLoading = false;
-              });
             },
           ),
         ],
@@ -680,11 +715,7 @@ class _MealLogPageState extends State<MealLogPage>
               builder: (_) => MealDetailsPage(data: data, mealId: doc.id),
             ),
           );
-          setState(() { _isLoading = true; });
           await _loadFavMeals();
-          setState(() {
-            _isLoading = false;
-          });
         },
         contentPadding: const EdgeInsets.all(7),
         leading: Container(
@@ -1040,12 +1071,6 @@ class _MealLogPageState extends State<MealLogPage>
         backgroundColor: const Color(0xFF1E88E5),
       ),
     );
-    setState(() {
-      _isLoading = true;
-    });
-    _loadConsumed(); // Refresh balance after adding
-    setState(() {
-      _isLoading = false;
-    });
+    await _loadConsumed(); // Refresh balance after adding
   }
 }
