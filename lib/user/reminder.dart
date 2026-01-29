@@ -47,7 +47,6 @@ class MealReminder {
 @pragma('vm:entry-point')
 void alarmCallback() async {
   try {
-    // 1. Initialize Firebase in the background isolate
     WidgetsFlutterBinding.ensureInitialized();
     await Firebase.initializeApp();
 
@@ -70,12 +69,17 @@ void alarmCallback() async {
       final isEarlyWarning = parts[3] == 'early';
 
       if (currentMinute == reminderMinute) {
+        // SKIP if it's an early warning and the meal is already logged
+        if (isEarlyWarning && uid != null) {
+          final isLogged = await _isMealAlreadyLogged(uid, title);
+          if (isLogged) continue; // Don't send early warning if already ate
+        }
+
         final notifications = FlutterLocalNotificationsPlugin();
         const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
         await notifications.initialize(const InitializationSettings(android: androidInit));
 
         if (isEarlyWarning && uid != null) {
-          // logic for 1hr before: fetch targets and 3 recommended meals
           final data = await _getEarlyWarningData(uid, title);
           await notifications.show(
             id,
@@ -98,6 +102,23 @@ void alarmCallback() async {
   }
 }
 
+Future<bool> _isMealAlreadyLogged(String uid, String mealType) async {
+  try {
+    final dateStr = DateFormat('EEEE, dd MMM yyyy').format(DateTime.now());
+    final query = await FirebaseFirestore.instance
+        .collection('mealLogs')
+        .where('uid', isEqualTo: uid)
+        .where('date', isEqualTo: dateStr)
+        .where('mealType', isEqualTo: mealType)
+        .limit(1)
+        .get();
+    
+    return query.docs.isNotEmpty;
+  } catch (e) {
+    return false;
+  }
+}
+
 NotificationDetails _notifDetails() {
   return const NotificationDetails(
     android: AndroidNotificationDetails(
@@ -112,7 +133,6 @@ Future<Map<String, String>> _getEarlyWarningData(String uid, String mealType) as
   try {
     final dateStr = DateFormat('EEEE, dd MMM yyyy').format(DateTime.now());
     
-    // 1. Get Targets from User's personalized recommendations
     final recDoc = await FirebaseFirestore.instance
         .collection('recommendations')
         .doc(uid)
@@ -120,18 +140,18 @@ Future<Map<String, String>> _getEarlyWarningData(String uid, String mealType) as
         .doc(dateStr)
         .get();
         
-    double targetCal = 500, targetP = 30, targetC = 60, targetF = 20;
+    double targetCal = 500, targetP = 30, targetC = 60, targetF = 20; 
     if (recDoc.exists) {
       final t = recDoc.data()!;
       final targets = t[mealType];
-
-      targetCal = (targets['Calories']).toDouble();
-      targetP = (targets['Protein_g']).toDouble();
-      targetC = (targets['Carbs_g']).toDouble();
-      targetF = (targets['Fats_g']).toDouble();
+      if (targets != null) {
+        targetCal = (targets['Calories'] ?? 500).toDouble();
+        targetP = (targets['Protein_g'] ?? 30).toDouble();
+        targetC = (targets['Carbs_g'] ?? 60).toDouble();
+        targetF = (targets['Fats_g'] ?? 20).toDouble();
+      }
     }
 
-    // 2. Get 3 matching meals from the main database
     final mealsSnap = await FirebaseFirestore.instance.collection('meals')
         .where('calorie', isLessThanOrEqualTo: targetCal)
         .limit(30)
@@ -142,8 +162,7 @@ Future<Map<String, String>> _getEarlyWarningData(String uid, String mealType) as
       return (d['protein'] ?? 0) <= targetP && 
              (d['carb'] ?? 0) <= targetC && 
              (d['fat'] ?? 0) <= targetF &&
-              d['foodCategory'].toString().contains(mealType) ||
-              d['foodCategory'].toString().contains('Anytime');
+             (d['foodCategory']?.toString().contains(mealType) == true || d['foodCategory']?.toString().contains('Anytime') == true);
     }).toList()..shuffle();
 
     final recommended = filteredMeals.take(2).map((d) => d.data()['name'].toString()).join(", ");
@@ -394,10 +413,12 @@ class NotificationService {
     existing.clear();
 
     for (int i = 0; i < reminders.length; i++) {
+      final totalMinutes = reminders[i].hour * 60 + reminders[i].minute;
       if (reminders[i].isEnabled) {
-        final totalMinutes = reminders[i].hour * 60 + reminders[i].minute;
         // 1. Normal Reminder
         existing.add('$i|${reminders[i].name}|$totalMinutes|normal');
+      }
+      if (reminders[i].name == 'Breakfast' || reminders[i].name == 'Lunch' || reminders[i].name == 'Dinner'){ //early reminder is for the 3 meal periods only and they must be sent even the switch is closed
         // 2. Early Warning Reminder (1hr before)
         final earlyMinute = totalMinutes - 60;
         if (earlyMinute >= 0) {
