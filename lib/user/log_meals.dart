@@ -50,12 +50,17 @@ class _MealLogPageState extends State<MealLogPage>
   @override
   void initState() {
     super.initState();
+    setState(() {
+      _isLoading = true;
+    });
     _tabController = TabController(length: 3, vsync: this);
     _loadRandomMeals();
     _loadCustomMeals();
-    _loadFavMeals();
     _loadConsumed();
     _sizeController.text = '100';
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   @override
@@ -121,7 +126,6 @@ class _MealLogPageState extends State<MealLogPage>
   }
 
   Future<void> _loadFavMeals() async {
-    setState(() => _isLoading = true);
     QuerySnapshot allSnapshot = await FirebaseFirestore.instance
         .collection('meals')
         .where('deleted', isEqualTo: false)
@@ -154,11 +158,9 @@ class _MealLogPageState extends State<MealLogPage>
     } else {
       _favMeals = [];
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _loadCustomMeals() async {
-    setState(() => _isLoading = true);
     QuerySnapshot snapshot = await FirebaseFirestore.instance
         .collection('custom_meal')
         .doc(FirebaseAuth.instance.currentUser!.uid)
@@ -174,11 +176,9 @@ class _MealLogPageState extends State<MealLogPage>
     } else {
       _customMeals = [];
     }
-    setState(() => _isLoading = false);
   }
 
   Future<void> _loadRandomMeals() async {
-    setState(() => _isLoading = true);
     final snapshot = await Database.getSnapshotNoOrder('meals');
     _allRandomMeals = snapshot.docs;
 
@@ -196,7 +196,6 @@ class _MealLogPageState extends State<MealLogPage>
           .take(10)
           .toList();
     }
-    setState(() => _isLoading = false);
   }
 
   void _searchMeals(String query) {
@@ -396,10 +395,16 @@ class _MealLogPageState extends State<MealLogPage>
               backgroundColor: Colors.white.withValues(alpha: 0.15),
             ),
             onPressed: () {
+              setState(() {
+                _isLoading = true;
+              });
               _loadRandomMeals();
               _loadCustomMeals();
               _loadFavMeals();
               _loadConsumed();
+              setState(() {
+                _isLoading = false;
+              });
             },
           ),
         ],
@@ -525,7 +530,7 @@ class _MealLogPageState extends State<MealLogPage>
           ),
         ),
         Text(
-          "$label",
+          label,
           style: TextStyle(
             fontSize: 10,
             color: Colors.grey.shade500,
@@ -675,7 +680,11 @@ class _MealLogPageState extends State<MealLogPage>
               builder: (_) => MealDetailsPage(data: data, mealId: doc.id),
             ),
           );
+          setState(() { _isLoading = true; });
           await _loadFavMeals();
+          setState(() {
+            _isLoading = false;
+          });
         },
         contentPadding: const EdgeInsets.all(7),
         leading: Container(
@@ -1031,6 +1040,12 @@ class _MealLogPageState extends State<MealLogPage>
         backgroundColor: const Color(0xFF1E88E5),
       ),
     );
+    setState(() {
+      _isLoading = true;
+    });
     _loadConsumed(); // Refresh balance after adding
+    setState(() {
+      _isLoading = false;
+    });
   }
 }
