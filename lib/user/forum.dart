@@ -20,7 +20,8 @@ class _ForumPage extends StatefulWidget {
   State<_ForumPage> createState() => _ForumPageState();
 }
 
-class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMixin {
+class _ForumPageState extends State<_ForumPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _savedItemCount = 5;
   int _trendingItemCount = 5;
@@ -69,7 +70,7 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
                 _buildPostList('likeCount'), // Trending
                 _buildPostList('createdAt'), // Latest
                 _buildSavedPostList(),
-                _buildMyPostList() // My Posts
+                _buildMyPostList(), // My Posts
               ],
             ),
           ),
@@ -78,12 +79,20 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 85),
         child: FloatingActionButton.extended(
-          onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => const CreatePostPage())),
+          onPressed: () => Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const CreatePostPage()),
+          ),
           backgroundColor: const Color(0xFF42A5F5),
           elevation: 4,
           icon: const Icon(Icons.add_comment_rounded, color: Colors.white),
-          label: const Text("New Topic", style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          label: const Text(
+            "New Topic",
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
         ),
       ),
     );
@@ -109,11 +118,20 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
         children: [
           Text(
             "Community",
-            style: TextStyle(color: Colors.white, fontSize: 28, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
           ),
           Text(
             "Share tips, recipes, and success stories",
-            style: TextStyle(color: Colors.white70, fontSize: 14, fontWeight: FontWeight.w500),
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+            ),
           ),
         ],
       ),
@@ -126,22 +144,37 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
         controller: _searchController,
         onChanged: (val) => setState(() => _searchQuery = val),
         decoration: InputDecoration(
-          hintText: "Search for post titles...",
+          hintText: "Search for authors, post titles...",
           hintStyle: TextStyle(color: Colors.grey.shade400),
-          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF42A5F5),
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
           suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(icon: const Icon(Icons.close), onPressed: () {
-            _searchController.clear();
-            setState(() => _searchQuery = "");
-          })
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = "");
+                  },
+                )
               : null,
         ),
       ),
@@ -155,7 +188,12 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+          ),
+        ],
       ),
       child: TabBar(
         controller: _tabController,
@@ -196,17 +234,26 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
         var posts = snapshot.data!.docs;
         if (_searchQuery.isNotEmpty) {
-          posts = posts.where((post) =>
-              post['title'].toString().toLowerCase().contains(
-                  _searchQuery.toLowerCase())).toList();
+          posts = posts
+              .where(
+                (post) => post['title'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ),
+              )
+              .toList();
         }
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          itemCount: posts.length > _myPostsItemCount ? _myPostsItemCount + 1 : posts.length,
+          itemCount: posts.length > _myPostsItemCount
+              ? _myPostsItemCount + 1
+              : posts.length,
           itemBuilder: (context, index) {
-            if (index == _myPostsItemCount && posts.length > _myPostsItemCount) {
-              return _buildLoadMoreButton(onPressed: () => _myPostsItemCount += 5);
+            if (index == _myPostsItemCount &&
+                posts.length > _myPostsItemCount) {
+              return _buildLoadMoreButton(
+                onPressed: () => _myPostsItemCount += 5,
+              );
             }
             return _buildPostCard(posts[index]);
           },
@@ -225,15 +272,25 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator(strokeWidth: 2));
         }
-        if (!snapshot.hasData || snapshot.data!.docs.isEmpty || _savedPosts.isEmpty) {
+        if (!snapshot.hasData ||
+            snapshot.data!.docs.isEmpty ||
+            _savedPosts.isEmpty) {
           return _buildEmptyState();
         }
 
         var posts = snapshot.data!.docs;
         if (_searchQuery.isNotEmpty) {
-          posts = posts.where((post) =>
-              post['title'].toString().toLowerCase().contains(
-                  _searchQuery.toLowerCase())).toList();
+          posts = posts
+              .where(
+                (post) =>
+                    post['title'].toString().toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    post['username'].toString().toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ),
+              )
+              .toList();
         }
 
         final filteredSavedPosts = [];
@@ -247,10 +304,15 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
         return ListView.builder(
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          itemCount: filteredSavedPosts.length > _savedItemCount ? _savedItemCount + 1 : filteredSavedPosts.length,
+          itemCount: filteredSavedPosts.length > _savedItemCount
+              ? _savedItemCount + 1
+              : filteredSavedPosts.length,
           itemBuilder: (context, index) {
-            if (index == _savedItemCount && filteredSavedPosts.length > _savedItemCount) {
-              return _buildLoadMoreButton(onPressed: () => setState(() => _savedItemCount += 5));
+            if (index == _savedItemCount &&
+                filteredSavedPosts.length > _savedItemCount) {
+              return _buildLoadMoreButton(
+                onPressed: () => setState(() => _savedItemCount += 5),
+              );
             }
             return _buildPostCard(filteredSavedPosts[index]);
           },
@@ -286,9 +348,16 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
         var posts = snapshot.data!.docs;
         if (_searchQuery.isNotEmpty) {
-          posts = posts.where((post) =>
-              post['title'].toString().toLowerCase().contains(
-                  _searchQuery.toLowerCase())).toList();
+          posts = posts
+              .where(
+                (post) => post['title'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ||
+                post['username'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ),
+              )
+              .toList();
         }
 
         return ListView.builder(
@@ -296,7 +365,13 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
           itemCount: posts.length > itemCount ? itemCount + 1 : posts.length,
           itemBuilder: (context, index) {
             if (index == itemCount && posts.length > itemCount) {
-              return _buildLoadMoreButton(onPressed: () => setState(() => orderByField == 'likeCount' ? _trendingItemCount += 5 : _latestItemCount += 5));
+              return _buildLoadMoreButton(
+                onPressed: () => setState(
+                  () => orderByField == 'likeCount'
+                      ? _trendingItemCount += 5
+                      : _latestItemCount += 5,
+                ),
+              );
             }
             return _buildPostCard(posts[index]);
           },
@@ -322,117 +397,186 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
         return Container(
           margin: const EdgeInsets.only(bottom: 16),
           decoration: BoxDecoration(
-            color: isRead ? Colors.white : const Color(0xFFE3F2FD).withValues(alpha: 0.3),
+            color: isRead
+                ? Colors.white
+                : const Color(0xFFE3F2FD).withValues(alpha: 0.3),
             borderRadius: BorderRadius.circular(20),
             boxShadow: [
-              BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4)),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
             ],
           ),
-          child: isEmpty == true ? const SizedBox.shrink() : ClipRRect(
-            borderRadius: BorderRadius.circular(20),
-            child: Container(
-              decoration: BoxDecoration(
-                border: Border(
-                  left: BorderSide(
-                    color: isRead ? Colors.transparent : const Color(0xFF1E88E5),
-                    width: 6,
-                  ),
-                ),
-              ),
-              child: InkWell(
-                onTap: () async {
-                  await _markAsRead(post.id);
-                  if (context.mounted) {
-                    bool saved = await Navigator.push(context, MaterialPageRoute(builder: (_) => ForumPostDetailPage(post: post)));
-                    setState(() {
-                      if (saved) {
-                        if (!_savedPosts.contains(post.id)) {
-                          _savedPosts.add(post.id);
+          child: isEmpty == true
+              ? const SizedBox.shrink()
+              : ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        left: BorderSide(
+                          color: isRead
+                              ? Colors.transparent
+                              : const Color(0xFF1E88E5),
+                          width: 6,
+                        ),
+                      ),
+                    ),
+                    child: InkWell(
+                      onTap: () async {
+                        await _markAsRead(post.id);
+                        if (context.mounted) {
+                          bool saved = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => ForumPostDetailPage(post: post),
+                            ),
+                          );
+                          setState(() {
+                            if (saved) {
+                              if (!_savedPosts.contains(post.id)) {
+                                _savedPosts.add(post.id);
+                              }
+                            } else {
+                              if (_savedPosts.contains(post.id)) {
+                                _savedPosts.remove(post.id);
+                              }
+                            }
+                          });
                         }
-                      } else {
-                        if (_savedPosts.contains(post.id)) {
-                          _savedPosts.remove(post.id);
-                        }
-                      }
-                    });
-                  }
-                },
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 18,
-                            backgroundColor: Colors.blue.shade50,
-                            child: Icon(Icons.person_rounded, size: 20, color: Colors.blue.shade400),
-                          ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                      },
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
                               children: [
-                                Text(
-                                  data['username'] ?? "Member",
-                                  style: TextStyle(
-                                    fontWeight: isRead ? FontWeight.w600 : FontWeight.w900, 
-                                    fontSize: 14, 
-                                    color: isRead ? Colors.grey.shade700 : Colors.black87
+                                CircleAvatar(
+                                  radius: 18,
+                                  backgroundColor: Colors.blue.shade50,
+                                  child: Icon(
+                                    Icons.person_rounded,
+                                    size: 20,
+                                    color: Colors.blue.shade400,
                                   ),
                                 ),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment:
+                                        CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        data['username'] ?? "Member",
+                                        style: TextStyle(
+                                          fontWeight: isRead
+                                              ? FontWeight.w600
+                                              : FontWeight.w900,
+                                          fontSize: 14,
+                                          color: isRead
+                                              ? Colors.grey.shade700
+                                              : Colors.black87,
+                                        ),
+                                      ),
+                                      Text(
+                                        _formatTimestamp(data['createdAt']),
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          color: Colors.grey.shade500,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                if (!isRead)
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF1E88E5),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: const Text(
+                                      "NEW",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 8,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 14),
+                            Text(
+                              data['title'] ?? "",
+                              style: TextStyle(
+                                fontWeight: isRead
+                                    ? FontWeight.bold
+                                    : FontWeight.w900,
+                                fontSize: 17,
+                                color: isRead
+                                    ? const Color(0xFF2C3E50)
+                                    : const Color(0xFF0D47A1),
+                                height: 1.2,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              data['content'] ?? "",
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: isRead
+                                    ? Colors.grey.shade600
+                                    : Colors.grey.shade800,
+                                fontSize: 14,
+                                height: 1.4,
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                _buildStat(
+                                  Icons.favorite_rounded,
+                                  data['likeCount']?.toString() ?? "0",
+                                  Colors.red.shade400,
+                                ),
+                                const SizedBox(width: 20),
+                                _buildStat(
+                                  Icons.chat_bubble_rounded,
+                                  data['commentCount']?.toString() ?? "0",
+                                  Colors.blue.shade400,
+                                ),
+                                const Spacer(),
                                 Text(
-                                  _formatTimestamp(data['createdAt']),
-                                  style: TextStyle(fontSize: 11, color: Colors.grey.shade500),
+                                  isRead ? "Read More" : "View Now",
+                                  style: TextStyle(
+                                    color: const Color(0xFF1E88E5),
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 16,
+                                  color: const Color(0xFF1E88E5),
                                 ),
                               ],
                             ),
-                          ),
-                          if (!isRead)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(color: const Color(0xFF1E88E5), borderRadius: BorderRadius.circular(8)),
-                              child: const Text("NEW", style: TextStyle(color: Colors.white, fontSize: 8, fontWeight: FontWeight.bold)),
-                            ),
-                        ],
-                      ),
-                      const SizedBox(height: 14),
-                      Text(
-                        data['title'] ?? "",
-                        style: TextStyle(
-                          fontWeight: isRead ? FontWeight.bold : FontWeight.w900, 
-                          fontSize: 17, 
-                          color: isRead ? const Color(0xFF2C3E50) : const Color(0xFF0D47A1), 
-                          height: 1.2
+                          ],
                         ),
                       ),
-                      const SizedBox(height: 8),
-                      Text(
-                        data['content'] ?? "",
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(color: isRead ? Colors.grey.shade600 : Colors.grey.shade800, fontSize: 14, height: 1.4),
-                      ),
-                      const SizedBox(height: 16),
-                      Row(
-                        children: [
-                          _buildStat(Icons.favorite_rounded, data['likeCount']?.toString() ?? "0", Colors.red.shade400),
-                          const SizedBox(width: 20),
-                          _buildStat(Icons.chat_bubble_rounded, data['commentCount']?.toString() ?? "0", Colors.blue.shade400),
-                          const Spacer(),
-                          Text(isRead ? "Read More" : "View Now", style: TextStyle(color: const Color(0xFF1E88E5), fontSize: 12, fontWeight: FontWeight.bold)),
-                          Icon(Icons.chevron_right_rounded, size: 16, color: const Color(0xFF1E88E5)),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ),
         );
-      }
+      },
     );
   }
 
@@ -452,7 +596,14 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
       children: [
         Icon(icon, size: 16, color: color.withValues(alpha: 0.7)),
         const SizedBox(width: 6),
-        Text(value, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: Colors.black54)),
+        Text(
+          value,
+          style: const TextStyle(
+            fontSize: 13,
+            fontWeight: FontWeight.w600,
+            color: Colors.black54,
+          ),
+        ),
       ],
     );
   }
@@ -464,8 +615,18 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
         children: [
           Icon(Icons.forum_outlined, size: 80, color: Colors.grey.shade200),
           const SizedBox(height: 16),
-          const Text("No discussions yet", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
-          const Text("Be the first to start a conversation!", style: TextStyle(color: Colors.grey)),
+          const Text(
+            "No discussions yet",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.grey,
+            ),
+          ),
+          const Text(
+            "Be the first to start a conversation!",
+            style: TextStyle(color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -478,7 +639,10 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
         child: TextButton.icon(
           onPressed: onPressed,
           icon: const Icon(Icons.expand_more),
-          label: const Text("Load more posts", style: TextStyle(fontWeight: FontWeight.bold)),
+          label: const Text(
+            "Load more posts",
+            style: TextStyle(fontWeight: FontWeight.bold),
+          ),
         ),
       ),
     );
@@ -486,7 +650,9 @@ class _ForumPageState extends State<_ForumPage> with SingleTickerProviderStateMi
 
   String _formatTimestamp(dynamic timestamp) {
     if (timestamp == null) return 'Just now';
-    DateTime dateTime = (timestamp is Timestamp) ? timestamp.toDate() : DateTime.now();
+    DateTime dateTime = (timestamp is Timestamp)
+        ? timestamp.toDate()
+        : DateTime.now();
     final difference = DateTime.now().difference(dateTime);
     if (difference.inMinutes < 60) return '${difference.inMinutes}m ago';
     if (difference.inHours < 24) return '${difference.inHours}h ago';
