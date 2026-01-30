@@ -120,27 +120,45 @@ class _MainDashboardState extends State<_MainDashboard> {
               labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
               destinations: const [
                 NavigationDestination(
-                  selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF42A5F5)),
+                  selectedIcon: Icon(
+                    Icons.home_rounded,
+                    color: Color(0xFF42A5F5),
+                  ),
                   icon: Icon(Icons.home_outlined, color: Colors.grey),
                   label: 'Home',
                 ),
                 NavigationDestination(
-                  selectedIcon: Icon(Icons.people_rounded, color: Color(0xFF42A5F5)),
+                  selectedIcon: Icon(
+                    Icons.people_rounded,
+                    color: Color(0xFF42A5F5),
+                  ),
                   icon: Icon(Icons.people_outline_rounded, color: Colors.grey),
                   label: 'Users',
                 ),
                 NavigationDestination(
-                  selectedIcon: Icon(Icons.admin_panel_settings_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.admin_panel_settings_outlined, color: Colors.grey),
+                  selectedIcon: Icon(
+                    Icons.admin_panel_settings_rounded,
+                    color: Color(0xFF42A5F5),
+                  ),
+                  icon: Icon(
+                    Icons.admin_panel_settings_outlined,
+                    color: Colors.grey,
+                  ),
                   label: 'Admins',
                 ),
                 NavigationDestination(
-                  selectedIcon: Icon(Icons.fastfood_rounded, color: Color(0xFF42A5F5)),
+                  selectedIcon: Icon(
+                    Icons.fastfood_rounded,
+                    color: Color(0xFF42A5F5),
+                  ),
                   icon: Icon(Icons.fastfood_outlined, color: Colors.grey),
                   label: 'Meals',
                 ),
                 NavigationDestination(
-                  selectedIcon: Icon(Icons.report_rounded, color: Color(0xFF42A5F5)),
+                  selectedIcon: Icon(
+                    Icons.report_rounded,
+                    color: Color(0xFF42A5F5),
+                  ),
                   icon: Icon(Icons.report_outlined, color: Colors.grey),
                   label: 'Reports',
                 ),
@@ -158,11 +176,15 @@ class _HomePage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    bool isLoading = false;
     Future<Map<String, int>> getDashboardStats() async {
-      final users = await FirebaseFirestore.instance.collection('users')
+      isLoading = true;
+      final users = await FirebaseFirestore.instance
+          .collection('users')
           .where('role', isEqualTo: 'user')
           .get();
-      final admins = await FirebaseFirestore.instance.collection('users')
+      final admins = await FirebaseFirestore.instance
+          .collection('users')
           .where('role', isEqualTo: 'admin')
           .get();
       final meals = await FirebaseFirestore.instance
@@ -178,6 +200,8 @@ class _HomePage extends StatelessWidget {
           .where('status', isEqualTo: 'pending')
           .get();
 
+      isLoading = false;
+
       return {
         'users': users.docs.length,
         'admins': admins.docs.length,
@@ -192,7 +216,9 @@ class _HomePage extends StatelessWidget {
       child: FutureBuilder<Map<String, int>>(
         future: getDashboardStats(),
         builder: (context, snapshot) {
-          final stats = snapshot.data ?? {'users': 0, 'meals': 0, 'approvals': 0, 'reports': 0};
+          final stats =
+              snapshot.data ??
+              {'users': 0, 'meals': 0, 'approvals': 0, 'reports': 0};
 
           return ListView(
             children: [
@@ -208,49 +234,68 @@ class _HomePage extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    icon: const Icon(Icons.logout_rounded, color: Color(0xFF0D47A1)),
+                    icon: const Icon(
+                      Icons.logout_rounded,
+                      color: Color(0xFF0D47A1),
+                    ),
                     onPressed: () async {
                       await FirebaseAuth.instance.signOut();
-                      if (context.mounted) Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+                      if (context.mounted) {
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(
+                            builder: (_) => const LoginScreen(),
+                          ),
+                        );
+                      }
                     },
                   ),
                 ],
               ),
-              const SizedBox(height: 30),
-              _buildDashboardCard(
-                icon: Icons.person,
-                iconColor: Colors.blue.shade600,
-                title: 'Total Users',
-                value: '${stats['users']}',
-              ),
-              const SizedBox(height: 12),
-              _buildDashboardCard(
-                icon: Icons.admin_panel_settings,
-                iconColor: Colors.green.shade600,
-                title: 'Total Admins',
-                value: '${stats['admins']}',
-              ),
-              const SizedBox(height: 12),
-              _buildDashboardCard(
-                icon: Icons.fastfood,
-                iconColor: Colors.orange.shade600,
-                title: 'Total Meals',
-                value: '${stats['meals']}',
-              ),
-              const SizedBox(height: 12),
-              _buildDashboardCard(
-                icon: Icons.approval,
-                iconColor: Colors.red.shade600,
-                title: 'Pending Admin Approvals',
-                value: '${stats['approvals']}',
-              ),
-              const SizedBox(height: 12),
-              _buildDashboardCard(
-                icon: Icons.report_problem_rounded,
-                iconColor: Colors.purple.shade600,
-                title: 'Total Reports',
-                value: '${stats['reports']}',
-              ),
+              isLoading == true
+                  ? const Center(
+                      heightFactor: 10,
+                      child: CircularProgressIndicator(),
+                    )
+                  : Column(
+                      children: [
+                        const SizedBox(height: 30),
+                        _buildDashboardCard(
+                          icon: Icons.person,
+                          iconColor: Colors.blue.shade600,
+                          title: 'Total Users',
+                          value: '${stats['users']}',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildDashboardCard(
+                          icon: Icons.admin_panel_settings,
+                          iconColor: Colors.green.shade600,
+                          title: 'Total Admins',
+                          value: '${stats['admins']}',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildDashboardCard(
+                          icon: Icons.fastfood,
+                          iconColor: Colors.orange.shade600,
+                          title: 'Total Meals',
+                          value: '${stats['meals']}',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildDashboardCard(
+                          icon: Icons.approval,
+                          iconColor: Colors.red.shade600,
+                          title: 'Pending Admin Approvals',
+                          value: '${stats['approvals']}',
+                        ),
+                        const SizedBox(height: 12),
+                        _buildDashboardCard(
+                          icon: Icons.report_problem_rounded,
+                          iconColor: Colors.purple.shade600,
+                          title: 'Total Reports',
+                          value: '${stats['reports']}',
+                        ),
+                      ],
+                    ),
             ],
           );
         },
@@ -284,10 +329,7 @@ class _HomePage extends StatelessWidget {
         ),
         title: Text(
           title,
-          style: const TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
         ),
         trailing: Text(
           value,
