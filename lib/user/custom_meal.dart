@@ -28,20 +28,25 @@ class CustomMealPage extends StatefulWidget {
     required this.editMeal,
     required this.editRecipe,
     required this.logDate,
-    this.nutritionalTargets,
+    required this.nutritionalTargets,
   });
 
   @override
   State<CustomMealPage> createState() => _CustomMealPageState();
 }
 
-class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProviderStateMixin {
+class _CustomMealPageState extends State<CustomMealPage>
+    with SingleTickerProviderStateMixin {
   late TabController _tabController;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this, initialIndex: widget.initialTabIndex);
+    _tabController = TabController(
+      length: 3,
+      vsync: this,
+      initialIndex: widget.initialTabIndex,
+    );
   }
 
   @override
@@ -66,16 +71,22 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
                   mealId: widget.editMeal ? widget.mealId : null,
                   initialData: widget.editMeal ? widget.initialData : null,
                   logDate: widget.logDate,
+                  nutritionalTargets: widget.nutritionalTargets,
                 ),
                 RecipeForm(
                   defaultCategory: widget.defaultCategory,
                   mealId: widget.editRecipe ? widget.mealId : null,
                   initialData: widget.editRecipe ? widget.initialData : null,
                   logDate: widget.logDate,
+                  nutritionalTargets: widget.nutritionalTargets,
                 ),
                 UserMealsList(
-                  onEdit: (mealId, data) {
-                    int tabIndex = (data['type'] == 'recipe' || data['ingredients'] != null) ? 1 : 0;
+                  onEdit: (mealId, data, nutritionalTargets) {
+                    int tabIndex =
+                        (data['type'] == 'recipe' ||
+                            data['ingredients'] != null)
+                        ? 1
+                        : 0;
                     Navigator.pushReplacement(
                       context,
                       MaterialPageRoute(
@@ -87,10 +98,12 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
                           editMeal: tabIndex == 0,
                           editRecipe: tabIndex == 1,
                           logDate: widget.logDate,
+                          nutritionalTargets: nutritionalTargets,
                         ),
                       ),
                     );
                   },
+                  nutritionalTargets: widget.nutritionalTargets,
                 ),
               ],
             ),
@@ -101,6 +114,7 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
   }
 
   Widget _buildHeader() {
+    print(widget.nutritionalTargets);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 50, 20, 0),
@@ -120,11 +134,19 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
           Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+                icon: const Icon(
+                  Icons.arrow_back_ios_new,
+                  color: Colors.white,
+                  size: 20,
+                ),
                 onPressed: () => Navigator.pushReplacement(
                   context,
                   MaterialPageRoute(
-                    builder: (_) => MealLogPage(mealType: widget.defaultCategory, logDate: widget.logDate, nutritionalTargets: widget.nutritionalTargets),
+                    builder: (_) => MealLogPage(
+                      mealType: widget.defaultCategory,
+                      logDate: widget.logDate,
+                      nutritionalTargets: widget.nutritionalTargets,
+                    ),
                   ),
                 ),
               ),
@@ -132,7 +154,12 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
                 child: Center(
                   child: Text(
                     'Custom Creations',
-                    style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5),
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 24,
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
+                    ),
                   ),
                 ),
               ),
@@ -146,7 +173,10 @@ class _CustomMealPageState extends State<CustomMealPage> with SingleTickerProvid
             indicatorWeight: 3,
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
-            labelStyle: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+            labelStyle: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
+            ),
             dividerColor: Colors.transparent,
             tabs: const [
               Tab(text: 'Quick Meal'),
@@ -166,8 +196,16 @@ class MealForm extends StatefulWidget {
   final String? mealId;
   final Map<String, dynamic>? initialData;
   final String logDate;
+  final Map<String, dynamic>? nutritionalTargets;
 
-  const MealForm({super.key, required this.defaultCategory, this.mealId, this.initialData, required this.logDate});
+  const MealForm({
+    super.key,
+    required this.defaultCategory,
+    this.mealId,
+    this.initialData,
+    required this.logDate,
+    required this.nutritionalTargets,
+  });
 
   @override
   State<MealForm> createState() => _MealFormState();
@@ -188,12 +226,32 @@ class _MealFormState extends State<MealForm> {
   }
 
   void _initControllers() {
-    final fields = ['name', 'calorie', 'protein', 'carb', 'fat', 'fibre', 'water', 'ash', 'calcium', 'iron', 'phosphorus', 'potassium', 'sodium'];
+    final fields = [
+      'name',
+      'calorie',
+      'protein',
+      'carb',
+      'fat',
+      'fibre',
+      'water',
+      'ash',
+      'calcium',
+      'iron',
+      'phosphorus',
+      'potassium',
+      'sodium',
+    ];
     for (var f in fields) {
-      _controllers[f] = TextEditingController(text: widget.initialData?[f]?.toString() ?? '');
+      _controllers[f] = TextEditingController(
+        text: widget.initialData?[f]?.toString() ?? '',
+      );
     }
     _foodGroup = widget.initialData?['foodGroup'];
-    _foodCategory = widget.initialData?['foodCategory'] ?? (widget.defaultCategory == 'Lunch' || widget.defaultCategory == 'Dinner' ? 'Lunch / Dinner' : widget.defaultCategory);
+    _foodCategory =
+        widget.initialData?['foodCategory'] ??
+        (widget.defaultCategory == 'Lunch' || widget.defaultCategory == 'Dinner'
+            ? 'Lunch / Dinner'
+            : widget.defaultCategory);
 
     if (widget.initialData?['servings'] != null) {
       for (var s in widget.initialData!['servings']) {
@@ -242,7 +300,12 @@ class _MealFormState extends State<MealForm> {
         padding: const EdgeInsets.all(20),
         children: [
           _buildSectionCard("Basic Information", [
-            InputTextField(label: 'Meal Name', controller: _controllers['name']!, isNumber: false, isInt: false),
+            InputTextField(
+              label: 'Meal Name',
+              controller: _controllers['name']!,
+              isNumber: false,
+              isInt: false,
+            ),
             const SizedBox(height: 16),
             _buildDropdown("Food Group", _foodGroup, [
               'Cooked Food / Dishes',
@@ -261,7 +324,13 @@ class _MealFormState extends State<MealForm> {
               'Other',
             ], (v) => setState(() => _foodGroup = v)),
             const SizedBox(height: 16),
-            _buildDropdown("Category", _foodCategory, ['Breakfast', 'Lunch / Dinner', 'Snack', 'Dessert', 'Anytime'], (v) => setState(() => _foodCategory = v)),
+            _buildDropdown("Category", _foodCategory, [
+              'Breakfast',
+              'Lunch / Dinner',
+              'Snack',
+              'Dessert',
+              'Anytime',
+            ], (v) => setState(() => _foodCategory = v)),
           ]),
           const SizedBox(height: 24),
           _buildSectionCard("Nutritional Values (per 100g)", [
@@ -269,9 +338,15 @@ class _MealFormState extends State<MealForm> {
           ]),
           const SizedBox(height: 24),
           _buildSectionCard("Portion Options", [
-            ...List.generate(_servingNameControllers.length, (i) => _buildServingRow(i)),
+            ...List.generate(
+              _servingNameControllers.length,
+              (i) => _buildServingRow(i),
+            ),
             TextButton.icon(
-              onPressed: () => setState(() { _servingNameControllers.add(TextEditingController()); _servingGramControllers.add(TextEditingController()); }),
+              onPressed: () => setState(() {
+                _servingNameControllers.add(TextEditingController());
+                _servingGramControllers.add(TextEditingController());
+              }),
               icon: const Icon(Icons.add_circle_outline),
               label: const Text("Add Another Portion"),
             ),
@@ -287,82 +362,188 @@ class _MealFormState extends State<MealForm> {
   Widget _buildSectionCard(String title, List<Widget> children) {
     return Container(
       padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C3E50))),
-        const SizedBox(height: 20),
-        ...children,
-      ]),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+              color: Color(0xFF2C3E50),
+            ),
+          ),
+          const SizedBox(height: 20),
+          ...children,
+        ],
+      ),
     );
   }
 
-  Widget _buildDropdown(String label, String? val, List<String> items, Function(String?) onChanged) {
+  Widget _buildDropdown(
+    String label,
+    String? val,
+    List<String> items,
+    Function(String?) onChanged,
+  ) {
     return DropdownButtonFormField<String>(
       initialValue: val,
-      items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(), 
+      items: items
+          .map((i) => DropdownMenuItem(value: i, child: Text(i)))
+          .toList(),
       onChanged: onChanged,
-      decoration: InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+      ),
       validator: (value) => value == null ? 'Please select a $label' : null,
     );
   }
 
   Widget _buildNutrientGrid() {
-    return Column(children: [
-      _nutrientInputRow('calorie', 'Calories (kcal)', 'water', 'Water (g)'),
-      _nutrientInputRow('protein', 'Protein (g)', 'carb', 'Carbs (g)'),
-      _nutrientInputRow('fat', 'Fat (g)', 'fibre', 'Fibre (g)'),
-      _nutrientInputRow('calcium', 'Calcium (mg)', 'iron', 'Iron (mg)'),
-      _nutrientInputRow('potassium', 'Potassium (mg)', 'sodium', 'Sodium (mg)'),
-      _nutrientInputRow('phosphorus', 'Phosphorus (mg)', 'ash', 'Ash (g)'),
-    ]);
+    return Column(
+      children: [
+        _nutrientInputRow('calorie', 'Calories (kcal)', 'water', 'Water (g)'),
+        _nutrientInputRow('protein', 'Protein (g)', 'carb', 'Carbs (g)'),
+        _nutrientInputRow('fat', 'Fat (g)', 'fibre', 'Fibre (g)'),
+        _nutrientInputRow('calcium', 'Calcium (mg)', 'iron', 'Iron (mg)'),
+        _nutrientInputRow(
+          'potassium',
+          'Potassium (mg)',
+          'sodium',
+          'Sodium (mg)',
+        ),
+        _nutrientInputRow('phosphorus', 'Phosphorus (mg)', 'ash', 'Ash (g)'),
+      ],
+    );
   }
 
   Widget _nutrientInputRow(String f1, String l1, String f2, String l2) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
-      child: Row(children: [
-        Expanded(child: InputTextField(label: l1, controller: _controllers[f1]!, isNumber: true, isInt: false)),
-        const SizedBox(width: 12),
-        Expanded(child: InputTextField(label: l2, controller: _controllers[f2]!, isNumber: true, isInt: false)),
-      ]),
+      child: Row(
+        children: [
+          Expanded(
+            child: InputTextField(
+              label: l1,
+              controller: _controllers[f1]!,
+              isNumber: true,
+              isInt: false,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: InputTextField(
+              label: l2,
+              controller: _controllers[f2]!,
+              isNumber: true,
+              isInt: false,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
   Widget _buildServingRow(int i) {
-    return Padding(padding: const EdgeInsets.only(bottom: 12), child: Row(children: [
-      Expanded(flex: 2, child: TextFormField(
-        controller: _servingNameControllers[i], 
-        decoration: InputDecoration(labelText: 'Size Name', border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
-        validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter size name' : null,
-      )),
-      const SizedBox(width: 10),
-      Expanded(flex: 1, child: TextFormField(
-        controller: _servingGramControllers[i], 
-        keyboardType: TextInputType.number, 
-        decoration: InputDecoration(labelText: 'Grams', border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
-        validator: (v) {
-          if (v == null || v.isEmpty) return 'Enter weight';
-          final n = double.tryParse(v);
-          if (n == null || n <= 0) return 'Invalid';
-          return null;
-        },
-      )),
-    ]));
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: Row(
+        children: [
+          Expanded(
+            flex: 2,
+            child: TextFormField(
+              controller: _servingNameControllers[i],
+              decoration: InputDecoration(
+                labelText: 'Size Name',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              validator: (v) =>
+                  (v == null || v.trim().isEmpty) ? 'Enter size name' : null,
+            ),
+          ),
+          const SizedBox(width: 10),
+          Expanded(
+            flex: 1,
+            child: TextFormField(
+              controller: _servingGramControllers[i],
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: 'Grams',
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(15),
+                ),
+              ),
+              validator: (v) {
+                if (v == null || v.isEmpty) return 'Enter weight';
+                final n = double.tryParse(v);
+                if (n == null || n <= 0) return 'Invalid';
+                return null;
+              },
+            ),
+          ),
+        ],
+      ),
+    );
   }
 
   Widget _buildActionButtons(VoidCallback onSave) {
-    return Row(mainAxisAlignment: MainAxisAlignment.spaceEvenly, children: [
-      Expanded(child: OutlinedButton(onPressed: _clearAll, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: const Text("Clear Fields"))),
-      const SizedBox(width: 16),
-      Expanded(child: ElevatedButton(onPressed: onSave, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: const Text("Save Meal", style: TextStyle(fontWeight: FontWeight.bold)))),
-    ]);
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      children: [
+        Expanded(
+          child: OutlinedButton(
+            onPressed: _clearAll,
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Text("Clear Fields"),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton(
+            onPressed: onSave,
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF42A5F5),
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+            ),
+            child: const Text(
+              "Save Meal",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+          ),
+        ),
+      ],
+    );
   }
 
   Future<void> _saveMeal() async {
     if (!_mealFormKey.currentState!.validate()) return;
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final mealData = {
-      'type': 'meal', 'deleted': false, 'name': _controllers['name']!.text.trim(),
+      'type': 'meal',
+      'deleted': false,
+      'name': _controllers['name']!.text.trim(),
       'calorie': toFixed(double.parse(_controllers['calorie']!.text), 1),
       'protein': toFixed(double.parse(_controllers['protein']!.text), 1),
       'carb': toFixed(double.parse(_controllers['carb']!.text), 1),
@@ -375,8 +556,16 @@ class _MealFormState extends State<MealForm> {
       'phosphorus': toFixed(double.parse(_controllers['phosphorus']!.text), 1),
       'potassium': toFixed(double.parse(_controllers['potassium']!.text), 1),
       'sodium': toFixed(double.parse(_controllers['sodium']!.text), 1),
-      'foodGroup': _foodGroup, 'foodCategory': _foodCategory, 'updatedAt': FieldValue.serverTimestamp(),
-      'servings': List.generate(_servingNameControllers.length, (i) => {'name': _servingNameControllers[i].text, 'grams': _servingGramControllers[i].text})
+      'foodGroup': _foodGroup,
+      'foodCategory': _foodCategory,
+      'updatedAt': FieldValue.serverTimestamp(),
+      'servings': List.generate(
+        _servingNameControllers.length,
+        (i) => {
+          'name': _servingNameControllers[i].text,
+          'grams': _servingGramControllers[i].text,
+        },
+      ),
     };
     if (widget.mealId != null) {
       await FirebaseFirestore.instance
@@ -385,10 +574,28 @@ class _MealFormState extends State<MealForm> {
           .collection('meals')
           .doc(widget.mealId)
           .update(mealData);
+    } else {
+      mealData['createdAt'] = FieldValue.serverTimestamp();
+      await FirebaseFirestore.instance
+          .collection('custom_meal')
+          .doc(uid)
+          .collection('meals')
+          .add(mealData);
     }
-    else { mealData['createdAt'] = FieldValue.serverTimestamp(); await FirebaseFirestore.instance.collection('custom_meal').doc(uid).collection('meals').add(mealData); }
     if (!mounted) return;
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CustomMealPage(defaultCategory: widget.defaultCategory, initialTabIndex: 2, editMeal: false, editRecipe: false, logDate: widget.logDate)));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomMealPage(
+          defaultCategory: widget.defaultCategory,
+          initialTabIndex: 2,
+          editMeal: false,
+          editRecipe: false,
+          logDate: widget.logDate,
+          nutritionalTargets: widget.nutritionalTargets,
+        ),
+      ),
+    );
   }
 }
 
@@ -397,8 +604,16 @@ class RecipeForm extends StatefulWidget {
   final String? mealId;
   final Map<String, dynamic>? initialData;
   final String logDate;
+  final Map<String, dynamic>? nutritionalTargets;
 
-  const RecipeForm({super.key, required this.defaultCategory, this.mealId, this.initialData, required this.logDate});
+  const RecipeForm({
+    super.key,
+    required this.defaultCategory,
+    this.mealId,
+    this.initialData,
+    required this.logDate,
+    required this.nutritionalTargets,
+  });
 
   @override
   State<RecipeForm> createState() => _RecipeFormState();
@@ -408,7 +623,9 @@ class _RecipeFormState extends State<RecipeForm> {
   final _recipeFormKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _servingNameController = TextEditingController();
-  final TextEditingController _totalGramsController = TextEditingController(text: "0");
+  final TextEditingController _totalGramsController = TextEditingController(
+    text: "0",
+  );
   final List<Map<String, dynamic>> _ingredients = [];
   String? _foodCategory;
   String? _foodGroup;
@@ -418,13 +635,22 @@ class _RecipeFormState extends State<RecipeForm> {
     super.initState();
     if (widget.initialData != null) {
       _nameController.text = widget.initialData!['name'] ?? '';
-      _servingNameController.text = widget.initialData!['servings']?[0]?['name'] ?? '';
-      _totalGramsController.text = (widget.initialData!['servings']?[0]?['grams'] ?? "0").toString();
+      _servingNameController.text =
+          widget.initialData!['servings']?[0]?['name'] ?? '';
+      _totalGramsController.text =
+          (widget.initialData!['servings']?[0]?['grams'] ?? "0").toString();
       _foodCategory = widget.initialData!['foodCategory'];
       _foodGroup = widget.initialData!['foodGroup'];
-      if (widget.initialData!['ingredients'] != null) _ingredients.addAll(List<Map<String, dynamic>>.from(widget.initialData!['ingredients']));
+      if (widget.initialData!['ingredients'] != null)
+        _ingredients.addAll(
+          List<Map<String, dynamic>>.from(widget.initialData!['ingredients']),
+        );
     } else {
-      _foodCategory = widget.defaultCategory == 'Lunch' || widget.defaultCategory == 'Dinner' ? 'Lunch / Dinner' : widget.defaultCategory;
+      _foodCategory =
+          widget.defaultCategory == 'Lunch' ||
+              widget.defaultCategory == 'Dinner'
+          ? 'Lunch / Dinner'
+          : widget.defaultCategory;
     }
   }
 
@@ -448,86 +674,212 @@ class _RecipeFormState extends State<RecipeForm> {
         children: [
           Container(
             padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(24), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              TextFormField(
-                controller: _nameController, 
-                decoration: InputDecoration(labelText: "Recipe Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
-                validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter recipe name' : null,
-              ),
-              const SizedBox(height: 16),
-              _buildDropdown("Food Group", _foodGroup, [
-                'Cooked Food / Dishes',
-                'Ingredients / Raw Foods',
-                'Vegetables',
-                'Processed Foods',
-                'Snacks',
-                'Beverages',
-                'Condiments / Sauces',
-                'Fast Food',
-                'Desserts / Sweets',
-                'Soups / Stews',
-                'Salads / Cold Dishes',
-                'Fish and shellfish',
-                'Fruits',
-                'Other',
-              ], (v) => setState(() => _foodGroup = v)),
-              const SizedBox(height: 16),
-              _buildDropdown("Category", _foodCategory, ['Breakfast', 'Lunch / Dinner', 'Snack', 'Dessert', 'Anytime'], (v) => setState(() => _foodCategory = v)),
-              const SizedBox(height: 16),
-              Row(children: [
-                Expanded(child: TextFormField(
-                  controller: _servingNameController, 
-                  decoration: InputDecoration(labelText: "Serving Size Name", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
-                  validator: (v) => (v == null || v.trim().isEmpty) ? 'Enter size name' : null,
-                )),
-                const SizedBox(width: 12),
-                Expanded(child: TextFormField(controller: _totalGramsController, readOnly: true, decoration: InputDecoration(labelText: "Total Grams", border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))))),
-              ]),
-              const SizedBox(height: 20),
-              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                const Text("Ingredients", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-                IconButton(onPressed: _addIngredient, icon: const Icon(Icons.add_circle, color: Color(0xFF42A5F5), size: 30)),
-              ]),
-              const SizedBox(height: 10),
-              if (_ingredients.isEmpty) Center(child: Text("No ingredients added", style: TextStyle(color: Colors.grey.shade400, fontSize: 13))),
-              ..._ingredients.asMap().entries.map((e) => ListTile(
-                title: Text(e.value['name']), subtitle: Text("${e.value['quantity']}g"),
-                trailing: IconButton(icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent), onPressed: () => setState(() {
-                  final grams = double.parse(_totalGramsController.text);
-                  _totalGramsController.text = (grams - e.value['quantity']).toStringAsFixed(1);
-                  _ingredients.removeAt(e.key);
-                })),
-              )),
-            ]),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.02),
+                  blurRadius: 10,
+                ),
+              ],
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TextFormField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: "Recipe Name",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                  ),
+                  validator: (v) => (v == null || v.trim().isEmpty)
+                      ? 'Enter recipe name'
+                      : null,
+                ),
+                const SizedBox(height: 16),
+                _buildDropdown("Food Group", _foodGroup, [
+                  'Cooked Food / Dishes',
+                  'Ingredients / Raw Foods',
+                  'Vegetables',
+                  'Processed Foods',
+                  'Snacks',
+                  'Beverages',
+                  'Condiments / Sauces',
+                  'Fast Food',
+                  'Desserts / Sweets',
+                  'Soups / Stews',
+                  'Salads / Cold Dishes',
+                  'Fish and shellfish',
+                  'Fruits',
+                  'Other',
+                ], (v) => setState(() => _foodGroup = v)),
+                const SizedBox(height: 16),
+                _buildDropdown("Category", _foodCategory, [
+                  'Breakfast',
+                  'Lunch / Dinner',
+                  'Snack',
+                  'Dessert',
+                  'Anytime',
+                ], (v) => setState(() => _foodCategory = v)),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: TextFormField(
+                        controller: _servingNameController,
+                        decoration: InputDecoration(
+                          labelText: "Serving Size Name",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                        validator: (v) => (v == null || v.trim().isEmpty)
+                            ? 'Enter size name'
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: TextFormField(
+                        controller: _totalGramsController,
+                        readOnly: true,
+                        decoration: InputDecoration(
+                          labelText: "Total Grams",
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      "Ingredients",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: _addIngredient,
+                      icon: const Icon(
+                        Icons.add_circle,
+                        color: Color(0xFF42A5F5),
+                        size: 30,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                if (_ingredients.isEmpty)
+                  Center(
+                    child: Text(
+                      "No ingredients added",
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ..._ingredients.asMap().entries.map(
+                  (e) => ListTile(
+                    title: Text(e.value['name']),
+                    subtitle: Text("${e.value['quantity']}g"),
+                    trailing: IconButton(
+                      icon: const Icon(
+                        Icons.remove_circle_outline,
+                        color: Colors.redAccent,
+                      ),
+                      onPressed: () => setState(() {
+                        final grams = double.parse(_totalGramsController.text);
+                        _totalGramsController.text =
+                            (grams - e.value['quantity']).toStringAsFixed(1);
+                        _ingredients.removeAt(e.key);
+                      }),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
           const SizedBox(height: 32),
-          Row(children: [
-            Expanded(child: OutlinedButton(onPressed: _clearAll, style: OutlinedButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: const Text("Clear Fields"))),
-            const SizedBox(width: 16),
-            Expanded(child: ElevatedButton(onPressed: _saveRecipe, style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFF42A5F5), foregroundColor: Colors.white, padding: const EdgeInsets.symmetric(vertical: 16), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))), child: const Text("Save Recipe", style: TextStyle(fontWeight: FontWeight.bold)))),
-          ]),
+          Row(
+            children: [
+              Expanded(
+                child: OutlinedButton(
+                  onPressed: _clearAll,
+                  style: OutlinedButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text("Clear Fields"),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: _saveRecipe,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF42A5F5),
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                  ),
+                  child: const Text(
+                    "Save Recipe",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildDropdown(String label, String? val, List<String> items, Function(String?) onChanged) {
+  Widget _buildDropdown(
+    String label,
+    String? val,
+    List<String> items,
+    Function(String?) onChanged,
+  ) {
     return DropdownButtonFormField<String>(
-      initialValue: val, items: items.map((i) => DropdownMenuItem(value: i, child: Text(i))).toList(), onChanged: onChanged,
-      decoration: InputDecoration(labelText: label, border: OutlineInputBorder(borderRadius: BorderRadius.circular(15))),
+      initialValue: val,
+      items: items
+          .map((i) => DropdownMenuItem(value: i, child: Text(i)))
+          .toList(),
+      onChanged: onChanged,
+      decoration: InputDecoration(
+        labelText: label,
+        border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+      ),
       validator: (value) => value == null ? 'Please select a $label' : null,
     );
   }
 
   void _addIngredient() async {
-    final result = await Navigator.push<Map<String, dynamic>>(context, MaterialPageRoute(builder: (context) => const IngredientPickerPage()));
+    final result = await Navigator.push<Map<String, dynamic>>(
+      context,
+      MaterialPageRoute(builder: (context) => const IngredientPickerPage()),
+    );
     if (result != null) {
       setState(() {
         _ingredients.add(result);
         final grams = double.parse(_totalGramsController.text);
-        _totalGramsController.text =
-            (grams + result['quantity']).toStringAsFixed(1);
+        _totalGramsController.text = (grams + result['quantity'])
+            .toStringAsFixed(1);
       });
     }
   }
@@ -535,23 +887,69 @@ class _RecipeFormState extends State<RecipeForm> {
   Future<void> _saveRecipe() async {
     if (!_recipeFormKey.currentState!.validate()) return;
     if (_ingredients.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Add at least one ingredient")));
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Add at least one ingredient")),
+      );
       return;
     }
-    
-    double totalCalories = 0, totalWater = 0, totalProtein = 0, totalCarbs = 0, totalFat = 0, totalFibre = 0, totalAsh = 0, totalCalcium = 0, totalIron = 0, totalPhosphorus = 0, totalPotassium = 0, totalSodium = 0;
+
+    double totalCalories = 0,
+        totalWater = 0,
+        totalProtein = 0,
+        totalCarbs = 0,
+        totalFat = 0,
+        totalFibre = 0,
+        totalAsh = 0,
+        totalCalcium = 0,
+        totalIron = 0,
+        totalPhosphorus = 0,
+        totalPotassium = 0,
+        totalSodium = 0;
 
     for (final i in _ingredients) {
       final factor = i['quantity'] / 100;
-      totalCalories += i['calorie'] * factor; totalWater += i['water'] * factor; totalProtein += i['protein'] * factor; totalCarbs += i['carb'] * factor; totalFat += i['fat'] * factor; totalFibre += i['fibre'] * factor; totalAsh += i['ash'] * factor; totalCalcium += i['calcium'] * factor; totalIron += i['iron'] * factor; totalPhosphorus += i['phosphorus'] * factor; totalPotassium += i['potassium'] * factor; totalSodium += i['sodium'] * factor;
+      totalCalories += i['calorie'] * factor;
+      totalWater += i['water'] * factor;
+      totalProtein += i['protein'] * factor;
+      totalCarbs += i['carb'] * factor;
+      totalFat += i['fat'] * factor;
+      totalFibre += i['fibre'] * factor;
+      totalAsh += i['ash'] * factor;
+      totalCalcium += i['calcium'] * factor;
+      totalIron += i['iron'] * factor;
+      totalPhosphorus += i['phosphorus'] * factor;
+      totalPotassium += i['potassium'] * factor;
+      totalSodium += i['sodium'] * factor;
     }
 
     final factor = 100 / double.parse(_totalGramsController.text);
     final uid = FirebaseAuth.instance.currentUser!.uid;
     final recipeData = {
-      'type': 'recipe', 'deleted': false, 'name': _nameController.text.trim(), 'foodCategory': _foodCategory ?? 'Anytime', 'foodGroup': _foodGroup ?? 'Cooked Food / Dishes',
-      'calorie': toFixed((totalCalories * factor), 1), 'water': toFixed((totalWater * factor), 1), 'protein': toFixed((totalProtein * factor), 1), 'carb': toFixed((totalCarbs * factor), 1), 'fat': toFixed((totalFat * factor), 1), 'fibre': toFixed((totalFibre * factor), 1), 'ash': toFixed((totalAsh * factor), 1), 'calcium': toFixed((totalCalcium * factor), 1), 'iron': toFixed((totalIron * factor), 1), 'phosphorus': toFixed((totalPhosphorus * factor), 1), 'potassium': toFixed((totalPotassium * factor), 1), 'sodium': toFixed((totalSodium * factor), 1),
-      'servings': [{'name': _servingNameController.text.trim(), 'grams': _totalGramsController.text}], 'ingredients': _ingredients, 'updatedAt': FieldValue.serverTimestamp(),
+      'type': 'recipe',
+      'deleted': false,
+      'name': _nameController.text.trim(),
+      'foodCategory': _foodCategory ?? 'Anytime',
+      'foodGroup': _foodGroup ?? 'Cooked Food / Dishes',
+      'calorie': toFixed((totalCalories * factor), 1),
+      'water': toFixed((totalWater * factor), 1),
+      'protein': toFixed((totalProtein * factor), 1),
+      'carb': toFixed((totalCarbs * factor), 1),
+      'fat': toFixed((totalFat * factor), 1),
+      'fibre': toFixed((totalFibre * factor), 1),
+      'ash': toFixed((totalAsh * factor), 1),
+      'calcium': toFixed((totalCalcium * factor), 1),
+      'iron': toFixed((totalIron * factor), 1),
+      'phosphorus': toFixed((totalPhosphorus * factor), 1),
+      'potassium': toFixed((totalPotassium * factor), 1),
+      'sodium': toFixed((totalSodium * factor), 1),
+      'servings': [
+        {
+          'name': _servingNameController.text.trim(),
+          'grams': _totalGramsController.text,
+        },
+      ],
+      'ingredients': _ingredients,
+      'updatedAt': FieldValue.serverTimestamp(),
     };
 
     if (widget.mealId != null) {
@@ -561,26 +959,68 @@ class _RecipeFormState extends State<RecipeForm> {
           .collection('meals')
           .doc(widget.mealId)
           .update(recipeData);
+    } else {
+      recipeData['createdAt'] = FieldValue.serverTimestamp();
+      await FirebaseFirestore.instance
+          .collection('custom_meal')
+          .doc(uid)
+          .collection('meals')
+          .add(recipeData);
     }
-    else { recipeData['createdAt'] = FieldValue.serverTimestamp(); await FirebaseFirestore.instance.collection('custom_meal').doc(uid).collection('meals').add(recipeData); }
     if (!mounted) return;
-    Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => CustomMealPage(defaultCategory: widget.defaultCategory, initialTabIndex: 2, editMeal: false, editRecipe: false, logDate: widget.logDate)));
+    Navigator.pushReplacement(
+      context,
+      MaterialPageRoute(
+        builder: (_) => CustomMealPage(
+          defaultCategory: widget.defaultCategory,
+          initialTabIndex: 2,
+          editMeal: false,
+          editRecipe: false,
+          logDate: widget.logDate,
+          nutritionalTargets: widget.nutritionalTargets,
+        ),
+      ),
+    );
   }
 }
 
 class UserMealsList extends StatelessWidget {
-  final Function(String, Map<String, dynamic>) onEdit;
-  const UserMealsList({super.key, required this.onEdit});
+  final Function(String, Map<String, dynamic>, Map<String, dynamic>?) onEdit;
+  final Map<String, dynamic>? nutritionalTargets;
+  const UserMealsList({
+    super.key,
+    required this.onEdit,
+    required this.nutritionalTargets,
+  });
 
   @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance.collection('custom_meal').doc(uid).collection('meals').where('deleted', isEqualTo: false).orderBy('updatedAt', descending: true).snapshots(),
+      stream: FirebaseFirestore.instance
+          .collection('custom_meal')
+          .doc(uid)
+          .collection('meals')
+          .where('deleted', isEqualTo: false)
+          .orderBy('updatedAt', descending: true)
+          .snapshots(),
       builder: (context, snapshot) {
-        if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
+        if (!snapshot.hasData) {
+          return const Center(child: CircularProgressIndicator());
+        }
         final docs = snapshot.data!.docs;
-        if (docs.isEmpty) return const Center(child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(Icons.restaurant_menu, size: 64, color: Colors.grey), SizedBox(height: 16), Text("No custom meals yet")]));
+        if (docs.isEmpty) {
+          return const Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text("No custom meals yet"),
+              ],
+            ),
+          );
+        }
         return ListView.builder(
           padding: const EdgeInsets.all(20),
           itemCount: docs.length,
@@ -588,15 +1028,47 @@ class UserMealsList extends StatelessWidget {
             final data = docs[i].data() as Map<String, dynamic>;
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(20), boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10)]),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 10,
+                  ),
+                ],
+              ),
               child: ListTile(
-                onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data, mealId: docs[i].id,))),
-                title: Text(data['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-                subtitle: Text("${data['calorie'].toStringAsFixed(0)} kcal per 100g"),
-                trailing: Row(mainAxisSize: MainAxisSize.min, children: [
-                  IconButton(onPressed: () => onEdit(docs[i].id, data), icon: const Icon(Icons.edit_outlined, color: Colors.blue)),
-                  IconButton(onPressed: () => _delete(context, docs[i].id, uid), icon: const Icon(Icons.delete_outline, color: Colors.redAccent)),
-                ]),
+                onTap: () => Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (_) =>
+                        MealDetailsPage(data: data, mealId: docs[i].id),
+                  ),
+                ),
+                title: Text(
+                  data['name'],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                subtitle: Text(
+                  "${data['calorie'].toStringAsFixed(0)} kcal per 100g",
+                ),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    IconButton(
+                      onPressed: () => onEdit(docs[i].id, data, nutritionalTargets),
+                      icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                    ),
+                    IconButton(
+                      onPressed: () => _delete(context, docs[i].id, uid),
+                      icon: const Icon(
+                        Icons.delete_outline,
+                        color: Colors.redAccent,
+                      ),
+                    ),
+                  ],
+                ),
               ),
             );
           },
@@ -606,14 +1078,38 @@ class UserMealsList extends StatelessWidget {
   }
 
   void _delete(BuildContext context, String id, String uid) async {
-    final confirm = await showDialog<bool>(context: context, builder: (ctx) => AlertDialog(title: const Text("Delete?"), content: const Text("Remove this meal permanently?"), actions: [TextButton(onPressed: () => Navigator.pop(ctx, false), child: const Text("Cancel")), TextButton(onPressed: () => Navigator.pop(ctx, true), child: const Text("Delete", style: TextStyle(color: Colors.red)))]));
-    if (confirm == true) await FirebaseFirestore.instance.collection('custom_meal').doc(uid).collection('meals').doc(id).update({'deleted': true, 'updatedAt': FieldValue.serverTimestamp()});
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text("Delete?"),
+        content: const Text("Remove this meal permanently?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text("Cancel"),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text("Delete", style: TextStyle(color: Colors.red)),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true) {
+      await FirebaseFirestore.instance
+          .collection('custom_meal')
+          .doc(uid)
+          .collection('meals')
+          .doc(id)
+          .update({'deleted': true, 'updatedAt': FieldValue.serverTimestamp()});
+    }
   }
 }
 
 class IngredientPickerPage extends StatefulWidget {
   const IngredientPickerPage({super.key});
-  @override State<IngredientPickerPage> createState() => _IngredientPickerPageState();
+  @override
+  State<IngredientPickerPage> createState() => _IngredientPickerPageState();
 }
 
 class _IngredientPickerPageState extends State<IngredientPickerPage> {
@@ -631,8 +1127,16 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
   }
 
   void _loadIngredients() async {
-    final s = await FirebaseFirestore.instance.collection('meals').where('foodCategory', isEqualTo: 'Not Applicable').orderBy('name').get();
-    setState(() { _allIngredients = s.docs; _filteredIngredients = s.docs; _isLoading = false; });
+    final s = await FirebaseFirestore.instance
+        .collection('meals')
+        .where('foodCategory', isEqualTo: 'Not Applicable')
+        .orderBy('name')
+        .get();
+    setState(() {
+      _allIngredients = s.docs;
+      _filteredIngredients = s.docs;
+      _isLoading = false;
+    });
   }
 
   void _filter() {
@@ -641,7 +1145,8 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
       _filteredIngredients = _allIngredients.where((doc) {
         final data = doc.data() as Map<String, dynamic>;
         final matchesSearch = data['name'].toString().toLowerCase().contains(q);
-        final matchesFilter = _selectedFilter == 'All' || data['foodGroup'] == _selectedFilter;
+        final matchesFilter =
+            _selectedFilter == 'All' || data['foodGroup'] == _selectedFilter;
         return matchesSearch && matchesFilter;
       }).toList();
     });
@@ -651,36 +1156,99 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FBFF),
-      body: Column(children: [
-        Container(
-          width: double.infinity, padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
-          decoration: const BoxDecoration(gradient: LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]), borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32))),
-          child: Column(children: [
-            Row(children: [
-              IconButton(icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20), onPressed: () => Navigator.pop(context)),
-              const Expanded(child: Center(child: Text("Select Ingredient", style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.bold)))),
-              const SizedBox(width: 40)
-            ]),
-            const SizedBox(height: 20),
-            TextField(controller: _searchController, decoration: InputDecoration(hintText: "Search...", prefixIcon: const Icon(Icons.search), filled: true, fillColor: Colors.white, border: OutlineInputBorder(borderRadius: BorderRadius.circular(15), borderSide: BorderSide.none))),
-          ]),
-        ),
-        Expanded(child: _isLoading ? const Center(child: CircularProgressIndicator()) : ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: _filteredIngredients.length,
-          itemBuilder: (context, i) {
-            final data = _filteredIngredients[i].data() as Map<String, dynamic>;
-            return Card(margin: const EdgeInsets.only(bottom: 10), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)), child: ListTile(
-              title: Text(data['name'], style: const TextStyle(fontWeight: FontWeight.bold)),
-              onTap: () async {
-                final qty = await _showQtyDialog(data);
-                if (!context.mounted) return;
-                if (qty != null) { data['quantity'] = qty; Navigator.pop(context, data); }
-              },
-            ));
-          },
-        ))
-      ]),
+      body: Column(
+        children: [
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 24),
+            decoration: const BoxDecoration(
+              gradient: LinearGradient(
+                colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+              ),
+              borderRadius: BorderRadius.only(
+                bottomLeft: Radius.circular(32),
+                bottomRight: Radius.circular(32),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    IconButton(
+                      icon: const Icon(
+                        Icons.arrow_back_ios_new,
+                        color: Colors.white,
+                        size: 20,
+                      ),
+                      onPressed: () => Navigator.pop(context),
+                    ),
+                    const Expanded(
+                      child: Center(
+                        child: Text(
+                          "Select Ingredient",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 22,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 40),
+                  ],
+                ),
+                const SizedBox(height: 20),
+                TextField(
+                  controller: _searchController,
+                  decoration: InputDecoration(
+                    hintText: "Search...",
+                    prefixIcon: const Icon(Icons.search),
+                    filled: true,
+                    fillColor: Colors.white,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                      borderSide: BorderSide.none,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          Expanded(
+            child: _isLoading
+                ? const Center(child: CircularProgressIndicator())
+                : ListView.builder(
+                    padding: const EdgeInsets.all(20),
+                    itemCount: _filteredIngredients.length,
+                    itemBuilder: (context, i) {
+                      final data =
+                          _filteredIngredients[i].data()
+                              as Map<String, dynamic>;
+                      return Card(
+                        margin: const EdgeInsets.only(bottom: 10),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(15),
+                        ),
+                        child: ListTile(
+                          title: Text(
+                            data['name'],
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          onTap: () async {
+                            final qty = await _showQtyDialog(data);
+                            if (!context.mounted) return;
+                            if (qty != null) {
+                              data['quantity'] = qty;
+                              Navigator.pop(context, data);
+                            }
+                          },
+                        ),
+                      );
+                    },
+                  ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -697,7 +1265,9 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setState) => AlertDialog(
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(24),
+          ),
           title: Text("Add $name"),
           content: Form(
             key: formKey,
@@ -706,17 +1276,27 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
               children: [
                 if (servings.isNotEmpty) ...[
                   DropdownButtonFormField<String>(
-                    decoration: const InputDecoration(labelText: "Serving Option", border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: "Serving Option",
+                      border: OutlineInputBorder(),
+                    ),
                     initialValue: selectedServing,
-                    items: servings.map((s) => DropdownMenuItem<String>(
-                      value: s['name'],
-                      child: Text("${s['name']} (${s['grams']}g)"),
-                    )).toList(),
+                    items: servings
+                        .map(
+                          (s) => DropdownMenuItem<String>(
+                            value: s['name'],
+                            child: Text("${s['name']} (${s['grams']}g)"),
+                          ),
+                        )
+                        .toList(),
                     onChanged: (val) {
                       setState(() {
                         selectedServing = val;
-                        final s = servings.firstWhere((item) => item['name'] == val);
-                        baseGrams = double.tryParse(s['grams'].toString()) ?? 100;
+                        final s = servings.firstWhere(
+                          (item) => item['name'] == val,
+                        );
+                        baseGrams =
+                            double.tryParse(s['grams'].toString()) ?? 100;
                         final multiplier = double.tryParse(qtyCtrl.text) ?? 1;
                         ctrl.text = (baseGrams * multiplier).toStringAsFixed(1);
                       });
@@ -726,7 +1306,10 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
                   TextFormField(
                     controller: qtyCtrl,
                     keyboardType: TextInputType.number,
-                    decoration: const InputDecoration(labelText: "Quantity (count)", border: OutlineInputBorder()),
+                    decoration: const InputDecoration(
+                      labelText: "Quantity (count)",
+                      border: OutlineInputBorder(),
+                    ),
                     onChanged: (val) {
                       final multiplier = double.tryParse(val) ?? 1;
                       setState(() {
@@ -738,8 +1321,13 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
                 ],
                 TextFormField(
                   controller: ctrl,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(labelText: "Total Weight (grams)", border: OutlineInputBorder()),
+                  keyboardType: const TextInputType.numberWithOptions(
+                    decimal: true,
+                  ),
+                  decoration: const InputDecoration(
+                    labelText: "Total Weight (grams)",
+                    border: OutlineInputBorder(),
+                  ),
                   validator: (v) {
                     if (v == null || v.isEmpty) return 'Enter weight';
                     final n = double.tryParse(v);
@@ -751,7 +1339,10 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+            TextButton(
+              onPressed: () => Navigator.pop(ctx),
+              child: const Text("Cancel"),
+            ),
             TextButton(
               onPressed: () {
                 if (formKey.currentState!.validate()) {
@@ -759,7 +1350,7 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
                 }
               },
               child: const Text("Add"),
-            )
+            ),
           ],
         ),
       ),
