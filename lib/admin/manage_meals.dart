@@ -19,6 +19,8 @@ class _MealsPageState extends State<MealsPage> {
   final Map<String, TextEditingController> _controllers = {};
   String? _foodGroup;
   String? _foodCategory;
+  String? _filterGroup;
+  String? _filterCategory;
   final List<TextEditingController> _servingNameControllers = [];
   final List<TextEditingController> _servingGramControllers = [];
 
@@ -43,6 +45,8 @@ class _MealsPageState extends State<MealsPage> {
     for (var f in fields) {
       _controllers[f] = TextEditingController();
     }
+    _filterCategory = 'None';
+    _filterGroup = 'None';
   }
 
   void _fillControllers(Map<String, dynamic> data) {
@@ -86,39 +90,50 @@ class _MealsPageState extends State<MealsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FBFF),
-      body: Column(
-        children: [
-          _buildHeader(),
-          _buildSearchBar(),
-          Expanded(
-            child: StreamBuilder<QuerySnapshot>(
-              stream: meals.where('deleted', isEqualTo: false).orderBy('name').snapshots(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) return const Center(child: Text('Error loading meals'));
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                }
+      body: SafeArea(
+          child: Column(
+            children: [
+              _buildHeader(),
+              _buildSearchBar(),
+              _buildFilterDropdown(),
+              Expanded(
+                child: StreamBuilder<QuerySnapshot>(
+                  stream: meals.where('deleted', isEqualTo: false).orderBy('name').snapshots(),
+                  builder: (context, snapshot) {
+                    if (snapshot.hasError) return const Center(child: Text('Error loading meals'));
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                    }
 
-                final allDocs = snapshot.data!.docs;
-                final data = allDocs.map((doc) {
-                  final meal = doc.data() as Map<String, dynamic>;
-                  meal['id'] = doc.id;
-                  return meal;
-                }).where((meal) {
-                  return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
-                }).toList();
+                    final allDocs = snapshot.data!.docs;
+                    var data = allDocs.map((doc) {
+                      final meal = doc.data() as Map<String, dynamic>;
+                      meal['id'] = doc.id;
+                      return meal;
+                    }).where((meal) {
+                      return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+                    }).toList();
 
-                if (data.isEmpty) return const Center(child: Text('No meals found.'));
+                    if (_filterGroup != 'None') {
+                      data = data.where((meal) => meal['foodGroup'] == _filterGroup).toList();
+                    }
 
-                return ListView.builder(
-                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                  itemCount: data.length,
-                  itemBuilder: (context, index) => _buildMealCard(data[index]),
-                );
-              },
-            ),
+                    if (_filterCategory != 'None') {
+                      data = data.where((meal) => meal['foodCategory'] == _filterCategory).toList();
+                    }
+
+                    if (data.isEmpty) return const Center(child: Text('No meals found.'));
+
+                    return ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                      itemCount: data.length,
+                      itemBuilder: (context, index) => _buildMealCard(data[index]),
+                    );
+                  },
+                ),
+              ),
+            ],
           ),
-        ],
       ),
       floatingActionButton: _searchQuery.isNotEmpty ? null : Padding(
         padding: const EdgeInsets.only(bottom: 85),
@@ -176,6 +191,38 @@ class _MealsPageState extends State<MealsPage> {
               }) 
             : null,
         ),
+      ),
+    );
+  }
+
+  Widget _buildFilterDropdown() {
+    return Row(
+      children: [
+        const SizedBox(width: 15),
+        Expanded(
+          flex: 4,
+          child: _buildDropdown('Food Group', _filterGroup, ['None', ..._foodGroupItems], (val) => setState(() => _filterGroup = val)),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+            flex: 3,
+            child: _buildDropdown('FoodCategory', _filterCategory, ['None', ..._foodCategoryItems],  (val) => setState(() => _filterCategory = val))
+        ),
+        const SizedBox(width: 15),
+      ],
+    );
+  }
+
+  Widget _buildDropdown(String label, String? val, List<String> items, Function(String?) onChanged) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3, top: 3),
+      child: DropdownButtonFormField<String>(
+        initialValue: val, items: items.map((i) => DropdownMenuItem(value: i, child: Text(i, style: const TextStyle(fontSize: 14)))).toList(),
+        onChanged: onChanged,
+        decoration: InputDecoration(
+            labelText: label,
+            fillColor: Colors.white, filled: true),
+        validator: (v) => v == null ? "Required" : null,
       ),
     );
   }
