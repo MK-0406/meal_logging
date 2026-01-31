@@ -47,6 +47,8 @@ class _MealLogPageState extends State<MealLogPage>
   };
 
   final TextEditingController _sizeController = TextEditingController();
+  final TextEditingController _quantityController = TextEditingController();
+  final TextEditingController _totalAmountController = TextEditingController();
 
   @override
   void initState() {
@@ -57,6 +59,7 @@ class _MealLogPageState extends State<MealLogPage>
     _loadRandomMeals();
     _loadCustomMeals();
     _sizeController.text = '100';
+    _quantityController.text = '1';
   }
 
   @override
@@ -819,6 +822,13 @@ class _MealLogPageState extends State<MealLogPage>
   }) async {
     String? selectedServingName;
     _sizeController.text = '100';
+    _quantityController.text = '1';
+    _totalAmountController.text = '100';
+    double amountSelect = 100;
+
+    bool select = false;
+    bool custom = true;
+
     await showDialog(
       context: context,
       builder: (logContext) => StatefulBuilder(
@@ -832,69 +842,220 @@ class _MealLogPageState extends State<MealLogPage>
           ),
           content: Form(
             key: _logFormKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                if (servings != null && servings.isNotEmpty) ...[
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade50,
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.grey.shade200),
-                    ),
-                    child: DropdownButtonHideUnderline(
-                      child: DropdownButton<String>(
-                        isExpanded: true,
-                        hint: const Text("Select portion size"),
-                        value: selectedServingName,
-                        items: servings
-                            .map(
-                              (s) => DropdownMenuItem<String>(
-                                value: s['name'],
-                                child: Text("${s['name']} (${s['grams']}g)"),
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  if (servings != null && servings.isNotEmpty) ...[
+                    Row(
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
+                            ),
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<String>(
+                                isExpanded: true,
+                                hint: const Text("Select portion size"),
+                                value: selectedServingName,
+                                items: servings
+                                    .map(
+                                      (s) => DropdownMenuItem<String>(
+                                        value: s['name'],
+                                        child: Text(
+                                          "${s['name']} (${s['grams']}g)",
+                                        ),
+                                      ),
+                                    )
+                                    .toList(),
+                                onChanged: (val) => setDialogState(() {
+                                  if (select) {
+                                    selectedServingName = val;
+                                    final s = servings.firstWhere(
+                                      (item) => item['name'] == val,
+                                    );
+                                    amountSelect = double.parse(s['grams']);
+                                    _totalAmountController.text =
+                                        (amountSelect *
+                                                    int.parse(
+                                                      _quantityController.text,
+                                                    ))
+                                            .toString();
+                                  }
+                                }),
                               ),
-                            )
-                            .toList(),
-                        onChanged: (val) => setDialogState(() {
-                          selectedServingName = val;
-                          final s = servings.firstWhere(
-                            (item) => item['name'] == val,
-                          );
-                          _sizeController.text = s['grams'].toString();
-                        }),
-                      ),
+                            ),
+                          ),
+                        ),
+                        Expanded(
+                          flex: 1,
+                          child: Checkbox(
+                            value: select,
+                            onChanged: (val) {
+                              setDialogState(() {
+                                if (!select) {
+                                  select = val ?? false;
+                                  custom = select ? false : custom;
+                                  double amount = custom
+                                      ? double.tryParse(_sizeController.text) ??
+                                            100.0
+                                      : amountSelect;
+                                  _totalAmountController.text =
+                                      ((double.tryParse(
+                                                    _quantityController.text,
+                                                  ) ??
+                                                  1) *
+                                              amount)
+                                          .toStringAsFixed(1);
+                                }
+                              });
+                            },
+                          ),
+                        ),
+                      ],
                     ),
+                  ],
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: _sizeController,
+                          keyboardType: TextInputType.number,
+                          decoration: InputDecoration(
+                            labelText: "Custom Amount (grams)",
+                            filled: true,
+                            fillColor: Colors.grey.shade50,
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(12),
+                              borderSide: BorderSide.none,
+                            ),
+                          ),
+                          readOnly: custom ? false : true,
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Please enter a value';
+                            }
+                            final num = double.tryParse(val);
+                            if (num == null) {
+                              return 'Please enter a valid number';
+                            }
+                            if (num <= 0) {
+                              return 'Please enter a value greater than 0';
+                            }
+                            return null;
+                          },
+                          onChanged: (val) {
+                            setDialogState(() {
+                              double amount = custom
+                                  ? double.tryParse(_sizeController.text) ??
+                                        100.0
+                                  : amountSelect;
+                              _totalAmountController.text =
+                                  ((double.tryParse(val) ?? 1) * amount)
+                                      .toStringAsFixed(1);
+                            });
+                          },
+                        ),
+                      ),
+                      Expanded(
+                        flex: 1,
+                        child: Checkbox(
+                          value: custom,
+                          onChanged: (val) {
+                            setDialogState(() {
+                              if (servings != null && servings.isNotEmpty && !custom) {
+                                custom = val ?? false;
+                                select = custom ? false : select;
+                                double amount = custom
+                                    ? double.tryParse(_sizeController.text) ??
+                                          100.0
+                                    : amountSelect;
+                                _totalAmountController.text =
+                                    ((double.tryParse(
+                                                  _quantityController.text,
+                                                ) ??
+                                                1) *
+                                            amount)
+                                        .toStringAsFixed(1);
+                              }
+                            });
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 16),
-                ],
-                TextFormField(
-                  controller: _sizeController,
-                  keyboardType: TextInputType.number,
-                  decoration: InputDecoration(
-                    labelText: "Custom Amount (grams)",
-                    filled: true,
-                    fillColor: Colors.grey.shade50,
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide.none,
+                  TextFormField(
+                    controller: _quantityController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Quantity",
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
                     ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Please enter a value';
+                      }
+                      final num = double.tryParse(val);
+                      if (num == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (num <= 0) {
+                        return 'Please enter a value greater than 0';
+                      }
+                      return null;
+                    },
+                    onChanged: (val) => setDialogState(() {
+                      double amount = custom
+                          ? double.tryParse(_sizeController.text) ?? 100.0
+                          : amountSelect;
+                      _totalAmountController.text =
+                          ((double.tryParse(val) ?? 1) * amount)
+                              .toStringAsFixed(1);
+                    }),
                   ),
-                  validator: (val) {
-                    if (val == null || val.isEmpty) {
-                      return 'Please enter a value';
-                    }
-                    final num = double.tryParse(val);
-                    if (num == null) {
-                      return 'Please enter a valid number';
-                    }
-                    if (num <= 0) {
-                      return 'Please enter a value greater than 0';
-                    }
-                    return null;
-                  },
-                ),
-              ],
+                  const SizedBox(height: 16),
+                  TextFormField(
+                    controller: _totalAmountController,
+                    keyboardType: TextInputType.number,
+                    readOnly: true,
+                    decoration: InputDecoration(
+                      labelText: "Total Amount (grams)",
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide.none,
+                      ),
+                    ),
+                    validator: (val) {
+                      if (val == null || val.isEmpty) {
+                        return 'Please enter a value';
+                      }
+                      final num = double.tryParse(val);
+                      if (num == null) {
+                        return 'Please enter a valid number';
+                      }
+                      if (num <= 0) {
+                        return 'Please enter a value greater than 0';
+                      }
+                      return null;
+                    },
+                  ),
+                ],
+              ),
             ),
           ),
           actions: [
@@ -915,7 +1076,8 @@ class _MealLogPageState extends State<MealLogPage>
               ),
               onPressed: () async {
                 if (!_logFormKey.currentState!.validate()) return;
-                final size = double.tryParse(_sizeController.text) ?? 100.0;
+                final size =
+                    double.tryParse(_totalAmountController.text) ?? 100.0;
                 final balance = _calculateBalance();
                 final exceeds = _checkIfMealExceedsTarget(
                   mealNutrients,
@@ -1052,7 +1214,7 @@ class _MealLogPageState extends State<MealLogPage>
     String logDate,
     BuildContext logContext,
   ) async {
-    final size = double.tryParse(_sizeController.text) ?? 100.0;
+    final size = double.tryParse(_totalAmountController.text) ?? 100.0;
     await Database.addItems('mealLogs', {
       'uid': uid,
       'mealID': mealID,
