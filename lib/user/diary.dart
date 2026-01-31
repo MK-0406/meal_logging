@@ -654,32 +654,30 @@ class _MealDiaryState extends State<MealDiary> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FBFF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            // Header
-            _buildHeader(dayText, today),
+      body: Column(
+        children: [
+          // Header
+          _buildHeader(dayText, today),
 
-            Expanded(
-              child: _isLoadingModel
-                  ? _buildLoadingState()
-                  : ListView(
-                padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
-                children: [
-                  _buildDailyDashboard(),
-                  const SizedBox(height: 24),
-                  _buildHydrationCard(),
-                  const SizedBox(height: 24),
-                  ...mealCategories.map((mealType) {
-                    // Use adjusted targets for display and logging
-                    final mealTarget = _getAdjustedTargets(mealType);
-                    return _buildMealSection(mealType, mealTarget);
-                  }),
-                ],
-              ),
+          Expanded(
+            child: _isLoadingModel
+                ? _buildLoadingState()
+                : ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 80),
+              children: [
+                _buildDailyDashboard(),
+                const SizedBox(height: 24),
+                _buildHydrationCard(),
+                const SizedBox(height: 24),
+                ...mealCategories.map((mealType) {
+                  // Use adjusted targets for display and logging
+                  final mealTarget = _getAdjustedTargets(mealType);
+                  return _buildMealSection(mealType, mealTarget);
+                }),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
