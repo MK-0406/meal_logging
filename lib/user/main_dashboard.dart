@@ -9,10 +9,9 @@ import 'profile_page.dart';
 import 'chat.dart'; // Import the chat bot page
 
 void main() {
-  runApp(const MaterialApp(
-    home: MainDashboard(),
-    debugShowCheckedModeBanner: false,
-  ));
+  runApp(
+    const MaterialApp(home: MainDashboard(), debugShowCheckedModeBanner: false),
+  );
 }
 
 class MainDashboard extends StatelessWidget {
@@ -123,7 +122,10 @@ class _MainDashboardState extends State<_MainDashboard> {
               offset: const Offset(0, 4),
             ),
           ],
-          border: Border.all(color: Colors.white, width: 2), // White border to pop out
+          border: Border.all(
+            color: Colors.white,
+            width: 2,
+          ), // White border to pop out
         ),
         child: const Icon(Icons.person_rounded, color: Colors.white, size: 24),
       ),
@@ -131,75 +133,100 @@ class _MainDashboardState extends State<_MainDashboard> {
   }
 
   Widget _buildFloatingNavigationBar() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
-      height: 72,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.8),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 25,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: NavigationBarTheme(
-            data: NavigationBarThemeData(
-              backgroundColor: Colors.transparent,
-              indicatorColor: const Color(0xFF42A5F5).withValues(alpha: 0.12),
-              indicatorShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF42A5F5),
-                  );
-                }
-                return const TextStyle(fontSize: 11, color: Colors.grey);
-              }),
+    return SafeArea(
+      maintainBottomViewPadding: true,
+      child: Container(
+        alignment: AlignmentGeometry.center,
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        height: 72,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.8),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 25,
+              offset: const Offset(0, 8),
             ),
-            child: NavigationBar(
-              elevation: 0,
-              height: 72,
-              selectedIndex: currentPageIndex,
-              onDestinationSelected: _onDestinationSelected,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: const [
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.home_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.home_outlined, color: Colors.grey),
-                  label: 'Home',
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: NavigationBarTheme(
+              data: NavigationBarThemeData(
+                backgroundColor: Colors.transparent,
+                indicatorColor: const Color(0xFF42A5F5).withValues(alpha: 0.12),
+                indicatorShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.auto_stories_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.auto_stories_outlined, color: Colors.grey),
-                  label: 'Diary',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.chat_bubble_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.chat_bubble_outline_rounded, color: Colors.grey),
-                  label: 'Bot',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.forum_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.forum_outlined, color: Colors.grey),
-                  label: 'Forum',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(Icons.notifications_rounded, color: Color(0xFF42A5F5)),
-                  icon: Icon(Icons.notifications_none_rounded, color: Colors.grey),
-                  label: 'Reminder',
-                ),
-              ],
+                labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF42A5F5),
+                    );
+                  }
+                  return const TextStyle(fontSize: 11, color: Colors.grey);
+                }),
+              ),
+              child: NavigationBar(
+                elevation: 0,
+                height: 72,
+                selectedIndex: currentPageIndex,
+                onDestinationSelected: _onDestinationSelected,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                destinations: const [
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.home_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(Icons.home_outlined, color: Colors.grey),
+                    label: 'Home',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.auto_stories_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(Icons.auto_stories_outlined, color: Colors.grey),
+                    label: 'Diary',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.chat_bubble_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(
+                      Icons.chat_bubble_outline_rounded,
+                      color: Colors.grey,
+                    ),
+                    label: 'Bot',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.forum_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(Icons.forum_outlined, color: Colors.grey),
+                    label: 'Forum',
+                  ),
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.notifications_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(
+                      Icons.notifications_none_rounded,
+                      color: Colors.grey,
+                    ),
+                    label: 'Reminder',
+                  ),
+                ],
+              ),
             ),
           ),
         ),
