@@ -313,7 +313,7 @@ class _MealLogPageState extends State<MealLogPage>
                                     },
                                     onMealLiked: () {
                                       _loadFavMeals(); // Refresh favourites
-                                  }
+                                    },
                                   ),
                                 ],
                               ),
@@ -332,7 +332,29 @@ class _MealLogPageState extends State<MealLogPage>
                                     'Your favourites',
                                   ),
                                   const SizedBox(height: 16),
-                                  _buildMealList(_favMeals),
+                                  _favMeals.isEmpty
+                                      ? Container(
+                                          padding: const EdgeInsets.all(20),
+                                          child: Column(
+                                            children: [
+                                              const SizedBox(height: 30),
+                                              Icon(
+                                                Icons.restaurant_menu,
+                                                size: 48,
+                                                color: Colors.grey[300],
+                                              ),
+                                              const SizedBox(height: 12),
+                                              const Text(
+                                                'No favourite meals found',
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        )
+                                      : _buildMealList(_favMeals),
                                 ],
                               ),
                             ),
@@ -888,9 +910,9 @@ class _MealLogPageState extends State<MealLogPage>
                                     amountSelect = double.parse(s['grams']);
                                     _totalAmountController.text =
                                         (amountSelect *
-                                                    int.parse(
-                                                      _quantityController.text,
-                                                    ))
+                                                int.parse(
+                                                  _quantityController.text,
+                                                ))
                                             .toString();
                                   }
                                 }),
@@ -976,7 +998,9 @@ class _MealLogPageState extends State<MealLogPage>
                           value: custom,
                           onChanged: (val) {
                             setDialogState(() {
-                              if (servings != null && servings.isNotEmpty && !custom) {
+                              if (servings != null &&
+                                  servings.isNotEmpty &&
+                                  !custom) {
                                 custom = val ?? false;
                                 select = custom ? false : select;
                                 double amount = custom
