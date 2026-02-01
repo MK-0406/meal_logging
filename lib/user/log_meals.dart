@@ -369,7 +369,29 @@ class _MealLogPageState extends State<MealLogPage>
                                 children: [
                                   _buildCustomMealsSection(),
                                   const SizedBox(height: 16),
-                                  _buildMealList(_customMeals),
+                                  _customMeals.isEmpty
+                                      ? Container(
+                                    padding: const EdgeInsets.all(20),
+                                    child: Column(
+                                      children: [
+                                        const SizedBox(height: 30),
+                                        Icon(
+                                          Icons.restaurant_menu,
+                                          size: 48,
+                                          color: Colors.grey[300],
+                                        ),
+                                        const SizedBox(height: 12),
+                                        const Text(
+                                          'No custom meals found',
+                                          style: TextStyle(
+                                            color: Colors.grey,
+                                            fontSize: 14,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  )
+                                      : _buildMealList(_customMeals),
                                 ],
                               ),
                             ),
