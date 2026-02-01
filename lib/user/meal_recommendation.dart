@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'dart:math';
 import '../functions.dart';
@@ -40,15 +39,6 @@ class _MealRecommenderPageState extends State<MealRecommender> {
     _sizeController.text = '100';
   }
 
-  @override
-  void didUpdateWidget(covariant MealRecommender oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    // Automatically re-run the recommendation engine if targets (balance) change
-    if (widget.nutritionalTargets != oldWidget.nutritionalTargets) {
-      _runModel();
-    }
-  }
-
   Future<void> _runModel() async {
     try {
       setState(() => _isLoading = true);
@@ -64,35 +54,6 @@ class _MealRecommenderPageState extends State<MealRecommender> {
           t['Fats_g'] ?? 0.0,
         );
         recommendedMeals.addAll(meals);
-      } else {
-        final interpreter = await Interpreter.fromAsset('meal_recommender-2.tflite');
-        final input = [[19, 179, 68, 21.22, 155, 107, 255, 110, 3324, 197, 214, 97]];
-        final output = List.filled(4, 0.0).reshape([1, 4]);
-        interpreter.run(input, output);
-
-        final Map<String, dynamic> results = {};
-        final nutrients = ['Calories', 'Protein_g', 'Carbs_g', 'Fats_g'];
-        final preds = output[0];
-        final margins = [0.12, 0.14, 0.27, 0.25];
-
-        for (int i = 0; i < nutrients.length; i++) {
-          final val = preds[i];
-          results[nutrients[i]] = {'pred': val, 'low': val * (1 - margins[i]), 'high': val * (1 + margins[i])};
-        }
-
-        final mealRatios = {'Breakfast': 0.3, 'Lunch': 0.4, 'Dinner': 0.3};
-        for (final meal in mealRatios.keys) {
-          final ratio = mealRatios[meal]!;
-          final meals = await _queryMeals(
-            meal,
-            results['Calories']['pred'] * ratio,
-            results['Carbs_g']['pred'] * ratio,
-            results['Protein_g']['pred'] * ratio,
-            results['Fats_g']['pred'] * ratio,
-          );
-          recommendedMeals.addAll(meals);
-        }
-        interpreter.close();
       }
 
       recommendedMeals.shuffle(Random());
