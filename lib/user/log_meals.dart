@@ -166,6 +166,7 @@ class _MealLogPageState extends State<MealLogPage>
     } else {
       _favMeals = [];
     }
+
     setState(() {
       _isLoading = false;
     });
@@ -310,6 +311,9 @@ class _MealLogPageState extends State<MealLogPage>
                                     onMealLogged: () {
                                       _loadConsumed(); // Refresh balance dashboard
                                     },
+                                    onMealLiked: () {
+                                      _loadFavMeals(); // Refresh favourites
+                                  }
                                   ),
                                 ],
                               ),
@@ -439,10 +443,10 @@ class _MealLogPageState extends State<MealLogPage>
               backgroundColor: Colors.white.withValues(alpha: 0.15),
             ),
             onPressed: () {
+              _loadConsumed();
               _loadRandomMeals();
               _loadCustomMeals();
               _loadFavMeals();
-              _loadConsumed();
             },
           ),
         ],
@@ -718,7 +722,9 @@ class _MealLogPageState extends State<MealLogPage>
               builder: (_) => MealDetailsPage(data: data, mealId: doc.id),
             ),
           );
-          await _loadFavMeals();
+          setState(() {
+            _loadFavMeals();
+          });
         },
         contentPadding: const EdgeInsets.all(7),
         leading: Container(

@@ -10,6 +10,7 @@ class MealRecommender extends StatefulWidget {
   final String? mealType;
   final String logDate;
   final VoidCallback? onMealLogged;
+  final VoidCallback? onMealLiked;
 
   const MealRecommender({
     super.key,
@@ -17,6 +18,7 @@ class MealRecommender extends StatefulWidget {
     this.mealType,
     required this.logDate,
     this.onMealLogged,
+    this.onMealLiked,
   });
 
   @override
@@ -114,7 +116,13 @@ class _MealRecommenderPageState extends State<MealRecommender> {
         boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
       ),
       child: ListTile(
-        onTap: () => Navigator.push(context, MaterialPageRoute(builder: (_) => MealDetailsPage(data: data, mealId: data['id']))),
+        onTap: () async {
+          await Navigator.push(context, MaterialPageRoute(
+              builder: (_) => MealDetailsPage(data: data, mealId: data['id'])));
+          if (widget.onMealLiked != null) {
+            widget.onMealLiked!();
+          }
+        },
         contentPadding: const EdgeInsets.all(7),
         leading: Container(
           margin: const EdgeInsets.only(left: 12),
