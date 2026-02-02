@@ -1063,7 +1063,7 @@ class _MealDiaryState extends State<MealDiary> {
             Wrap(
               spacing: 8,
               runSpacing: 8,
-              children: [100, 200, 250, 300, 500, 750, 1000].map((ml) => ActionChip(
+              children: [100, 250, 300, 500, 750, 1000].map((ml) => ActionChip(
                 label: Text("${ml}ml"),
                 backgroundColor: Colors.blue.shade50,
                 labelStyle: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 11),
