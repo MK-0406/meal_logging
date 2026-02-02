@@ -90,50 +90,48 @@ class _MealsPageState extends State<MealsPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FBFF),
-      body: SafeArea(
-          child: Column(
-            children: [
-              _buildHeader(),
-              _buildSearchBar(),
-              _buildFilterDropdown(),
-              Expanded(
-                child: StreamBuilder<QuerySnapshot>(
-                  stream: meals.where('deleted', isEqualTo: false).orderBy('name').snapshots(),
-                  builder: (context, snapshot) {
-                    if (snapshot.hasError) return const Center(child: Text('Error loading meals'));
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(strokeWidth: 2));
-                    }
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildSearchBar(),
+          _buildFilterDropdown(),
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: meals.where('deleted', isEqualTo: false).orderBy('name').snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.hasError) return const Center(child: Text('Error loading meals'));
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                }
 
-                    final allDocs = snapshot.data!.docs;
-                    var data = allDocs.map((doc) {
-                      final meal = doc.data() as Map<String, dynamic>;
-                      meal['id'] = doc.id;
-                      return meal;
-                    }).where((meal) {
-                      return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
-                    }).toList();
+                final allDocs = snapshot.data!.docs;
+                var data = allDocs.map((doc) {
+                  final meal = doc.data() as Map<String, dynamic>;
+                  meal['id'] = doc.id;
+                  return meal;
+                }).where((meal) {
+                  return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+                }).toList();
 
-                    if (_filterGroup != 'None') {
-                      data = data.where((meal) => meal['foodGroup'] == _filterGroup).toList();
-                    }
+                if (_filterGroup != 'None') {
+                  data = data.where((meal) => meal['foodGroup'] == _filterGroup).toList();
+                }
 
-                    if (_filterCategory != 'None') {
-                      data = data.where((meal) => meal['foodCategory'] == _filterCategory).toList();
-                    }
+                if (_filterCategory != 'None') {
+                  data = data.where((meal) => meal['foodCategory'] == _filterCategory).toList();
+                }
 
-                    if (data.isEmpty) return const Center(child: Text('No meals found.'));
+                if (data.isEmpty) return const Center(child: Text('No meals found.'));
 
-                    return ListView.builder(
-                      padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
-                      itemCount: data.length,
-                      itemBuilder: (context, index) => _buildMealCard(data[index]),
-                    );
-                  },
-                ),
-              ),
-            ],
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
+                  itemCount: data.length,
+                  itemBuilder: (context, index) => _buildMealCard(data[index]),
+                );
+              },
+            ),
           ),
+        ],
       ),
       floatingActionButton: _searchQuery.isNotEmpty ? null : Padding(
         padding: const EdgeInsets.only(bottom: 85),
