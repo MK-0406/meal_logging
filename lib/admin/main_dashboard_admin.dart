@@ -76,93 +76,95 @@ class _MainDashboardState extends State<_MainDashboard> {
   }
 
   Widget _buildFloatingNavigationBar() {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(20, 0, 20, 15),
-      height: 72,
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.85),
-        borderRadius: BorderRadius.circular(30),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.06),
-            blurRadius: 25,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
-          child: NavigationBarTheme(
-            data: NavigationBarThemeData(
-              backgroundColor: Colors.transparent,
-              indicatorColor: const Color(0xFF42A5F5).withValues(alpha: 0.12),
-              indicatorShape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              labelTextStyle: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.selected)) {
-                  return const TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF42A5F5),
-                  );
-                }
-                return const TextStyle(fontSize: 11, color: Colors.grey);
-              }),
+    return SafeArea(
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(20, 0, 20, 0),
+        height: 72,
+        decoration: BoxDecoration(
+          color: Colors.white.withValues(alpha: 0.85),
+          borderRadius: BorderRadius.circular(30),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.06),
+              blurRadius: 25,
+              offset: const Offset(0, 8),
             ),
-            child: NavigationBar(
-              elevation: 0,
-              height: 72,
-              selectedIndex: currentPageIndex,
-              onDestinationSelected: _onDestinationSelected,
-              labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
-              destinations: const [
-                NavigationDestination(
-                  selectedIcon: Icon(
-                    Icons.home_rounded,
-                    color: Color(0xFF42A5F5),
-                  ),
-                  icon: Icon(Icons.home_outlined, color: Colors.grey),
-                  label: 'Home',
+          ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(30),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
+            child: NavigationBarTheme(
+              data: NavigationBarThemeData(
+                backgroundColor: Colors.transparent,
+                indicatorColor: const Color(0xFF42A5F5).withValues(alpha: 0.12),
+                indicatorShape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
                 ),
-                NavigationDestination(
-                  selectedIcon: Icon(
-                    Icons.people_rounded,
-                    color: Color(0xFF42A5F5),
+                labelTextStyle: WidgetStateProperty.resolveWith((states) {
+                  if (states.contains(WidgetState.selected)) {
+                    return const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF42A5F5),
+                    );
+                  }
+                  return const TextStyle(fontSize: 11, color: Colors.grey);
+                }),
+              ),
+              child: NavigationBar(
+                elevation: 0,
+                height: 72,
+                selectedIndex: currentPageIndex,
+                onDestinationSelected: _onDestinationSelected,
+                labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+                destinations: const [
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.home_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(Icons.home_outlined, color: Colors.grey),
+                    label: 'Home',
                   ),
-                  icon: Icon(Icons.people_outline_rounded, color: Colors.grey),
-                  label: 'Users',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(
-                    Icons.admin_panel_settings_rounded,
-                    color: Color(0xFF42A5F5),
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.people_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(Icons.people_outline_rounded, color: Colors.grey),
+                    label: 'Users',
                   ),
-                  icon: Icon(
-                    Icons.admin_panel_settings_outlined,
-                    color: Colors.grey,
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.admin_panel_settings_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(
+                      Icons.admin_panel_settings_outlined,
+                      color: Colors.grey,
+                    ),
+                    label: 'Admins',
                   ),
-                  label: 'Admins',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(
-                    Icons.fastfood_rounded,
-                    color: Color(0xFF42A5F5),
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.fastfood_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(Icons.fastfood_outlined, color: Colors.grey),
+                    label: 'Meals',
                   ),
-                  icon: Icon(Icons.fastfood_outlined, color: Colors.grey),
-                  label: 'Meals',
-                ),
-                NavigationDestination(
-                  selectedIcon: Icon(
-                    Icons.report_rounded,
-                    color: Color(0xFF42A5F5),
+                  NavigationDestination(
+                    selectedIcon: Icon(
+                      Icons.report_rounded,
+                      color: Color(0xFF42A5F5),
+                    ),
+                    icon: Icon(Icons.report_outlined, color: Colors.grey),
+                    label: 'Reports',
                   ),
-                  icon: Icon(Icons.report_outlined, color: Colors.grey),
-                  label: 'Reports',
-                ),
-              ],
+                ],
+              ),
             ),
           ),
         ),
