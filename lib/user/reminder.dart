@@ -210,24 +210,22 @@ class _ReminderPageState extends State<ReminderPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FBFF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            Expanded(
-              child: ListView(
-                padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
-                children: [
-                  _buildSettingsTip(),
-                  const SizedBox(height: 16),
-                  _buildInstructions(),
-                  const SizedBox(height: 10),
-                  ...reminders.asMap().entries.map((entry) => _buildReminderCard(entry.value, entry.key)),
-                ],
-              ),
+      body: Column(
+        children: [
+          _buildHeader(),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 100),
+              children: [
+                _buildSettingsTip(),
+                const SizedBox(height: 16),
+                _buildInstructions(),
+                const SizedBox(height: 10),
+                ...reminders.asMap().entries.map((entry) => _buildReminderCard(entry.value, entry.key)),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 85, right: 5),
