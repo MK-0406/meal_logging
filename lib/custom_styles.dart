@@ -5,12 +5,14 @@ class InputTextField extends StatelessWidget {
   final TextEditingController controller;
   final bool isNumber;
   final bool isInt;
+  final bool includeZero;
 
   const InputTextField({super.key,
     required this.label,
     required this.controller,
     required this.isNumber,
     required this.isInt,
+    this.includeZero = false,
   });
 
   @override
@@ -37,8 +39,14 @@ class InputTextField extends StatelessWidget {
               return '$label must be a number';
             }
           }
-          if (double.parse(value) <= 0) {
-            return '$label must be greater than 0';
+          if (includeZero) {
+            if (double.parse(value) < 0) {
+              return '$label must be 0 or above';
+            }
+          } else {
+            if (double.parse(value) <= 0) {
+              return '$label must be greater than 0';
+            }
           }
         }
         return null;
