@@ -114,7 +114,6 @@ class _CustomMealPageState extends State<CustomMealPage>
   }
 
   Widget _buildHeader() {
-    print(widget.nutritionalTargets);
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 50, 20, 0),
@@ -641,10 +640,11 @@ class _RecipeFormState extends State<RecipeForm> {
           (widget.initialData!['servings']?[0]?['grams'] ?? "0").toString();
       _foodCategory = widget.initialData!['foodCategory'];
       _foodGroup = widget.initialData!['foodGroup'];
-      if (widget.initialData!['ingredients'] != null)
+      if (widget.initialData!['ingredients'] != null) {
         _ingredients.addAll(
           List<Map<String, dynamic>>.from(widget.initialData!['ingredients']),
         );
+      }
     } else {
       _foodCategory =
           widget.defaultCategory == 'Lunch' ||
@@ -728,6 +728,7 @@ class _RecipeFormState extends State<RecipeForm> {
                 Row(
                   children: [
                     Expanded(
+                      flex: 5,
                       child: TextFormField(
                         controller: _servingNameController,
                         decoration: InputDecoration(
@@ -743,6 +744,7 @@ class _RecipeFormState extends State<RecipeForm> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(
+                      flex: 3,
                       child: TextFormField(
                         controller: _totalGramsController,
                         readOnly: true,
