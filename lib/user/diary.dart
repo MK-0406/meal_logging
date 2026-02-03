@@ -1036,48 +1036,65 @@ class _MealDiaryState extends State<MealDiary> {
 
   void _showWaterLoggingDialog() {
     final TextEditingController waterController = TextEditingController(text: "250");
+    final waterFormKey = GlobalKey<FormState>();
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text("Log Water Intake", style: TextStyle(fontWeight: FontWeight.bold)),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text("How much water did you drink?", style: TextStyle(color: Colors.grey, fontSize: 14)),
-            const SizedBox(height: 20),
-            TextField(
-              controller: waterController,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: "Amount (ml)",
-                suffixText: "ml",
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
-                filled: true,
-                fillColor: Colors.grey.shade50,
-              ),
+        content: Form(
+          key: waterFormKey,
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text("How much water did you drink?", style: TextStyle(color: Colors.grey, fontSize: 14)),
+                const SizedBox(height: 20),
+                TextFormField(
+                    controller: waterController,
+                    keyboardType: TextInputType.number,
+                    decoration: InputDecoration(
+                      labelText: "Amount (ml)",
+                      suffixText: "ml",
+                      border: OutlineInputBorder(borderRadius: BorderRadius.circular(15)),
+                      filled: true,
+                      fillColor: Colors.grey.shade50,
+                    ),
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please enter a valid amount';
+                      }
+                      final intValue = int.tryParse(value);
+                      if (intValue == null || intValue <= 0) {
+                        return 'Please enter a valid amount';
+                      }
+                      return null;
+                    }
+                ),
+                const SizedBox(height: 20),
+                const Text("Quick Select:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 10),
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [100, 250, 300, 500, 750, 1000].map((ml) => ActionChip(
+                    label: Text("${ml}ml"),
+                    backgroundColor: Colors.blue.shade50,
+                    labelStyle: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 11),
+                    onPressed: () {
+                      waterController.text = ml.toString();
+                    },
+                  )).toList(),
+                ),
+              ],
             ),
-            const SizedBox(height: 20),
-            const Text("Quick Select:", style: TextStyle(fontSize: 12, color: Colors.grey, fontWeight: FontWeight.w600)),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [100, 250, 300, 500, 750, 1000].map((ml) => ActionChip(
-                label: Text("${ml}ml"),
-                backgroundColor: Colors.blue.shade50,
-                labelStyle: TextStyle(color: Colors.blue.shade700, fontWeight: FontWeight.bold, fontSize: 11),
-                onPressed: () {
-                  waterController.text = ml.toString();
-                },
-              )).toList(),
-            ),
-          ],
+          )
         ),
         actions: [
           TextButton(onPressed: () => Navigator.pop(context), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () {
+              if(!waterFormKey.currentState!.validate()) return;
               final amount = int.tryParse(waterController.text) ?? 0;
               if (amount > 0) {
                 _logWater(amount);
