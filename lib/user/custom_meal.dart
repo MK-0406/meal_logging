@@ -134,9 +134,9 @@ class _CustomMealPageState extends State<CustomMealPage>
             children: [
               IconButton(
                 icon: const Icon(
-                  Icons.arrow_back_ios_new,
+                  Icons.arrow_back,
                   color: Colors.white,
-                  size: 20,
+                  size: 24,
                 ),
                 onPressed: () => Navigator.pushReplacement(
                   context,
@@ -1178,9 +1178,9 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
                   children: [
                     IconButton(
                       icon: const Icon(
-                        Icons.arrow_back_ios_new,
+                        Icons.arrow_back,
                         color: Colors.white,
-                        size: 20,
+                        size: 24,
                       ),
                       onPressed: () => Navigator.pop(context),
                     ),
