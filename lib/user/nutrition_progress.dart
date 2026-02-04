@@ -155,7 +155,7 @@ class _NutritionProgressPageState extends State<NutritionProgressPage> {
       ),
       child: Row(
         children: [
-          IconButton(icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20), onPressed: () => Navigator.pop(context)),
+          IconButton(icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24), onPressed: () => Navigator.pop(context)),
           const SizedBox(width: 8),
           const Text('Nutrition Trends', style: TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
         ],
