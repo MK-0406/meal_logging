@@ -247,9 +247,14 @@ class _ForumPageState extends State<_ForumPage>
           padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
           itemCount: posts.length > _myPostsItemCount
               ? _myPostsItemCount + 1
-              : posts.length,
+              : posts.length + 1,
           itemBuilder: (context, index) {
-            if (index == _myPostsItemCount &&
+            if (index == posts.length) {
+              return Center(
+                  heightFactor: 2,
+                  child: Text('No more posts', style: TextStyle(color: Colors.grey.shade500, fontSize: 16))
+              );
+            } else if (index == _myPostsItemCount &&
                 posts.length > _myPostsItemCount) {
               return _buildLoadMoreButton(
                 onPressed: () => _myPostsItemCount += 5,
@@ -303,12 +308,17 @@ class _ForumPageState extends State<_ForumPage>
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 130),
           itemCount: filteredSavedPosts.length > _savedItemCount
               ? _savedItemCount + 1
-              : filteredSavedPosts.length,
+              : filteredSavedPosts.length + 1,
           itemBuilder: (context, index) {
-            if (index == _savedItemCount &&
+            if (index == filteredSavedPosts.length) {
+              return Center(
+                  heightFactor: 2,
+                  child: Text('No more posts', style: TextStyle(color: Colors.grey.shade500, fontSize: 16))
+              );
+            } else if (index == _savedItemCount &&
                 filteredSavedPosts.length > _savedItemCount) {
               return _buildLoadMoreButton(
                 onPressed: () => setState(() => _savedItemCount += 5),
@@ -361,10 +371,15 @@ class _ForumPageState extends State<_ForumPage>
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(16, 0, 16, 100),
-          itemCount: posts.length > itemCount ? itemCount + 1 : posts.length,
+          padding: const EdgeInsets.fromLTRB(16, 0, 16, 130),
+          itemCount: posts.length > itemCount ? itemCount + 1 : posts.length + 1,
           itemBuilder: (context, index) {
-            if (index == itemCount && posts.length > itemCount) {
+            if (index == posts.length) {
+              return Center(
+                heightFactor: 2,
+                  child: Text('No more posts', style: TextStyle(color: Colors.grey.shade500, fontSize: 16))
+              );
+            } else if (index == itemCount && posts.length > itemCount) {
               return _buildLoadMoreButton(
                 onPressed: () => setState(
                   () => orderByField == 'likeCount'
