@@ -380,11 +380,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(
-              Icons.arrow_back,
-              color: Colors.white,
-              size: 20,
-            ),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
             onPressed: () => Navigator.pop(context, _saved),
           ),
           const SizedBox(width: 8),
@@ -724,6 +720,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                   ],
                 ),
               ),
+              _buildCommentLikeButton(commentId, data['likeCount'] ?? 0),
               PopupMenuButton<String>(
                 icon: Icon(
                   Icons.more_horiz,
@@ -823,6 +820,45 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildCommentLikeButton(String commentId, int likeCount) {
+    return StreamBuilder<DocumentSnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection("posts")
+          .doc(widget.post.id)
+          .collection("comments")
+          .doc(commentId)
+          .collection("likes")
+          .doc(FirebaseAuth.instance.currentUser!.uid)
+          .snapshots(),
+      builder: (context, snapshot) {
+        final liked = snapshot.data?.exists ?? false;
+        return IconButton(
+          icon: Row(
+            children: [
+              Icon(
+                liked ? Icons.favorite_rounded : Icons.favorite_border,
+                color: liked ? Colors.red : Colors.grey,
+                size: 20,
+              ),
+              const SizedBox(width: 4),
+              Text('$likeCount', style: TextStyle(fontSize: 17, color: Colors.grey)),
+            ],
+          ),
+
+          onPressed: () => liked
+              ? unlikeComment(
+            commentId,
+            FirebaseAuth.instance.currentUser!.uid,
+          )
+              : likeComment(
+            commentId,
+            FirebaseAuth.instance.currentUser!.uid,
+          ),
+        );
+      },
     );
   }
 
@@ -984,6 +1020,29 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
         .doc(userId);
     await postRef.collection('posts').doc(postId).delete();
     _saved = false;
+  }
+
+  Future<void> likeComment(String commentId, String userId) async {
+    final postRef = FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.post.id)
+        .collection('comments')
+        .doc(commentId);
+    await postRef.collection('likes').doc(userId).set({
+      'liked': true,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+    await postRef.update({'likeCount': FieldValue.increment(1)});
+  }
+
+  Future<void> unlikeComment(String commentId, String userId) async {
+    final postRef = FirebaseFirestore.instance
+        .collection('posts')
+        .doc(widget.post.id)
+        .collection('comments')
+        .doc(commentId);
+    await postRef.collection('likes').doc(userId).delete();
+    await postRef.update({'likeCount': FieldValue.increment(-1)});
   }
 
   String timeAgo(dynamic timestamp) {
