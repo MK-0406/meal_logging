@@ -195,7 +195,8 @@ class _CreatePostPageState extends State<CreatePostPage> {
         'content': _contentCtrl.text.trim(),
         'createdAt': FieldValue.serverTimestamp(),
         'likeCount': 0,
-        'commentCount': 0
+        'commentCount': 0,
+        'deleted': false
       });
 
       if (!mounted) return;
