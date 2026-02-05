@@ -13,6 +13,9 @@ class AdminRegPage extends StatefulWidget {
 class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderStateMixin{
   final CollectionReference users = FirebaseFirestore.instance.collection('users');
   late TabController _tabController;
+
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
   
   @override
   void initState() {
@@ -33,6 +36,7 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
       body: Column(
         children: [
           _buildHeader(),
+          _buildSearchBar(),
           _buildTabBar(),
           Expanded(
             child: TabBarView(
@@ -63,6 +67,34 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
           Text("Admin Management", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
           Text("Review and approve admin registrations", style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
         ],
+      ),
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchQuery = val),
+        decoration: InputDecoration(
+          hintText: "Search for admins...",
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(icon: const Icon(Icons.close), onPressed: () {
+            _searchController.clear();
+            setState(() => _searchQuery = "");
+          })
+              : null,
+        ),
       ),
     );
   }
@@ -109,6 +141,8 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
           final user = doc.data() as Map<String, dynamic>;
           user['id'] = doc.id;
           return user;
+        }).where((admin) {
+          return admin['email'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
         }).toList();
 
         if (data.isEmpty) return const Center(child: Text('No admin requests found.'));
