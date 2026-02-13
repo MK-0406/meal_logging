@@ -988,9 +988,10 @@ class _RecipeFormState extends State<RecipeForm> {
   }
 }
 
-class UserMealsList extends StatelessWidget {
+class UserMealsList extends StatefulWidget {
   final Function(String, Map<String, dynamic>, Map<String, dynamic>?) onEdit;
   final Map<String, dynamic>? nutritionalTargets;
+
   const UserMealsList({
     super.key,
     required this.onEdit,
@@ -998,86 +999,158 @@ class UserMealsList extends StatelessWidget {
   });
 
   @override
+  State<UserMealsList> createState() => _UserMealsList();
+}
+
+class _UserMealsList extends State<UserMealsList> {
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = "";
+
+  @override
   Widget build(BuildContext context) {
     final uid = FirebaseAuth.instance.currentUser!.uid;
-    return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseFirestore.instance
-          .collection('custom_meal')
-          .doc(uid)
-          .collection('meals')
-          .where('deleted', isEqualTo: false)
-          .orderBy('updatedAt', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const Center(child: CircularProgressIndicator());
-        }
-        final docs = snapshot.data!.docs;
-        if (docs.isEmpty) {
-          return const Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
-                SizedBox(height: 16),
-                Text("No custom meals yet"),
-              ],
-            ),
-          );
-        }
-        return ListView.builder(
-          padding: const EdgeInsets.all(20),
-          itemCount: docs.length,
-          itemBuilder: (context, i) {
-            final data = docs[i].data() as Map<String, dynamic>;
-            return Container(
-              margin: const EdgeInsets.only(bottom: 12),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(20),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.02),
-                    blurRadius: 10,
+
+    return Column(
+      children: [
+        _buildSearchBar(),
+        Expanded(
+          child: StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('custom_meal')
+                .doc(uid)
+                .collection('meals')
+                .where('deleted', isEqualTo: false)
+                .orderBy('updatedAt', descending: true)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (!snapshot.hasData) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              final docs = snapshot.data!.docs;
+              if (docs.isEmpty) {
+                return const Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
+                      SizedBox(height: 16),
+                      Text("No custom meals yet"),
+                    ],
                   ),
-                ],
-              ),
-              child: ListTile(
-                onTap: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) =>
-                        MealDetailsPage(data: data, mealId: docs[i].id),
-                  ),
-                ),
-                title: Text(
-                  data['name'],
-                  style: const TextStyle(fontWeight: FontWeight.bold),
-                ),
-                subtitle: Text(
-                  "${data['calorie'].toStringAsFixed(0)} kcal per 100g",
-                ),
-                trailing: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    IconButton(
-                      onPressed: () => onEdit(docs[i].id, data, nutritionalTargets),
-                      icon: const Icon(Icons.edit_outlined, color: Colors.blue),
+                );
+              }
+              var data = docs.map((doc) {
+                final meal = doc.data() as Map<String, dynamic>;
+                meal['id'] = doc.id;
+                return meal;
+              }).where((meal) {
+                return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
+              }).toList();
+              return ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: data.length,
+                itemBuilder: (context, i) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                        ),
+                      ],
                     ),
-                    IconButton(
-                      onPressed: () => _delete(context, docs[i].id, uid),
-                      icon: const Icon(
-                        Icons.delete_outline,
-                        color: Colors.redAccent,
+                    child: ListTile(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) =>
+                              MealDetailsPage(data: data[i], mealId: data[i]['id']),
+                        ),
+                      ),
+                      title: Text(
+                        data[i]['name'],
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text(
+                        "${data[i]['calorie'].toStringAsFixed(0)} kcal per 100g",
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => widget.onEdit(
+                              data[i]['id'],
+                              data[i],
+                              widget.nutritionalTargets,
+                            ),
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              color: Colors.blue,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () => _delete(context, data[i]['id'], uid),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
-                  ],
-                ),
-              ),
-            );
-          },
-        );
-      },
+                  );
+                },
+              );
+            },
+          ),
+        )
+      ],
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 4),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchQuery = val),
+        decoration: InputDecoration(
+          hintText: "Search for meals...",
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF42A5F5),
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+            icon: const Icon(Icons.close),
+            onPressed: () {
+              _searchController.clear();
+              setState(() => _searchQuery = "");
+            },
+          )
+              : null,
+        ),
+      ),
     );
   }
 
