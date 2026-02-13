@@ -21,6 +21,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
   String? _replyToName;
   late final _postData = widget.post.data() as Map<String, dynamic>;
   bool _saved = false;
+  String _filterComment = 'Latest';
 
   void _showReportDialog(String postId, String type, String? commentId) {
     final reasonCtrl = TextEditingController();
@@ -264,7 +265,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
         title: const Text(
-          "Edit Comment",
+          "Edit Content",
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         content: Form(
@@ -341,14 +342,52 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 children: [
                   _buildMainPost(),
                   const SizedBox(height: 28),
-                  const Text(
-                    "Discussion",
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFF2C3E50),
-                      letterSpacing: -0.3,
-                    ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(flex: 4, child: const Text(
+                        "Discussion",
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF2C3E50),
+                          letterSpacing: -0.3,
+                        ),
+                      ),),
+                      Expanded(
+                        flex: 2,
+                        child: MenuAnchor(
+                          menuChildren: [
+                            MenuItemButton(
+                              child: Text('Latest'),
+                              onPressed: () => setState(() {
+                                _filterComment = 'Latest';
+                              }),
+                            ),
+                            MenuItemButton(
+                              child: Text('Most Likes'),
+                              onPressed: () => setState(() {
+                                _filterComment = 'Most Likes';
+                              }),
+                            ),
+                          ],
+                          builder: (BuildContext context, MenuController controller, Widget? child) {
+                            return TextButton(
+                              onPressed: () {
+                                if (controller.isOpen) {
+                                  controller.close();
+                                } else {
+                                  controller.open();
+                                }
+                              },
+                              child: Text('$_filterComment ▼'),
+                            );
+                          },
+                        ),
+                      ),
+
+                      const SizedBox(width: 5)
+                    ],
                   ),
                   const SizedBox(height: 12),
                   _buildCommentsList(),
@@ -608,7 +647,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           .doc(widget.post.id)
           .collection('comments')
           .where('deleted', isEqualTo: false)
-          .orderBy('createdAt', descending: false)
+          .orderBy(_filterComment == 'Latest' ? 'createdAt' : 'likeCount', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
@@ -844,19 +883,16 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 size: 20,
               ),
               const SizedBox(width: 4),
-              Text('$likeCount', style: TextStyle(fontSize: 17, color: Colors.grey)),
+              Text(
+                '$likeCount',
+                style: TextStyle(fontSize: 17, color: Colors.grey),
+              ),
             ],
           ),
 
           onPressed: () => liked
-              ? unlikeComment(
-            commentId,
-            FirebaseAuth.instance.currentUser!.uid,
-          )
-              : likeComment(
-            commentId,
-            FirebaseAuth.instance.currentUser!.uid,
-          ),
+              ? unlikeComment(commentId, FirebaseAuth.instance.currentUser!.uid)
+              : likeComment(commentId, FirebaseAuth.instance.currentUser!.uid),
         );
       },
     );
@@ -976,6 +1012,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           "createdAt": FieldValue.serverTimestamp(),
           "parentId": _replyToId,
           'deleted': false,
+          "likeCount": 0,
         });
     await FirebaseFirestore.instance.collection("posts").doc(postId).update({
       "commentCount": _commentCount,
