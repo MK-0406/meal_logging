@@ -345,15 +345,18 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Expanded(flex: 4, child: const Text(
-                        "Discussion",
-                        style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF2C3E50),
-                          letterSpacing: -0.3,
+                      Expanded(
+                        flex: 4,
+                        child: const Text(
+                          "Discussion",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                            color: Color(0xFF2C3E50),
+                            letterSpacing: -0.3,
+                          ),
                         ),
-                      ),),
+                      ),
                       Expanded(
                         flex: 2,
                         child: MenuAnchor(
@@ -371,22 +374,27 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                               }),
                             ),
                           ],
-                          builder: (BuildContext context, MenuController controller, Widget? child) {
-                            return TextButton(
-                              onPressed: () {
-                                if (controller.isOpen) {
-                                  controller.close();
-                                } else {
-                                  controller.open();
-                                }
+                          builder:
+                              (
+                                BuildContext context,
+                                MenuController controller,
+                                Widget? child,
+                              ) {
+                                return TextButton(
+                                  onPressed: () {
+                                    if (controller.isOpen) {
+                                      controller.close();
+                                    } else {
+                                      controller.open();
+                                    }
+                                  },
+                                  child: Text('$_filterComment ▼'),
+                                );
                               },
-                              child: Text('$_filterComment ▼'),
-                            );
-                          },
                         ),
                       ),
 
-                      const SizedBox(width: 5)
+                      const SizedBox(width: 5),
                     ],
                   ),
                   const SizedBox(height: 12),
@@ -446,10 +454,13 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
               }
             },
             itemBuilder: (context) => [
-              const PopupMenuItem(
+              ?(widget.post.data() as Map<String, dynamic>)['userId'] !=
+                  FirebaseAuth.instance.currentUser!.uid
+              ? const PopupMenuItem(
                 value: 'report',
                 child: Text('Report Post', style: TextStyle(color: Colors.red)),
-              ),
+              )
+              : null,
               ?(widget.post.data() as Map<String, dynamic>)['userId'] ==
                       FirebaseAuth.instance.currentUser!.uid
                   ? const PopupMenuItem(
@@ -647,7 +658,10 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           .doc(widget.post.id)
           .collection('comments')
           .where('deleted', isEqualTo: false)
-          .orderBy(_filterComment == 'Latest' ? 'createdAt' : 'likeCount', descending: true)
+          .orderBy(
+            _filterComment == 'Latest' ? 'createdAt' : 'likeCount',
+            descending: true,
+          )
           .snapshots(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) {
@@ -783,13 +797,15 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                   }
                 },
                 itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'report',
-                    child: Text(
-                      'Report Comment',
-                      style: TextStyle(color: Colors.red, fontSize: 13),
-                    ),
-                  ),
+                  ?(data['authorId'] != FirebaseAuth.instance.currentUser!.uid)
+                      ? const PopupMenuItem(
+                          value: 'report',
+                          child: Text(
+                            'Report Comment',
+                            style: TextStyle(color: Colors.red, fontSize: 13),
+                          ),
+                        )
+                      : null,
                   ?(data['authorId'] == FirebaseAuth.instance.currentUser!.uid)
                       ? const PopupMenuItem(
                           value: 'delete',
