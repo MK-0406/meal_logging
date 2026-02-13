@@ -786,7 +786,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                   const PopupMenuItem(
                     value: 'report',
                     child: Text(
-                      'Report',
+                      'Report Comment',
                       style: TextStyle(color: Colors.red, fontSize: 13),
                     ),
                   ),
@@ -794,7 +794,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                       ? const PopupMenuItem(
                           value: 'delete',
                           child: Text(
-                            'Delete',
+                            'Delete Comment',
                             style: TextStyle(color: Colors.red, fontSize: 13),
                           ),
                         )
@@ -803,7 +803,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                       ? const PopupMenuItem(
                           value: 'edit',
                           child: Text(
-                            'Edit',
+                            'Edit Comment',
                             style: TextStyle(color: Colors.black, fontSize: 13),
                           ),
                         )
