@@ -141,7 +141,6 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
 
               if (!context.mounted) return;
               Navigator.pop(context);
-              Navigator.pop(context);
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(
                   content: Text("Content deleted."),
