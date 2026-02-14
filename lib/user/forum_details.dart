@@ -433,7 +433,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
           const SizedBox(width: 8),
           const Expanded(
             child: Text(
-              'Topic Details',
+              'Post Details',
               style: TextStyle(
                 color: Colors.white,
                 fontSize: 24,
