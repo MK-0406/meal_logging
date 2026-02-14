@@ -38,12 +38,12 @@ class _NutritionChatState extends State<NutritionChat> {
     try {
       _model = GenerativeModel(
         model: _availableModels[_currentModelIndex],
-        apiKey: 'AIzaSyDAFxRZVqCv-B-BR5cV9w1F6Me_2MJPLL0',
+        apiKey: '[PLACE_YOUR_OWN_API_KEY_HERE]',
         generationConfig: GenerationConfig(
           temperature: 0.7,
           topK: 40,
           topP: 0.95,
-          maxOutputTokens: 4096,
+          //maxOutputTokens: 4096,
         ),
         systemInstruction: Content.system(
             'You are a expert nutrition assistant integrated into a meal logging app. '
