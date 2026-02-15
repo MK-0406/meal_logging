@@ -531,6 +531,7 @@ class _ProfileFormScreenState extends State<ProfileFormScreen> {
       'bloodPressureDiastolic': double.tryParse(_bloodPressureDiastolicController.text) ?? 0,
       'cholesterol_mmolL': cholesterolMmolL, 'bloodSugar_mmolL': bloodSugarMmolL,
       'updatedAt': FieldValue.serverTimestamp(),
+      'ban': false
     });
 
     if (isEditing) {
