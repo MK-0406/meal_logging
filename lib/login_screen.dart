@@ -69,7 +69,13 @@ class _LoginScreenState extends State<LoginScreen> {
 
     if (userDoc['role'] == 'user') {
       if (userInfoDoc.exists) {
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const MainDashboard()));
+        if (userInfoDoc['ban'] == false) {
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (_) => const MainDashboard()));
+        }
+        else {
+          _showSnackBar('Your account has been banned.', const Color(0xFF1E88E5));
+        }
       } else {
         Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
       }
