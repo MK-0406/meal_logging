@@ -156,7 +156,7 @@ class _ForumPageState extends State<_ForumPage>
         controller: _searchController,
         onChanged: (val) => setState(() => _searchQuery = val),
         decoration: InputDecoration(
-          hintText: "Search for authors, post titles...",
+          hintText: "Search for authors, titles, contents...",
           hintStyle: TextStyle(color: Colors.grey.shade400),
           prefixIcon: const Icon(
             Icons.search_rounded,
@@ -238,6 +238,9 @@ class _ForumPageState extends State<_ForumPage>
               .where(
                 (post) => post['title'].toString().toLowerCase().contains(
                   _searchQuery.toLowerCase(),
+                ) ||
+                post['content'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
                 ),
               )
               .toList();
@@ -292,6 +295,9 @@ class _ForumPageState extends State<_ForumPage>
                       _searchQuery.toLowerCase(),
                     ) ||
                     post['username'].toString().toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    ) ||
+                    post['content'].toString().toLowerCase().contains(
                       _searchQuery.toLowerCase(),
                     ),
               )
@@ -364,6 +370,9 @@ class _ForumPageState extends State<_ForumPage>
                   _searchQuery.toLowerCase(),
                 ) ||
                 post['username'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                ) ||
+                post['content'].toString().toLowerCase().contains(
                   _searchQuery.toLowerCase(),
                 ),
               )
