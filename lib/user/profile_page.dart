@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:meal_logging/login_screen.dart';
-import 'package:meal_logging/main.dart';
 import 'input_personal_health_info.dart';
 import '../functions.dart';
 
@@ -115,7 +114,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new, color: Colors.white, size: 20),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 8),
@@ -148,11 +147,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            border: Border.all(color: const Color(0xFF42A5F5).withOpacity(0.2), width: 4),
+            border: Border.all(color: const Color(0xFF42A5F5).withValues(alpha: 0.2), width: 4),
           ),
           child: CircleAvatar(
             radius: 50,
-            backgroundColor: const Color(0xFF42A5F5).withOpacity(0.1),
+            backgroundColor: const Color(0xFF42A5F5).withValues(alpha: 0.1),
             child: const Icon(Icons.person_rounded, size: 60, color: Color(0xFF1E88E5)),
           ),
         ),
@@ -165,7 +164,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         Container(
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFF42A5F5).withOpacity(0.1),
+            color: const Color(0xFF42A5F5).withValues(alpha: 0.1),
             borderRadius: BorderRadius.circular(20),
           ),
           child: Text(
@@ -184,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(28),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.02), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -266,7 +265,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: OutlinedButton.icon(
             onPressed: () async {
               await FirebaseAuth.instance.signOut();
-              if (context.mounted) {
+              if (mounted) {
                 Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => LoginScreen()));
               }
             },
