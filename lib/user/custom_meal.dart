@@ -1046,7 +1046,19 @@ class _UserMealsList extends State<UserMealsList> {
               }).where((meal) {
                 return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
               }).toList();
-              return ListView.builder(
+
+              return data.isEmpty
+              ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text("No meals found")
+                  ],
+                )
+              )
+              : ListView.builder(
                 padding: const EdgeInsets.all(20),
                 itemCount: data.length,
                 itemBuilder: (context, i) {
