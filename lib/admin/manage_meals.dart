@@ -204,7 +204,7 @@ class _MealsPageState extends State<MealsPage> {
         const SizedBox(width: 10),
         Expanded(
             flex: 3,
-            child: _buildDropdown('FoodCategory', _filterCategory, ['None', ..._foodCategoryItems],  (val) => setState(() => _filterCategory = val))
+            child: _buildDropdown('Food Category', _filterCategory, ['None', ..._foodCategoryItems],  (val) => setState(() => _filterCategory = val))
         ),
         const SizedBox(width: 15),
       ],
