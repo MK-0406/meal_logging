@@ -170,46 +170,48 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
         ),
         content: Form(
           key: editKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextFormField(
-                controller: titleCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  label: Text('Title'),
-                  hintText: "Edit title...",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextFormField(
+                  controller: titleCtrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    label: Text('Title'),
+                    hintText: "Edit title...",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
                   ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
+                  validator: (val) {
+                    if (val!.isEmpty) return 'Title cannot be empty';
+                    return null;
+                  },
                 ),
-                validator: (val) {
-                  if (val!.isEmpty) return 'Title cannot be empty';
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: contentCtrl,
-                maxLines: 3,
-                decoration: InputDecoration(
-                  label: Text('Content'),
-                  hintText: "Edit content...",
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(15),
+                const SizedBox(height: 16),
+                TextFormField(
+                  controller: contentCtrl,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    label: Text('Content'),
+                    hintText: "Edit content...",
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(15),
+                    ),
+                    filled: true,
+                    fillColor: Colors.grey.shade50,
                   ),
-                  filled: true,
-                  fillColor: Colors.grey.shade50,
+                  validator: (val) {
+                    if (val!.isEmpty) return 'Content cannot be empty';
+                    return null;
+                  },
                 ),
-                validator: (val) {
-                  if (val!.isEmpty) return 'Content cannot be empty';
-                  return null;
-                },
-              ),
-            ],
-          ),
+              ],
+            ),
+          )
         ),
         actions: [
           TextButton(
