@@ -10,11 +10,19 @@ class UsersPage extends StatefulWidget {
   State<UsersPage> createState() => _UsersPageState();
 }
 
-class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMixin { //add tab
-  final CollectionReference users = FirebaseFirestore.instance.collection('users');
-  late Map<String, Map<String, dynamic>> usersData;
+class _UsersPageState extends State<UsersPage>
+    with SingleTickerProviderStateMixin {
+  //add tab
+  final CollectionReference users = FirebaseFirestore.instance.collection(
+    'users',
+  );
+  final CollectionReference usersInfo = FirebaseFirestore.instance.collection(
+    'usersInfo',
+  );
+  late Map<String, Map<String, dynamic>> usersData = {};
   int banCount = 0;
   int activeCount = 0;
+  bool isLoading = false;
 
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -23,6 +31,7 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
   @override
   void initState() {
     _loadCounts();
+    _getUserData();
     _tabController = TabController(length: 2, vsync: this);
     super.initState();
   }
@@ -34,12 +43,33 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
   }
 
   Future<void> _loadCounts() async {
-    final bannedUsers = await FirebaseFirestore.instance.collection('usersInfo').where('ban', isEqualTo: true).get();
-    final activeUsers = await FirebaseFirestore.instance.collection('usersInfo').where('ban', isEqualTo: false).get();
+    final bannedUsers = await FirebaseFirestore.instance
+        .collection('usersInfo')
+        .where('ban', isEqualTo: true)
+        .get();
+    final activeUsers = await FirebaseFirestore.instance
+        .collection('usersInfo')
+        .where('ban', isEqualTo: false)
+        .get();
 
     setState(() {
       banCount = bannedUsers.docs.length;
       activeCount = activeUsers.docs.length;
+    });
+  }
+
+  Future<void> _getUserData() async {
+    setState(() {
+      isLoading = true;
+    });
+    final snapshot = await usersInfo.get();
+    Map<String, Map<String, dynamic>> data = {};
+    for (var doc in snapshot.docs) {
+      data[doc.id] = doc.data() as Map<String, dynamic>;
+    }
+    setState(() {
+      usersData = data;
+      isLoading = false;
     });
   }
 
@@ -55,10 +85,7 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
           Expanded(
             child: TabBarView(
               controller: _tabController,
-              children: [
-                _buildUserList(false),
-                _buildUserList(true),
-              ],
+              children: [_buildUserList(false), _buildUserList(true)],
             ),
           ),
         ],
@@ -71,14 +98,34 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
       ),
       child: const Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text("Manage Users", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
-          Text("Monitor and manage active members", style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+          Text(
+            "Manage Users",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+          ),
+          Text(
+            "Monitor and manage active members",
+            style: TextStyle(
+              color: Colors.white70,
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
         ],
       ),
     );
@@ -90,7 +137,13 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
         controller: _searchController,
@@ -98,14 +151,23 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
         decoration: InputDecoration(
           hintText: "Search for emails...",
           hintStyle: TextStyle(color: Colors.grey.shade400),
-          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF42A5F5),
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
           suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(icon: const Icon(Icons.close), onPressed: () {
-            _searchController.clear();
-            setState(() => _searchQuery = "");
-          })
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = "");
+                  },
+                )
               : null,
         ),
       ),
@@ -119,7 +181,12 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(12),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10)],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+          ),
+        ],
       ),
       child: TabBar(
         controller: _tabController,
@@ -147,37 +214,69 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
         children: [
           Icon(Icons.block_outlined, size: 80, color: Colors.grey.shade200),
           const SizedBox(height: 16),
-          const Text("No banned users found", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
+          const Text(
+            "No banned users found",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.grey,
+            ),
+          ),
           const SizedBox(height: 100),
-        ]
+        ],
       );
     }
     if (showBan == false && activeCount == 0) {
       return Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(Icons.person_off_outlined, size: 80, color: Colors.grey.shade200),
-            const SizedBox(height: 16),
-            const Text("No active users found", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
-            const SizedBox(height: 100),
-          ]
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(
+            Icons.person_off_outlined,
+            size: 80,
+            color: Colors.grey.shade200,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "No active users found",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 18,
+              color: Colors.grey,
+            ),
+          ),
+          const SizedBox(height: 100),
+        ],
       );
     }
     return StreamBuilder<QuerySnapshot>(
-      stream: users.where('role', isEqualTo: 'user').orderBy('email').snapshots(),
+      stream: users
+          .where('role', isEqualTo: 'user')
+          .orderBy('email')
+          .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError) return const Center(child: Text('Error loading users'));
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.hasError)
+          return const Center(child: Text('Error loading users'));
+        if (snapshot.connectionState == ConnectionState.waiting || isLoading) {
           return const Center(child: CircularProgressIndicator(strokeWidth: 2));
         }
 
-        final data = snapshot.data!.docs.map((doc) {
-          final user = doc.data() as Map<String, dynamic>;
-          user['id'] = doc.id;
-            return user;
-        }).where((user) {
-          return user['email'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
-        }).toList();
+        final data = snapshot.data!.docs
+            .map((doc) {
+              final user = doc.data() as Map<String, dynamic>;
+              user['id'] = doc.id;
+              return user;
+            })
+            .where((user) {
+              return (user['email'].toString().toLowerCase().contains(
+                    _searchQuery.toLowerCase(),
+                  ) ||
+                  usersData[user['id']]?['name']
+                          ?.toString()
+                          .toLowerCase()
+                          .contains(_searchQuery.toLowerCase()) ==
+                      true);
+            })
+            .toList();
 
         if (data.isEmpty) return const Center(child: Text('No users found.'));
 
@@ -192,7 +291,10 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
 
   Widget _buildUserCard(Map<String, dynamic> user, bool showBan) {
     return FutureBuilder<DocumentSnapshot>(
-      future: FirebaseFirestore.instance.collection('usersInfo').doc(user['id']).get(),
+      future: FirebaseFirestore.instance
+          .collection('usersInfo')
+          .doc(user['id'])
+          .get(),
       builder: (context, snapshot) {
         final info = snapshot.data?.data() as Map<String, dynamic>? ?? {};
         final isBanned = info['ban'] == true;
@@ -205,23 +307,51 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
-            border: Border.all(color: isBanned ? Colors.red.withValues(alpha: 0.1) : Colors.transparent),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: isBanned
+                  ? Colors.red.withValues(alpha: 0.1)
+                  : Colors.transparent,
+            ),
           ),
           child: ListTile(
             onTap: () => _showUserDetails(user, info),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+            contentPadding: const EdgeInsets.symmetric(
+              horizontal: 20,
+              vertical: 8,
+            ),
             leading: CircleAvatar(
               radius: 24,
-              backgroundColor: isBanned ? Colors.red.shade50 : const Color(0xFF42A5F5).withValues(alpha: 0.1),
-              child: Icon(isBanned ? Icons.block_rounded : Icons.person_rounded, color: isBanned ? Colors.redAccent : const Color(0xFF1E88E5)),
+              backgroundColor: isBanned
+                  ? Colors.red.shade50
+                  : const Color(0xFF42A5F5).withValues(alpha: 0.1),
+              child: Icon(
+                isBanned ? Icons.block_rounded : Icons.person_rounded,
+                color: isBanned ? Colors.redAccent : const Color(0xFF1E88E5),
+              ),
             ),
-            title: Text(user['email'], style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
-            subtitle: Text(info['name'] ?? user['email'].split('@')[0], style: TextStyle(color: Colors.grey.shade500, fontSize: 13)),
-            trailing: Icon(Icons.arrow_forward_ios_rounded, size: 14, color: Colors.grey.shade300),
+            title: Text(
+              info['name'] ?? user['email'].split('@')[0],
+              style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            ),
+            subtitle: Text(
+              user['email'],
+              style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
+            ),
+            trailing: Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 14,
+              color: Colors.grey.shade300,
+            ),
           ),
         );
-      }
+      },
     );
   }
 
@@ -238,30 +368,55 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
             children: [
               CircleAvatar(
                 radius: 36,
-                backgroundColor: isBanned ? Colors.red.shade50 : const Color(0xFF42A5F5).withValues(alpha: 0.1),
-                child: Icon(isBanned ? Icons.block_rounded : Icons.person_rounded, size: 40, color: isBanned ? Colors.redAccent : const Color(0xFF1E88E5)),
+                backgroundColor: isBanned
+                    ? Colors.red.shade50
+                    : const Color(0xFF42A5F5).withValues(alpha: 0.1),
+                child: Icon(
+                  isBanned ? Icons.block_rounded : Icons.person_rounded,
+                  size: 40,
+                  color: isBanned ? Colors.redAccent : const Color(0xFF1E88E5),
+                ),
               ),
               const SizedBox(height: 16),
-              Text(info['name'] ?? "User", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-              Text(user['email'], style: TextStyle(color: Colors.grey.shade500, fontSize: 14)),
+              Text(
+                info['name'] ?? "User",
+                style: const TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                user['email'],
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
+              ),
               const SizedBox(height: 24),
               _detailRow("Gender", info['gender']),
               _detailRow("Age", "${info['age'] ?? '-'} years"),
-              _detailRow("Status", isBanned ? "Banned" : "Active", color: isBanned ? Colors.red : Colors.green),
+              _detailRow(
+                "Status",
+                isBanned ? "Banned" : "Active",
+                color: isBanned ? Colors.red : Colors.green,
+              ),
               Align(
                 alignment: Alignment.centerRight,
                 child: TextButton(
-                    onPressed: () async {
-                      final data = await FirebaseFirestore.instance
-                          .collection('usersInfo')
-                          .doc(user['id'])
-                          .collection('logs')
-                          .orderBy('updatedAt').get();
-                      final snapshots = data.docs;
-                      List<QueryDocumentSnapshot> timelines = snapshots.map((doc) => doc).toList();
-                      _showTimelineDialog(timelines);
-                    },
-                    child: Text('View Timeline >', style: TextStyle(color: Colors.blue.shade500, fontSize: 14))
+                  onPressed: () async {
+                    final data = await FirebaseFirestore.instance
+                        .collection('usersInfo')
+                        .doc(user['id'])
+                        .collection('logs')
+                        .orderBy('updatedAt')
+                        .get();
+                    final snapshots = data.docs;
+                    List<QueryDocumentSnapshot> timelines = snapshots
+                        .map((doc) => doc)
+                        .toList();
+                    _showTimelineDialog(timelines);
+                  },
+                  child: Text(
+                    'View Timeline >',
+                    style: TextStyle(color: Colors.blue.shade500, fontSize: 14),
+                  ),
                 ),
               ),
               const SizedBox(height: 10),
@@ -275,12 +430,21 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
                         }
                         //if (context.mounted) Navigator.pop(context);
                       },
-                      icon: Icon(isBanned ? Icons.check_circle_outline : Icons.block_flipped, size: 18),
+                      icon: Icon(
+                        isBanned
+                            ? Icons.check_circle_outline
+                            : Icons.block_flipped,
+                        size: 18,
+                      ),
                       label: Text(isBanned ? "Unban" : "Ban"),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: isBanned ? Colors.green : Colors.red,
-                        side: BorderSide(color: isBanned ? Colors.green : Colors.red),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        side: BorderSide(
+                          color: isBanned ? Colors.green : Colors.red,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
                     ),
@@ -292,7 +456,9 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF42A5F5),
                         foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                         elevation: 0,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                       ),
@@ -314,8 +480,20 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(label, style: TextStyle(color: Colors.grey.shade500, fontWeight: FontWeight.w500)),
-          Text(value?.toString() ?? "-", style: TextStyle(fontWeight: FontWeight.bold, color: color ?? const Color(0xFF2C3E50))),
+          Text(
+            label,
+            style: TextStyle(
+              color: Colors.grey.shade500,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+          Text(
+            value?.toString() ?? "-",
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: color ?? const Color(0xFF2C3E50),
+            ),
+          ),
         ],
       ),
     );
@@ -333,17 +511,30 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
         content: SingleChildScrollView(
           child: timelines.isEmpty
               ? Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.timeline_outlined, size: 80, color: Colors.grey.shade200),
-              const SizedBox(height: 16),
-              const Text("No timeline found", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: Colors.grey)),
-            ]
-          )
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      Icons.timeline_outlined,
+                      size: 80,
+                      color: Colors.grey.shade200,
+                    ),
+                    const SizedBox(height: 16),
+                    const Text(
+                      "No timeline found",
+                      style: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                )
               : Column(
-            mainAxisSize: MainAxisSize.min,
-            children: timelines.map((doc) => _buildTimeline(doc)).toList(),
-          )
+                  mainAxisSize: MainAxisSize.min,
+                  children: timelines
+                      .map((doc) => _buildTimeline(doc))
+                      .toList(),
+                ),
         ),
         actions: [
           TextButton(
@@ -358,7 +549,9 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
   Widget _buildTimeline(QueryDocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>;
     final time = data['updatedAt'];
-    final status = data['ban'] ? " Banned  " : "Unbanned"; //put extra spaces for better interface
+    final status = data['ban']
+        ? " Banned  "
+        : "Unbanned"; //put extra spaces for better interface
     final reason = data['reason'] == '' ? "No reason" : data['reason'];
     final updatedBy = data['updatedBy'] ?? "Unknown";
 
@@ -367,24 +560,50 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(20),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 8, offset: const Offset(0, 2))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: ListTile(
         contentPadding: const EdgeInsets.all(7),
         leading: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(data['ban'] ? Icons.block_rounded : Icons.check_circle_rounded, size: 32, color: data['ban'] ? Colors.red : Colors.green),
-            Text(status, style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-          ]
+            Icon(
+              data['ban'] ? Icons.block_rounded : Icons.check_circle_rounded,
+              size: 32,
+              color: data['ban'] ? Colors.red : Colors.green,
+            ),
+            Text(
+              status,
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+          ],
         ),
-        title: Text(time, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Color(0xFF2C3E50))),
+        title: Text(
+          time,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+            color: Color(0xFF2C3E50),
+          ),
+        ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Reason: $reason', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-            Text('Done by: $updatedBy', style: TextStyle(color: Colors.grey.shade600, fontSize: 13)),
-          ]
+            Text(
+              'Reason: $reason',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+            Text(
+              'Done by: $updatedBy',
+              style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+            ),
+          ],
         ),
       ),
     );
@@ -404,7 +623,9 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              isBanned ? "Are you sure you want to unban this user?" : "Why you are banning this user?",
+              isBanned
+                  ? "Are you sure you want to unban this user?"
+                  : "Why you are banning this user?",
               style: const TextStyle(fontSize: 14, color: Colors.grey),
             ),
             const SizedBox(height: 16),
@@ -433,24 +654,32 @@ class _UsersPageState extends State<UsersPage> with SingleTickerProviderStateMix
               foregroundColor: Colors.white,
             ),
             onPressed: () async {
-              final admin = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).get();
+              final admin = await FirebaseFirestore.instance
+                  .collection('users')
+                  .doc(FirebaseAuth.instance.currentUser!.uid)
+                  .get();
               final adminData = admin.data() as Map<String, dynamic>;
 
-              await FirebaseFirestore.instance.collection('usersInfo').doc(user['id']).update({
-                'ban': !isBanned,
-                'updatedAt': FieldValue.serverTimestamp()
-              });
+              await FirebaseFirestore.instance
+                  .collection('usersInfo')
+                  .doc(user['id'])
+                  .update({
+                    'ban': !isBanned,
+                    'updatedAt': FieldValue.serverTimestamp(),
+                  });
               await FirebaseFirestore.instance
                   .collection('usersInfo')
                   .doc(user['id'])
                   .collection('logs')
                   .doc(DateFormat('yyyyMMddHHmmss').format(DateTime.now()))
                   .set({
-                'ban': !isBanned,
-                'updatedAt': DateFormat('dd-MM-yyyy HH:mm:ss').format(DateTime.now()),
-                'reason': reasonCtrl.text,
-                'updatedBy': adminData['email'].split('@')[0],
-              });
+                    'ban': !isBanned,
+                    'updatedAt': DateFormat(
+                      'dd-MM-yyyy HH:mm:ss',
+                    ).format(DateTime.now()),
+                    'reason': reasonCtrl.text,
+                    'updatedBy': adminData['email'].split('@')[0],
+                  });
 
               setState(() {
                 _loadCounts();
