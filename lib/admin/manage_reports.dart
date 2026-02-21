@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
@@ -208,7 +209,15 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
   }
 
   Future<void> _handleReport(String reportId, String status) async {
-    await reports.doc(reportId).update({'status': status, 'resolvedAt': FieldValue.serverTimestamp()});
+    final adminDoc = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).get();
+    final adminData = adminDoc.data() as Map<String, dynamic>;
+
+    await reports.doc(reportId).update({
+      'status': status,
+      'resolvedById': FirebaseAuth.instance.currentUser!.uid,
+      'resolvedByName': adminData['email'].split('@')[0],
+      'resolvedAt': FieldValue.serverTimestamp()}
+    );
   }
 
   void _showDeleteConfirm(String reportId, Map<String, dynamic> report) {
@@ -419,6 +428,16 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
                   report['reason']?.toString().isEmpty ?? true ? "No reason provided" : report['reason'],
                   style: const TextStyle(fontSize: 14, color: Color(0xFF2C3E50), fontStyle: FontStyle.italic),
                 ),
+                const Divider(height: 32),
+                Row(
+                  children: [
+                    const Text("Resolved by: ", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Text(
+                      report['resolvedByName'] ?? "Unknown",
+                      style: const TextStyle(fontSize: 13, color: Color(0xFF1E88E5), fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                )
               ],
             ),
           ),
