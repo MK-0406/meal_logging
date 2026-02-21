@@ -42,8 +42,13 @@ class _SignupScreenState extends State<SignupScreen> {
       await _createUserDocument(user.uid, user.email!);
       
       if (!mounted) return;
-      _showSnackBar('Signup Successful! Please complete your profile.', Colors.green);
-      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
+      if (selectedRole == 'user') {
+        _showSnackBar('Signup Successful! Please complete your profile.', Colors.green);
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
+      } else if (selectedRole == 'admin') {
+        _showSnackBar('Signup Successful! Please wait for admin approval.', Colors.green);
+        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const LoginScreen()));
+      }
     } else {
       _showSnackBar(error, Colors.redAccent);
     }
@@ -60,8 +65,15 @@ class _SignupScreenState extends State<SignupScreen> {
       if (!userDoc.exists) {
         await _createUserDocument(userCredential.user!.uid, userCredential.user!.email!);
         if (!mounted) return;
-        _showSnackBar('Account Created with Google!', Colors.green);
-        Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
+        if (selectedRole == 'user') {
+          _showSnackBar('Account Created with Google!', Colors.green);
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (_) => const ProfileFormScreen()));
+        } else if (selectedRole == 'admin') {
+          _showSnackBar('Account Created with Google! Please wait for admin approval.', Colors.green);
+          Navigator.pushReplacement(context,
+              MaterialPageRoute(builder: (_) => const LoginScreen()));
+        }
       } else {
         if (!mounted) return;
         _showSnackBar('Account already exists. Please login.', const Color(0xFF1E88E5));
