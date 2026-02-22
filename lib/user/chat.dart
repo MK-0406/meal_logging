@@ -38,7 +38,7 @@ class _NutritionChatState extends State<NutritionChat> {
     try {
       _model = GenerativeModel(
         model: _availableModels[_currentModelIndex],
-        apiKey: '[PLACE_YOUR_OWN_API_KEY_HERE]',
+        apiKey: 'your_key',
         generationConfig: GenerationConfig(
           temperature: 0.7,
           topK: 40,
@@ -93,7 +93,7 @@ class _NutritionChatState extends State<NutritionChat> {
       _messages.clear();
       for (var doc in snapshot.docs) {
         final data = doc.data();
-        _messages.add({
+        _messages.insert(0, {
           'role': data['role'],
           'text': data['text'],
           'time': (data['time'] as Timestamp?)?.toDate() ?? DateTime.now(),
@@ -104,7 +104,6 @@ class _NutritionChatState extends State<NutritionChat> {
     if (_messages.isEmpty) {
       _sendTodaySummary();
     }
-    _scrollToBottom();
   }
 
   Future<String> _getAppContext(DateTime date) async {
@@ -160,7 +159,7 @@ $availableMeals
     final dateStr = DateFormat('EEEE, dd MMM yyyy').format(now);
 
     setState(() {
-      _messages.add({
+      _messages.insert(0, {
         'role': 'model',
         'text': "Hello! Let me take a look at your logs for today...",
         'time': DateTime.now(),
@@ -170,7 +169,6 @@ $availableMeals
 
     await _callAiWithRetry(now, dateStr: dateStr, isSummary: true);
     setState(() => _isLoading = false);
-    _scrollToBottom();
   }
 
   Future<void> _sendMessage() async {
@@ -180,19 +178,17 @@ $availableMeals
 
     _textController.clear();
     setState(() {
-      _messages.add({
+      _messages.insert(0, {
         'role': 'user',
         'text': text,
         'time': DateTime.now(),
       });
       _isLoading = true;
     });
-    _scrollToBottom();
     await _saveMessage('user', text);
 
     await _callAiWithRetry(DateTime.now(), manualText: text);
     setState(() => _isLoading = false);
-    _scrollToBottom();
   }
 
   Future<void> _callAiWithRetry(DateTime date, {String? dateStr, String? manualText, bool isSummary = false}) async {
@@ -206,7 +202,7 @@ $availableMeals
       final botMsg = response.text ?? "I'm sorry, I couldn't process that.";
 
       setState(() {
-        _messages.add({
+        _messages.insert(0, {
           'role': 'model',
           'text': botMsg,
           'time': DateTime.now(),
@@ -229,7 +225,7 @@ $availableMeals
 
   void _addErrorMessage(String text) {
     setState(() {
-      _messages.add({
+      _messages.insert(0, {
         'role': 'model',
         'text': text,
         'time': DateTime.now(),
@@ -284,18 +280,6 @@ $availableMeals
     return summary;
   }
 
-  void _scrollToBottom() {
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients) {
-        _scrollController.animateTo(
-          _scrollController.position.maxScrollExtent,
-          duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut,
-        );
-      }
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -306,6 +290,7 @@ $availableMeals
             _buildHeader(),
             Expanded(
               child: ListView.builder(
+                reverse: true,
                 controller: _scrollController,
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
                 itemCount: _messages.length,
@@ -359,6 +344,7 @@ $availableMeals
                   ),
                 ],
               ),
+              const SizedBox(width: 5),
               IconButton(
                 icon: const Icon(Icons.history_rounded, color: Colors.white, size: 24),
                 onPressed: () async {
@@ -389,6 +375,7 @@ $availableMeals
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
               ),
+              const SizedBox(width: 5),
             ],
           ),
         ],
