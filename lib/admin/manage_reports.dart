@@ -277,6 +277,37 @@ class ReportPageHistory extends StatefulWidget {
 
 class _ReportPageHistoryState extends State<ReportPageHistory> {
   final CollectionReference reports = FirebaseFirestore.instance.collection('reports');
+  final _searchController = TextEditingController();
+  String _searchQuery = "";
+  final postDetails = <String, Map<String, dynamic>>{};
+  final commentDetails = <String, Map<String, dynamic>>{};
+  bool isLoading = false;
+  
+  void _getPostDetails() async {
+    setState(() {
+      isLoading = true;
+    });
+    final postDoc = await FirebaseFirestore.instance.collection('posts').get();
+
+    if (postDoc.docs.isNotEmpty) {
+      for (var doc in postDoc.docs) {
+        postDetails[doc.id] = doc.data();
+        final commentDoc = await FirebaseFirestore.instance.collection('posts').doc(doc.id).collection('comments').get();
+        for (var commentDoc in commentDoc.docs) {
+          commentDetails[commentDoc.id] = commentDoc.data();
+        }
+      }
+    }
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _getPostDetails();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -285,6 +316,13 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
       body: Column(
         children: [
           _buildHeader(),
+          _buildSearchBar(),
+          isLoading
+              ? const Padding(
+                  padding: EdgeInsets.all(20),
+                  child: CircularProgressIndicator(strokeWidth: 2),
+                )
+              : const SizedBox.shrink(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
               stream: reports.orderBy('timestamp', descending: true).snapshots(),
@@ -294,7 +332,23 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
                   return const Center(child: CircularProgressIndicator(strokeWidth: 2));
                 }
 
-                final data = snapshot.data!.docs;
+                final data = snapshot.data!.docs
+                  .map((doc) {
+                    final report = doc.data() as Map<String, dynamic>;
+                    report['id'] = doc.id;
+                    report['authorName'] = report['commentId'] != null ? (commentDetails[report['commentId']]?['authorName']) : postDetails[report['postId']]?['username'];
+                    report['content'] = report['commentId'] != null ? (commentDetails[report['commentId']]?['text']) : postDetails[report['postId']]?['content'];
+                    report['title'] = report['commentId'] != null ? '' : postDetails[report['postId']]?['title'];
+                    return report;
+                }).where((report) {
+                  final reason = report['reason']?.toString().toLowerCase() ?? "";
+                  return reason.contains(_searchQuery.toLowerCase()) ||
+                      (report['authorName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+                      (report['content']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+                      (report['resolvedByName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
+                      (report['title']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
+                }).toList();
+
                 if (data.isEmpty) return _buildEmptyState();
 
                 return ListView.builder(
@@ -321,13 +375,41 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
         child: Row(
             children: [
               IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
                 onPressed: () => Navigator.pop(context),
               ),
               const SizedBox(width: 20),
               Text("History", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
             ]
         )
+    );
+  }
+
+  Widget _buildSearchBar() {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+      ),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (val) => setState(() => _searchQuery = val),
+        decoration: InputDecoration(
+          hintText: "Search...",
+          hintStyle: TextStyle(color: Colors.grey.shade400),
+          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(icon: const Icon(Icons.close), onPressed: () {
+            _searchController.clear();
+            setState(() => _searchQuery = "");
+          })
+              : null,
+        ),
+      ),
     );
   }
 
@@ -345,11 +427,10 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
     );
   }
 
-  Widget _buildReportCard(DocumentSnapshot doc) {
-    final report = doc.data() as Map<String, dynamic>;
+  Widget _buildReportCard(Map<String, dynamic> report) {
     final type = report['type'] ?? 'post';
     final postId = report['postId'];
-    final commentId = report['commendId'];
+    final commentId = report['commentId'];
     final timestamp = report['timestamp'] as Timestamp?;
     final dateStr = timestamp != null ? DateFormat('dd MMM, hh:mm a').format(timestamp.toDate()) : 'Recently';
 
