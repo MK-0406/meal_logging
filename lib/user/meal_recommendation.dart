@@ -87,7 +87,7 @@ class _MealRecommenderPageState extends State<MealRecommender> {
     if (_isLoading) {
       return const Center(child: Padding(padding: EdgeInsets.all(20), child: CircularProgressIndicator(strokeWidth: 2)));
     }
-
+    print("recommend ${widget.nutritionalTargets}");
     if (recommendedMeals.isEmpty) {
       return Container(
         padding: const EdgeInsets.all(20),

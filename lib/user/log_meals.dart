@@ -11,12 +11,16 @@ class MealLogPage extends StatefulWidget {
   final String mealType;
   final String logDate;
   final Map<String, dynamic>? nutritionalTargets;
+  final Map<String, dynamic>? actualTargets;
+  final Map<String, Map<String, dynamic>>? baseTargets;
 
   const MealLogPage({
     super.key,
     required this.mealType,
     required this.logDate,
     this.nutritionalTargets,
+    required this.actualTargets,
+    this.baseTargets,
   });
 
   @override
@@ -371,26 +375,26 @@ class _MealLogPageState extends State<MealLogPage>
                                   const SizedBox(height: 16),
                                   _customMeals.isEmpty
                                       ? Container(
-                                    padding: const EdgeInsets.all(20),
-                                    child: Column(
-                                      children: [
-                                        const SizedBox(height: 30),
-                                        Icon(
-                                          Icons.restaurant_menu,
-                                          size: 48,
-                                          color: Colors.grey[300],
-                                        ),
-                                        const SizedBox(height: 12),
-                                        const Text(
-                                          'No custom meals found',
-                                          style: TextStyle(
-                                            color: Colors.grey,
-                                            fontSize: 14,
+                                          padding: const EdgeInsets.all(20),
+                                          child: Column(
+                                            children: [
+                                              const SizedBox(height: 30),
+                                              Icon(
+                                                Icons.restaurant_menu,
+                                                size: 48,
+                                                color: Colors.grey[300],
+                                              ),
+                                              const SizedBox(height: 12),
+                                              const Text(
+                                                'No custom meals found',
+                                                style: TextStyle(
+                                                  color: Colors.grey,
+                                                  fontSize: 14,
+                                                ),
+                                              ),
+                                            ],
                                           ),
-                                        ),
-                                      ],
-                                    ),
-                                  )
+                                        )
                                       : _buildMealList(_customMeals),
                                 ],
                               ),
@@ -449,11 +453,7 @@ class _MealLogPageState extends State<MealLogPage>
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(
-              Icons.arrow_back,
-              color: Colors.white,
-              size: 24,
-            ),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
             onPressed: () => Navigator.pop(context),
           ),
           const SizedBox(width: 8),
@@ -554,7 +554,7 @@ class _MealLogPageState extends State<MealLogPage>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               const Text(
                 "Balance:",
@@ -588,6 +588,10 @@ class _MealLogPageState extends State<MealLogPage>
                 'g',
                 Colors.green,
               ),
+              IconButton(
+                onPressed: () => _showCalculationDialog(t),
+                icon: Icon(Icons.info_outline),
+              ),
             ],
           ),
         ],
@@ -604,7 +608,6 @@ class _MealLogPageState extends State<MealLogPage>
   ) {
     double tVal = (target is num) ? target.toDouble() : 0.0;
     double balance = (tVal - consumed).clamp(0.0, double.infinity);
-
     return Column(
       children: [
         Text(
@@ -630,6 +633,82 @@ class _MealLogPageState extends State<MealLogPage>
       ],
     );
   }
+
+  void _showCalculationDialog(Map<String, dynamic> currentTargets) {
+    final metrics = [
+      {'label': 'Calories', 'key': 'Calories', 'color': Colors.orange},
+      {'label': 'Protein', 'key': 'Protein_g', 'color': Colors.blue},
+      {'label': 'Carbs', 'key': 'Carbs_g', 'color': Colors.brown},
+      {'label': 'Fats', 'key': 'Fats_g', 'color': Colors.green},
+    ];
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+        title: const Text('Nutrient Breakdown', style: TextStyle(fontWeight: FontWeight.bold)),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: Table(
+            columnWidths: const {0: FlexColumnWidth(2.5), 1: FlexColumnWidth(1.5), 2: FlexColumnWidth(1.5), 3: FlexColumnWidth(1.5), 4: FlexColumnWidth(1.5)},
+            children: [
+              TableRow(
+                children: [
+                  const Padding(padding: EdgeInsets.symmetric(vertical: 8), child: Text("Steps", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 11))),
+                  ...metrics.map((m) => Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(m['label'] as String, textAlign: TextAlign.center, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 9, color: m['color'] as Color)))),
+                ],
+              ),
+              _buildTableRow("1. Base Goal", metrics, (m) => widget.baseTargets?[widget.mealType]?[m['key']] ?? (currentTargets[m['key']] ?? 0.0)),
+              _buildTableRow("2. Carry-over", metrics, (m) {
+                final period = (currentTargets[m['key']] ?? 0.0) as num;
+                final base = (widget.baseTargets?[widget.mealType]?[m['key']] ?? period) as num;
+                return period.toDouble() - base.toDouble();
+              }),
+              TableRow(children: List.generate(5, (_) => const Divider())),
+              _buildTableRow("= Period Target", metrics, (m) => currentTargets[m['key']], isBold: true),
+              _buildTableRow("- Consumed", metrics, (m) => _consumed[m['key']], isNegative: true),
+              TableRow(children: List.generate(5, (_) => const Divider(thickness: 2))),
+              _buildTableRow("Remaining", metrics, (m) => (currentTargets[m['key']] ?? 0.0) - (_consumed[m['key']] ?? 0.0), isResult: true),
+            ],
+          ),
+        ),
+        actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Close'))],
+      ),
+    );
+  }
+
+  TableRow _buildTableRow(String label, List<Map<String, dynamic>> metrics, dynamic Function(Map<String, dynamic>) getValue, {bool isBold = false, bool isNegative = false, bool isResult = false}) {
+    return TableRow(
+      children: [
+        Padding(padding: const EdgeInsets.symmetric(vertical: 8), child: Text(label, style: TextStyle(fontWeight: isBold || isResult ? FontWeight.bold : FontWeight.normal, fontSize: 11, color: isResult ? const Color(0xFF1E88E5) : Colors.black87))),
+        ...metrics.map((m) {
+          final raw = getValue(m);
+          double val;
+          if (raw == null) {
+            val = 0.0;
+          } else if (raw is num) {
+            val = raw.toDouble();
+          } else {
+            val = double.tryParse(raw.toString()) ?? 0.0;
+          }
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              val.toStringAsFixed(0),
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontWeight: isBold || isResult ? FontWeight.bold : FontWeight.normal,
+                fontSize: 11,
+                color: isNegative && val > 0 ? Colors.red : (isResult ? m['color'] : Colors.black54),
+              ),
+            ),
+          );
+        }),
+      ],
+    );
+  }
+
+  // Removed unused nutrient helper widgets to avoid analyzer errors.
 
   Widget _buildSearchBar() {
     return Container(
@@ -720,6 +799,7 @@ class _MealLogPageState extends State<MealLogPage>
                   editRecipe: false,
                   logDate: widget.logDate,
                   nutritionalTargets: widget.nutritionalTargets,
+                  actualTargets: widget.actualTargets,
                 ),
               ),
             );

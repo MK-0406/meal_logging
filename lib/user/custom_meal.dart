@@ -4,6 +4,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:meal_logging/user/log_meals.dart';
 import '../custom_styles.dart';
 import 'meal_details.dart';
+import 'nutrition_label_extraction.dart';
+import 'package:image_picker/image_picker.dart';
 
 double toFixed(double num, int decimals) {
   return double.parse(num.toStringAsFixed(decimals));
@@ -18,6 +20,7 @@ class CustomMealPage extends StatefulWidget {
   final bool editRecipe;
   final String logDate;
   final Map<String, dynamic>? nutritionalTargets;
+  final Map<String, dynamic>? actualTargets;
 
   const CustomMealPage({
     super.key,
@@ -29,6 +32,7 @@ class CustomMealPage extends StatefulWidget {
     required this.editRecipe,
     required this.logDate,
     required this.nutritionalTargets,
+    required this.actualTargets,
   });
 
   @override
@@ -72,6 +76,7 @@ class _CustomMealPageState extends State<CustomMealPage>
                   initialData: widget.editMeal ? widget.initialData : null,
                   logDate: widget.logDate,
                   nutritionalTargets: widget.nutritionalTargets,
+                  actualTargets: widget.actualTargets,
                 ),
                 RecipeForm(
                   defaultCategory: widget.defaultCategory,
@@ -79,6 +84,7 @@ class _CustomMealPageState extends State<CustomMealPage>
                   initialData: widget.editRecipe ? widget.initialData : null,
                   logDate: widget.logDate,
                   nutritionalTargets: widget.nutritionalTargets,
+                  actualTargets: widget.actualTargets,
                 ),
                 UserMealsList(
                   onEdit: (mealId, data, nutritionalTargets) {
@@ -99,6 +105,7 @@ class _CustomMealPageState extends State<CustomMealPage>
                           editRecipe: tabIndex == 1,
                           logDate: widget.logDate,
                           nutritionalTargets: nutritionalTargets,
+                          actualTargets: widget.actualTargets,
                         ),
                       ),
                     );
@@ -145,6 +152,8 @@ class _CustomMealPageState extends State<CustomMealPage>
                       mealType: widget.defaultCategory,
                       logDate: widget.logDate,
                       nutritionalTargets: widget.nutritionalTargets,
+                      actualTargets: widget.actualTargets,
+                      baseTargets: null,
                     ),
                   ),
                 ),
@@ -196,6 +205,7 @@ class MealForm extends StatefulWidget {
   final Map<String, dynamic>? initialData;
   final String logDate;
   final Map<String, dynamic>? nutritionalTargets;
+  final Map<String, dynamic>? actualTargets;
 
   const MealForm({
     super.key,
@@ -204,6 +214,7 @@ class MealForm extends StatefulWidget {
     this.initialData,
     required this.logDate,
     required this.nutritionalTargets,
+    required this.actualTargets,
   });
 
   @override
@@ -217,6 +228,16 @@ class _MealFormState extends State<MealForm> {
   String? _foodCategory;
   final List<TextEditingController> _servingNameControllers = [];
   final List<TextEditingController> _servingGramControllers = [];
+  Map<String, dynamic> extractedNutrition = {};
+  final ImagePicker _picker = ImagePicker();
+
+  Future<XFile?> pickImageFromCamera() async {
+    return await _picker.pickImage(source: ImageSource.camera);
+  }
+
+  Future<XFile?> pickImageFromGallery() async {
+    return await _picker.pickImage(source: ImageSource.gallery);
+  }
 
   @override
   void initState() {
@@ -332,7 +353,7 @@ class _MealFormState extends State<MealForm> {
             ], (v) => setState(() => _foodCategory = v)),
           ]),
           const SizedBox(height: 24),
-          _buildSectionCard("Nutritional Values (per 100g)", [
+          _buildSectionCard2("Nutritional Values (per 100g)", [
             _buildNutrientGrid(),
           ]),
           const SizedBox(height: 24),
@@ -389,6 +410,72 @@ class _MealFormState extends State<MealForm> {
     );
   }
 
+  Widget _buildSectionCard2(String title, List<Widget> children) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.02),
+            blurRadius: 10,
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Expanded(
+                flex: 4,
+                child: Text(
+                  title,
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                    color: Color(0xFF2C3E50),
+                  ),
+                ),
+              ),
+              Expanded(
+                flex: 1,
+                child: IconButton(
+                  onPressed: () async {
+                    final NutritionService nutritionService =
+                        NutritionService();
+
+                    final image = await pickImageFromCamera();
+
+                    if (image != null) {
+                      String extractedText = await nutritionService
+                          .extractTextFromImage(image.path);
+
+                      final result = await nutritionService.analyzeNutrition(
+                        extractedText,
+                      );
+
+                      if (result != null) {
+                        setState(() {
+                          extractedNutrition = result;
+                        });
+                      } 
+                    }
+                  },
+                  icon: Icon(Icons.camera),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 20),
+          ...children,
+        ],
+      ),
+    );
+  }
+
   Widget _buildDropdown(
     String label,
     String? val,
@@ -412,22 +499,29 @@ class _MealFormState extends State<MealForm> {
   Widget _buildNutrientGrid() {
     return Column(
       children: [
-        _nutrientInputRow('calorie', 'Calories (kcal)', 'water', 'Water (g)'),
-        _nutrientInputRow('protein', 'Protein (g)', 'carb', 'Carbs (g)'),
-        _nutrientInputRow('fat', 'Fat (g)', 'fibre', 'Fibre (g)'),
-        _nutrientInputRow('calcium', 'Calcium (mg)', 'iron', 'Iron (mg)'),
+        _nutrientInputRow('calorie', 'Calories (kcal)', extractedNutrition['calories'], 'water', 'Water (g)', extractedNutrition['water_g']),
+        _nutrientInputRow('protein', 'Protein (g)', extractedNutrition['protein_g'], 'carb', 'Carbs (g)', extractedNutrition['carbohydrates_g']),
+        _nutrientInputRow('fat', 'Fat (g)', extractedNutrition['fat_g'], 'fibre', 'Fibre (g)', extractedNutrition['fiber_g']),
+        _nutrientInputRow('calcium', 'Calcium (mg)', extractedNutrition['calcium_mg'], 'iron', 'Iron (mg)', extractedNutrition['iron_mg']),
         _nutrientInputRow(
           'potassium',
           'Potassium (mg)',
+          extractedNutrition['potassium_mg'],
           'sodium',
           'Sodium (mg)',
-        ),
-        _nutrientInputRow('phosphorus', 'Phosphorus (mg)', 'ash', 'Ash (g)'),
+          extractedNutrition['sodium_mg']),
+        _nutrientInputRow('phosphorus', 'Phosphorus (mg)', extractedNutrition['phosphorus_mg'], 'ash', 'Ash (g)', extractedNutrition['ash_g']),
       ],
     );
   }
 
-  Widget _nutrientInputRow(String f1, String l1, String f2, String l2) {
+  Widget _nutrientInputRow(String f1, String l1, dynamic val1, String f2, String l2, dynamic val2) {
+      if (val1 != null) {
+        _controllers[f1]!.text = val1.toString();
+      }
+      if (val2 != null) {
+        _controllers[f2]!.text = val2.toString();
+      }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
@@ -594,6 +688,7 @@ class _MealFormState extends State<MealForm> {
           editRecipe: false,
           logDate: widget.logDate,
           nutritionalTargets: widget.nutritionalTargets,
+          actualTargets: widget.actualTargets,
         ),
       ),
     );
@@ -606,6 +701,7 @@ class RecipeForm extends StatefulWidget {
   final Map<String, dynamic>? initialData;
   final String logDate;
   final Map<String, dynamic>? nutritionalTargets;
+  final Map<String, dynamic>? actualTargets;
 
   const RecipeForm({
     super.key,
@@ -614,6 +710,7 @@ class RecipeForm extends StatefulWidget {
     this.initialData,
     required this.logDate,
     required this.nutritionalTargets,
+    required this.actualTargets,
   });
 
   @override
@@ -982,6 +1079,7 @@ class _RecipeFormState extends State<RecipeForm> {
           editRecipe: false,
           logDate: widget.logDate,
           nutritionalTargets: widget.nutritionalTargets,
+          actualTargets: widget.actualTargets,
         ),
       ),
     );
@@ -1039,86 +1137,100 @@ class _UserMealsList extends State<UserMealsList> {
                   ),
                 );
               }
-              var data = docs.map((doc) {
-                final meal = doc.data() as Map<String, dynamic>;
-                meal['id'] = doc.id;
-                return meal;
-              }).where((meal) {
-                return meal['name'].toString().toLowerCase().contains(_searchQuery.toLowerCase());
-              }).toList();
+              var data = docs
+                  .map((doc) {
+                    final meal = doc.data() as Map<String, dynamic>;
+                    meal['id'] = doc.id;
+                    return meal;
+                  })
+                  .where((meal) {
+                    return meal['name'].toString().toLowerCase().contains(
+                      _searchQuery.toLowerCase(),
+                    );
+                  })
+                  .toList();
 
               return data.isEmpty
-              ? const Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(Icons.restaurant_menu, size: 64, color: Colors.grey),
-                    SizedBox(height: 16),
-                    Text("No meals found")
-                  ],
-                )
-              )
-              : ListView.builder(
-                padding: const EdgeInsets.all(20),
-                itemCount: data.length,
-                itemBuilder: (context, i) {
-                  return Container(
-                    margin: const EdgeInsets.only(bottom: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(20),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: 0.02),
-                          blurRadius: 10,
-                        ),
-                      ],
-                    ),
-                    child: ListTile(
-                      onTap: () => Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (_) =>
-                              MealDetailsPage(data: data[i], mealId: data[i]['id']),
-                        ),
-                      ),
-                      title: Text(
-                        data[i]['name'],
-                        style: const TextStyle(fontWeight: FontWeight.bold),
-                      ),
-                      subtitle: Text(
-                        "${data[i]['calorie'].toStringAsFixed(0)} kcal per 100g",
-                      ),
-                      trailing: Row(
-                        mainAxisSize: MainAxisSize.min,
+                  ? const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
-                          IconButton(
-                            onPressed: () => widget.onEdit(
-                              data[i]['id'],
-                              data[i],
-                              widget.nutritionalTargets,
-                            ),
-                            icon: const Icon(
-                              Icons.edit_outlined,
-                              color: Colors.blue,
-                            ),
+                          Icon(
+                            Icons.restaurant_menu,
+                            size: 64,
+                            color: Colors.grey,
                           ),
-                          IconButton(
-                            onPressed: () => _delete(context, data[i]['id'], uid),
-                            icon: const Icon(
-                              Icons.delete_outline,
-                              color: Colors.redAccent,
-                            ),
-                          ),
+                          SizedBox(height: 16),
+                          Text("No meals found"),
                         ],
                       ),
-                    ),
-                  );
-                },
-              );
+                    )
+                  : ListView.builder(
+                      padding: const EdgeInsets.all(20),
+                      itemCount: data.length,
+                      itemBuilder: (context, i) {
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(20),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: 0.02),
+                                blurRadius: 10,
+                              ),
+                            ],
+                          ),
+                          child: ListTile(
+                            onTap: () => Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => MealDetailsPage(
+                                  data: data[i],
+                                  mealId: data[i]['id'],
+                                ),
+                              ),
+                            ),
+                            title: Text(
+                              data[i]['name'],
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            subtitle: Text(
+                              "${data[i]['calorie'].toStringAsFixed(0)} kcal per 100g",
+                            ),
+                            trailing: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                IconButton(
+                                  onPressed: () => widget.onEdit(
+                                    data[i]['id'],
+                                    data[i],
+                                    widget.nutritionalTargets,
+                                  ),
+                                  icon: const Icon(
+                                    Icons.edit_outlined,
+                                    color: Colors.blue,
+                                  ),
+                                ),
+                                IconButton(
+                                  onPressed: () =>
+                                      _delete(context, data[i]['id'], uid),
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    );
             },
           ),
-        )
+        ),
       ],
     );
   }
@@ -1154,12 +1266,12 @@ class _UserMealsList extends State<UserMealsList> {
           ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-            icon: const Icon(Icons.close),
-            onPressed: () {
-              _searchController.clear();
-              setState(() => _searchQuery = "");
-            },
-          )
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = "");
+                  },
+                )
               : null,
         ),
       ),

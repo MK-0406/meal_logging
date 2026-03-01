@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'log_meals.dart';
+import 'adjusted_targets.dart';
 import 'meal_details.dart';
 import 'nutrition_progress.dart'; // Import the new trend page
 import '../functions.dart';
@@ -39,6 +40,12 @@ class _MealDiaryState extends State<MealDiary> {
   late int _waterTargetMl = 2700;
 
   late var results = <String, dynamic>{};
+  Map<String, Map<String, dynamic>>? adjustedTargets = {
+    'Breakfast': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+    'Lunch': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+    'Dinner': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+    'Snack': {'Calories': 0, 'Protein_g': 0, 'Carbs_g': 0, 'Fats_g': 0},
+  };
   late var mealRatios = {'Breakfast': 0.2, 'Lunch': 0.31, 'Dinner': 0.39, 'Snack': 0.10};
 
   final CollectionReference userInfo = FirebaseFirestore.instance.collection('usersInfo');
@@ -585,59 +592,24 @@ class _MealDiaryState extends State<MealDiary> {
 
   Map<String, dynamic>? _getAdjustedTargets(String mealType) {
     if (mealTargets == null) return null;
-
-    // Create a copy to avoid mutating the original until all adjustments are done
-    Map<String, Map<String, dynamic>> adjusted = {};
-    mealTargets!.forEach((key, value) {
-      adjusted[key] = Map<String, dynamic>.from(value);
-    });
-
-    final metrics = ['Calories', 'Protein_g', 'Carbs_g', 'Fats_g'];
-
-    // 1. Breakfast -> Lunch
-    for (var m in metrics) {
-      double target = mealTargets!['Breakfast']?[m] ?? 0.0;
-      double intake = _periodIntake['Breakfast']?[m] ?? 0.0;
-      double diff = target - intake;
-      adjusted['Lunch']?[m] = (adjusted['Lunch']![m] + diff).clamp(0.0, double.infinity);
-    }
-
-    // 2. Lunch -> Dinner
-    for (var m in metrics) {
-      // For lunch, we use the adjusted target to find the deviation
-      double target = adjusted['Lunch']?[m] ?? 0.0;
-      double intake = _periodIntake['Lunch']?[m] ?? 0.0;
-      double diff = target - intake;
-      adjusted['Dinner']?[m] = (adjusted['Dinner']![m] + diff).clamp(0.0, double.infinity);
-    }
-
-    // 3. Dinner -> Snack
-    if (includeSnacks) {
-      for (var m in metrics) {
-        double target = adjusted['Dinner']?[m] ?? 0.0;
-        double intake = _periodIntake['Dinner']?[m] ?? 0.0;
-        double diff = target - intake;
-        adjusted['Snack']?[m] = (adjusted['Snack']![m] + diff).clamp(0.0, double.infinity);
-        if (diff > (adjusted['Snack']![m] - _periodIntake['Snack']![m] ?? 0.0)) {
-          adjusted['Dinner']?[m] = adjusted['Snack']![m] - _periodIntake['Snack']![m];
-        }
-      }
-    }
-
-    for (var m in metrics) {
-      if ((adjusted['Lunch']![m] - _periodIntake['Lunch']![m]) > (adjusted['Dinner']![m] - _periodIntake['Dinner']![m])) {
-        adjusted['Lunch']?[m] = (adjusted['Dinner']![m] - _periodIntake['Dinner']![m]);
-      }
-    }
-
-    for (var m in metrics) {
-      if ((adjusted['Breakfast']![m] - _periodIntake['Breakfast']![m]) > (adjusted['Lunch']![m] - _periodIntake['Lunch']![m])) {
-        adjusted['Breakfast']?[m] = (adjusted['Lunch']![m] - _periodIntake['Lunch']![m]);
-      }
-    }
-
+    // Delegate to helper for clarity and testability
+    final adjusted = computeAdjustedTargets(mealTargets!, _periodIntake, includeSnacks);
     _saveAdjustedTargets(adjusted);
+    _updateAdjustedTargets(adjusted);
     return adjusted[mealType];
+  }
+
+// computeAdjustedTargets is implemented in lib/user/adjusted_targets.dart
+
+  void _updateAdjustedTargets(Map<String, Map<String, dynamic>> adjusted) {
+    if (mealTargets == null) return;
+    final metrics = ['Calories', 'Protein_g', 'Carbs_g', 'Fats_g'];
+    for (var m in metrics) {
+      adjustedTargets?['Breakfast']?[m] = (adjusted['Breakfast']![m]  - _periodIntake['Breakfast']![m]).clamp(0.0, double.infinity);
+      adjustedTargets?['Lunch']?[m] = ((adjusted['Lunch']![m] < mealTargets?['Lunch']![m] ? adjusted['Lunch']![m] :  mealTargets?['Lunch']![m]) - _periodIntake['Lunch']![m]).clamp(0.0, double.infinity);
+      adjustedTargets?['Dinner']?[m] = ((adjusted['Dinner']![m] < mealTargets?['Dinner']![m] ? adjusted['Dinner']![m] :  mealTargets?['Dinner']![m]) - _periodIntake['Dinner']![m]).clamp(0.0, double.infinity);
+      adjustedTargets?['Snack']?[m] = ((adjusted['Snack']![m] < mealTargets?['Snack']![m] ? adjusted['Snack']![m] :  mealTargets?['Snack']![m]) - _periodIntake['Snack']![m]).clamp(0.0, double.infinity);
+    }
   }
 
   @override
@@ -1364,6 +1336,8 @@ class _MealDiaryState extends State<MealDiary> {
                 mealType: mealType,
                 logDate: DateFormat('EEEE, dd MMM yyyy').format(selectedDate),
                 nutritionalTargets: mealTarget,
+                actualTargets: adjustedTargets,
+                baseTargets: mealTargets,
               ),
             ),
           );
