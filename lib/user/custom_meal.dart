@@ -230,6 +230,7 @@ class _MealFormState extends State<MealForm> {
   final List<TextEditingController> _servingGramControllers = [];
   Map<String, dynamic> extractedNutrition = {};
   final ImagePicker _picker = ImagePicker();
+  bool isLoadingImage = false;
 
   Future<XFile?> pickImageFromCamera() async {
     return await _picker.pickImage(source: ImageSource.camera);
@@ -303,6 +304,7 @@ class _MealFormState extends State<MealForm> {
       for (var c in _controllers.values) {
         c.clear();
       }
+      extractedNutrition.clear();
       _foodGroup = null;
       _foodCategory = null;
       _servingNameControllers.clear();
@@ -441,38 +443,98 @@ class _MealFormState extends State<MealForm> {
               ),
               Expanded(
                 flex: 1,
-                child: IconButton(
-                  onPressed: () async {
-                    final NutritionService nutritionService =
-                        NutritionService();
-
-                    final image = await pickImageFromCamera();
-
-                    if (image != null) {
-                      String extractedText = await nutritionService
-                          .extractTextFromImage(image.path);
-
-                      final result = await nutritionService.analyzeNutrition(
-                        extractedText,
-                      );
-
-                      if (result != null) {
-                        setState(() {
-                          extractedNutrition = result;
-                        });
-                      } 
-                    }
-                  },
-                  icon: Icon(Icons.camera),
-                ),
+                child: isLoadingImage
+                    ? Center(child: const CircularProgressIndicator())
+                    : _buildOption(),
               ),
             ],
           ),
-
           const SizedBox(height: 20),
           ...children,
         ],
       ),
+    );
+  }
+
+  Widget _buildOption() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.camera_alt),
+      onSelected: (val) async {
+        try {
+          XFile? image;
+          setState(() {
+            isLoadingImage = true;
+          });
+          if (val == 'camera') {
+            image = await pickImageFromCamera();
+          } else if (val == 'gallery') {
+            image = await pickImageFromGallery();
+          }
+          if (image != null) {
+            final NutritionService nutritionService = NutritionService();
+
+            String extractedText = await nutritionService.extractTextFromImage(
+              image.path,
+            );
+
+            final result = await nutritionService.analyzeNutrition(
+              extractedText,
+            );
+
+            if (result != null && result.length > 1) {
+              setState(() {
+                extractedNutrition = result;
+              });
+            }
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    result!.length > 1
+                        ? "Please double check the values"
+                        : result["error"],
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  backgroundColor: Color(0xFF1E88E5),
+                  behavior: SnackBarBehavior.floating,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              );
+            }
+          }
+        } catch (e) {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  e.toString(),
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: Colors.redAccent,
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        }
+        setState(() {
+          isLoadingImage = false;
+        });
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'camera',
+          child: Text('Camera', style: TextStyle(color: Colors.black)),
+        ),
+        const PopupMenuItem(
+          value: 'gallery',
+          child: Text('Gallery', style: TextStyle(color: Colors.black)),
+        ),
+      ],
     );
   }
 
@@ -499,29 +561,72 @@ class _MealFormState extends State<MealForm> {
   Widget _buildNutrientGrid() {
     return Column(
       children: [
-        _nutrientInputRow('calorie', 'Calories (kcal)', extractedNutrition['calories'], 'water', 'Water (g)', extractedNutrition['water_g']),
-        _nutrientInputRow('protein', 'Protein (g)', extractedNutrition['protein_g'], 'carb', 'Carbs (g)', extractedNutrition['carbohydrates_g']),
-        _nutrientInputRow('fat', 'Fat (g)', extractedNutrition['fat_g'], 'fibre', 'Fibre (g)', extractedNutrition['fiber_g']),
-        _nutrientInputRow('calcium', 'Calcium (mg)', extractedNutrition['calcium_mg'], 'iron', 'Iron (mg)', extractedNutrition['iron_mg']),
+        _nutrientInputRow(
+          'calorie',
+          'Calories (kcal)',
+          extractedNutrition['calories'] ?? 0,
+          'water',
+          'Water (g)',
+          extractedNutrition['water_g'] ?? 0,
+        ),
+        _nutrientInputRow(
+          'protein',
+          'Protein (g)',
+          extractedNutrition['protein_g'] ?? 0,
+          'carb',
+          'Carbs (g)',
+          extractedNutrition['carbohydrates_g'] ?? 0,
+        ),
+        _nutrientInputRow(
+          'fat',
+          'Fat (g)',
+          extractedNutrition['fat_g'] ?? 0,
+          'fibre',
+          'Fibre (g)',
+          extractedNutrition['fiber_g'] ?? 0,
+        ),
+        _nutrientInputRow(
+          'calcium',
+          'Calcium (mg)',
+          extractedNutrition['calcium_mg'] ?? 0,
+          'iron',
+          'Iron (mg)',
+          extractedNutrition['iron_mg'] ?? 0,
+        ),
         _nutrientInputRow(
           'potassium',
           'Potassium (mg)',
-          extractedNutrition['potassium_mg'],
+          extractedNutrition['potassium_mg'] ?? 0,
           'sodium',
           'Sodium (mg)',
-          extractedNutrition['sodium_mg']),
-        _nutrientInputRow('phosphorus', 'Phosphorus (mg)', extractedNutrition['phosphorus_mg'], 'ash', 'Ash (g)', extractedNutrition['ash_g']),
+          extractedNutrition['sodium_mg'] ?? 0,
+        ),
+        _nutrientInputRow(
+          'phosphorus',
+          'Phosphorus (mg)',
+          extractedNutrition['phosphorus_mg'] ?? 0,
+          'ash',
+          'Ash (g)',
+          extractedNutrition['ash_g'] ?? 0,
+        ),
       ],
     );
   }
 
-  Widget _nutrientInputRow(String f1, String l1, dynamic val1, String f2, String l2, dynamic val2) {
-      if (val1 != null) {
-        _controllers[f1]!.text = val1.toString();
-      }
-      if (val2 != null) {
-        _controllers[f2]!.text = val2.toString();
-      }
+  Widget _nutrientInputRow(
+    String f1,
+    String l1,
+    dynamic val1,
+    String f2,
+    String l2,
+    dynamic val2,
+  ) {
+    if (val1 != null) {
+      _controllers[f1]!.text = val1.toString();
+    }
+    if (val2 != null) {
+      _controllers[f2]!.text = val2.toString();
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 12),
       child: Row(
