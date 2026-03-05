@@ -11,7 +11,9 @@ class ManageReportsPage extends StatefulWidget {
 }
 
 class _ManageReportsPageState extends State<ManageReportsPage> {
-  final CollectionReference reports = FirebaseFirestore.instance.collection('reports');
+  final CollectionReference reports = FirebaseFirestore.instance.collection(
+    'reports',
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -22,11 +24,17 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
           _buildHeader(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: reports.where('status', isEqualTo: 'pending').orderBy('timestamp', descending: true).snapshots(),
+              stream: reports
+                  .where('status', isEqualTo: 'pending')
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return const Center(child: Text('Error loading reports'));
+                if (snapshot.hasError)
+                  return const Center(child: Text('Error loading reports'));
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                  return const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
                 }
 
                 final data = snapshot.data!.docs;
@@ -35,7 +43,8 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: data.length,
-                  itemBuilder: (context, index) => _buildReportCard(data[index]),
+                  itemBuilder: (context, index) =>
+                      _buildReportCard(data[index]),
                 );
               },
             ),
@@ -50,8 +59,13 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
       width: double.infinity,
       padding: const EdgeInsets.fromLTRB(20, 20, 20, 24),
       decoration: const BoxDecoration(
-        gradient: LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
-        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
+        ),
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -59,18 +73,36 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
           const Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Reports", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
-              Text("Moderate community content and reports", style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w500)),
+              Text(
+                "Reports",
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 26,
+                  fontWeight: FontWeight.bold,
+                  letterSpacing: -0.5,
+                ),
+              ),
+              Text(
+                "Moderate community content and reports",
+                style: TextStyle(
+                  color: Colors.white70,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
             ],
           ),
           IconButton(
             icon: const Icon(Icons.history, color: Colors.white),
             onPressed: () async {
-              Navigator.push(context, MaterialPageRoute(builder: (_) => const ReportPageHistory()));
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (_) => const ReportPageHistory()),
+              );
             },
           ),
         ],
-      )
+      ),
     );
   }
 
@@ -81,8 +113,18 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
         children: [
           Icon(Icons.done_all_rounded, size: 64, color: Colors.green.shade100),
           const SizedBox(height: 16),
-          const Text("Inbox Clear!", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
-          const Text("No pending reports to review.", style: TextStyle(color: Colors.grey)),
+          const Text(
+            "Inbox Clear!",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const Text(
+            "No pending reports to review.",
+            style: TextStyle(color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -94,12 +136,19 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
     final postId = report['postId'];
     final commentId = report['commendId'];
     final timestamp = report['timestamp'] as Timestamp?;
-    final dateStr = timestamp != null ? DateFormat('dd MMM, hh:mm a').format(timestamp.toDate()) : 'Recently';
+    final dateStr = timestamp != null
+        ? DateFormat('dd MMM, hh:mm a').format(timestamp.toDate())
+        : 'Recently';
 
     return FutureBuilder<DocumentSnapshot>(
-      future: type == 'post' 
+      future: type == 'post'
           ? FirebaseFirestore.instance.collection('posts').doc(postId).get()
-          : FirebaseFirestore.instance.collection('posts').doc(postId).collection('comments').doc(commentId).get(),
+          : FirebaseFirestore.instance
+                .collection('posts')
+                .doc(postId)
+                .collection('comments')
+                .doc(commentId)
+                .get(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         if (!snapshot.data!.exists) {
@@ -108,8 +157,12 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
         }
 
         final contentData = snapshot.data!.data() as Map<String, dynamic>;
-        final author = type == 'post' ? (contentData['username'] ?? 'Unknown') : (contentData['authorName'] ?? 'Unknown');
-        final contentText = type == 'post' ? (contentData['content'] ?? '') : (contentData['text'] ?? '');
+        final author = type == 'post'
+            ? (contentData['username'] ?? 'Unknown')
+            : (contentData['authorName'] ?? 'Unknown');
+        final contentText = type == 'post'
+            ? (contentData['content'] ?? '')
+            : (contentData['text'] ?? '');
         final titleText = type == 'post' ? (contentData['title'] ?? '') : '';
 
         return Container(
@@ -117,7 +170,13 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -128,24 +187,52 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: (type == 'post' ? Colors.purple : Colors.orange).withValues(alpha: 0.1),
+                        color: (type == 'post' ? Colors.purple : Colors.orange)
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         type.toUpperCase(),
-                        style: TextStyle(color: type == 'post' ? Colors.purple : Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: type == 'post' ? Colors.purple : Colors.orange,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    Text(dateStr, style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Text("Author: ", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
-                    Text(author, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
+                    const Text(
+                      "Author: ",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    Text(
+                      author,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E88E5),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -153,13 +240,33 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
                 if (type == 'post')
                   Row(
                     children: [
-                      const Text("Title: ", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
-                      Text(titleText, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      const Text(
+                        "Title: ",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        titleText,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
 
                 const SizedBox(height: 8),
-                const Text("Content:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  "Content:",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 Text(
                   contentText,
                   maxLines: 3,
@@ -167,10 +274,23 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
                   style: const TextStyle(fontSize: 14, color: Colors.black87),
                 ),
                 const Divider(height: 32),
-                const Text("Reason for report:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  "Reason for report:",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 Text(
-                  report['reason']?.toString().isEmpty ?? true ? "No reason provided" : report['reason'],
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF2C3E50), fontStyle: FontStyle.italic),
+                  report['reason']?.toString().isEmpty ?? true
+                      ? "No reason provided"
+                      : report['reason'],
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF2C3E50),
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Row(
@@ -180,7 +300,9 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
                         onPressed: () => _handleReport(doc.id, 'ignored'),
                         style: OutlinedButton.styleFrom(
                           foregroundColor: Colors.grey,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                         child: const Text("Ignore"),
                       ),
@@ -192,7 +314,9 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
                         style: ElevatedButton.styleFrom(
                           backgroundColor: Colors.redAccent,
                           foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                           elevation: 0,
                         ),
                         child: const Text("Delete Content"),
@@ -209,15 +333,18 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
   }
 
   Future<void> _handleReport(String reportId, String status) async {
-    final adminDoc = await FirebaseFirestore.instance.collection('users').doc(FirebaseAuth.instance.currentUser!.uid).get();
+    final adminDoc = await FirebaseFirestore.instance
+        .collection('users')
+        .doc(FirebaseAuth.instance.currentUser!.uid)
+        .get();
     final adminData = adminDoc.data() as Map<String, dynamic>;
 
     await reports.doc(reportId).update({
       'status': status,
       'resolvedById': FirebaseAuth.instance.currentUser!.uid,
       'resolvedByName': adminData['email'].split('@')[0],
-      'resolvedAt': FieldValue.serverTimestamp()}
-    );
+      'resolvedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   void _showDeleteConfirm(String reportId, Map<String, dynamic> report) {
@@ -225,9 +352,14 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: const Text("Confirm Deletion"),
-        content: Text("Are you sure you want to delete this ${report['type']}? This action cannot be undone."),
+        content: Text(
+          "Are you sure you want to delete this ${report['type']}? This action cannot be undone.",
+        ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text("Cancel"),
+          ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
             onPressed: () async {
@@ -248,8 +380,9 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
     final commentId = report['commendId'];
 
     if (type == 'post') {
-      await FirebaseFirestore.instance.collection('posts').doc(postId).set(
-          {'deleted': true}, SetOptions(merge: true));
+      await FirebaseFirestore.instance.collection('posts').doc(postId).set({
+        'deleted': true,
+      }, SetOptions(merge: true));
     } else if (type == 'comment' && commentId != null) {
       await FirebaseFirestore.instance
           .collection('posts')
@@ -257,7 +390,7 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
           .collection('comments')
           .doc(commentId)
           .set({'deleted': true}, SetOptions(merge: true));
-      
+
       // Update comment count
       await FirebaseFirestore.instance.collection('posts').doc(postId).update({
         'commentCount': FieldValue.increment(-1),
@@ -265,7 +398,6 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
     }
   }
 }
-
 
 //add history
 class ReportPageHistory extends StatefulWidget {
@@ -276,13 +408,16 @@ class ReportPageHistory extends StatefulWidget {
 }
 
 class _ReportPageHistoryState extends State<ReportPageHistory> {
-  final CollectionReference reports = FirebaseFirestore.instance.collection('reports');
+  final CollectionReference reports = FirebaseFirestore.instance.collection(
+    'reports',
+  );
   final _searchController = TextEditingController();
   String _searchQuery = "";
   final postDetails = <String, Map<String, dynamic>>{};
   final commentDetails = <String, Map<String, dynamic>>{};
+  String _filter = "all";
   bool isLoading = false;
-  
+
   void _getPostDetails() async {
     setState(() {
       isLoading = true;
@@ -292,7 +427,11 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
     if (postDoc.docs.isNotEmpty) {
       for (var doc in postDoc.docs) {
         postDetails[doc.id] = doc.data();
-        final commentDoc = await FirebaseFirestore.instance.collection('posts').doc(doc.id).collection('comments').get();
+        final commentDoc = await FirebaseFirestore.instance
+            .collection('posts')
+            .doc(doc.id)
+            .collection('comments')
+            .get();
         for (var commentDoc in commentDoc.docs) {
           commentDetails[commentDoc.id] = commentDoc.data();
         }
@@ -316,7 +455,13 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
       body: Column(
         children: [
           _buildHeader(),
-          _buildSearchBar(),
+          Row(
+            children: [
+              Expanded(flex: 5, child: _buildSearchBar()),
+              Expanded(flex: 1, child: _buildFilter()),
+              const SizedBox(width: 15),
+            ],
+          ),
           isLoading
               ? const Padding(
                   padding: EdgeInsets.all(20),
@@ -325,36 +470,70 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
               : const SizedBox.shrink(),
           Expanded(
             child: StreamBuilder<QuerySnapshot>(
-              stream: reports.orderBy('timestamp', descending: true).snapshots(),
+              stream: reports
+                  .orderBy('timestamp', descending: true)
+                  .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError) return const Center(child: Text('Error loading reports'));
+                if (snapshot.hasError) {
+                  return const Center(child: Text('Error loading reports'));
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(strokeWidth: 2));
+                  return const Center(
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  );
                 }
 
                 final data = snapshot.data!.docs
-                  .map((doc) {
-                    final report = doc.data() as Map<String, dynamic>;
-                    report['id'] = doc.id;
-                    report['authorName'] = report['commentId'] != null ? (commentDetails[report['commentId']]?['authorName']) : postDetails[report['postId']]?['username'];
-                    report['content'] = report['commentId'] != null ? (commentDetails[report['commentId']]?['text']) : postDetails[report['postId']]?['content'];
-                    report['title'] = report['commentId'] != null ? '' : postDetails[report['postId']]?['title'];
-                    return report;
-                }).where((report) {
-                  final reason = report['reason']?.toString().toLowerCase() ?? "";
-                  return reason.contains(_searchQuery.toLowerCase()) ||
-                      (report['authorName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-                      (report['content']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-                      (report['resolvedByName']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false) ||
-                      (report['title']?.toString().toLowerCase().contains(_searchQuery.toLowerCase()) ?? false);
-                }).toList();
+                    .map((doc) {
+                      final report = doc.data() as Map<String, dynamic>;
+                      report['id'] = doc.id;
+                      report['authorName'] = report['commentId'] != null
+                          ? (commentDetails[report['commentId']]?['authorName'])
+                          : postDetails[report['postId']]?['username'];
+                      report['content'] = report['commentId'] != null
+                          ? (commentDetails[report['commentId']]?['text'])
+                          : postDetails[report['postId']]?['content'];
+                      report['title'] = report['commentId'] != null
+                          ? ''
+                          : postDetails[report['postId']]?['title'];
+                      return report;
+                    })
+                    .where((report) {
+                      if (_filter == "all") return true;
+                      return report['type'] == _filter;
+                    })
+                    .where((report) {
+                      final reason =
+                          report['reason']?.toString().toLowerCase() ?? "";
+                      return reason.contains(_searchQuery.toLowerCase()) ||
+                          (report['authorName']
+                                  ?.toString()
+                                  .toLowerCase()
+                                  .contains(_searchQuery.toLowerCase()) ??
+                              false) ||
+                          (report['content']?.toString().toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ) ??
+                              false) ||
+                          (report['resolvedByName']
+                                  ?.toString()
+                                  .toLowerCase()
+                                  .contains(_searchQuery.toLowerCase()) ??
+                              false) ||
+                          (report['title']?.toString().toLowerCase().contains(
+                                _searchQuery.toLowerCase(),
+                              ) ??
+                              false);
+                    })
+                    .toList();
 
                 if (data.isEmpty) return _buildEmptyState();
 
                 return ListView.builder(
                   padding: const EdgeInsets.fromLTRB(16, 16, 16, 100),
                   itemCount: data.length,
-                  itemBuilder: (context, index) => _buildReportCard(data[index]),
+                  itemBuilder: (context, index) =>
+                      _buildReportCard(data[index]),
                 );
               },
             ),
@@ -366,22 +545,35 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
 
   Widget _buildHeader() {
     return Container(
-        width: double.infinity,
-        padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)]),
-          borderRadius: BorderRadius.only(bottomLeft: Radius.circular(32), bottomRight: Radius.circular(32)),
+      width: double.infinity,
+      padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
+      decoration: const BoxDecoration(
+        gradient: LinearGradient(
+          colors: [Color(0xFF42A5F5), Color(0xFF1E88E5)],
         ),
-        child: Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
-                onPressed: () => Navigator.pop(context),
-              ),
-              const SizedBox(width: 20),
-              Text("History", style: TextStyle(color: Colors.white, fontSize: 26, fontWeight: FontWeight.bold, letterSpacing: -0.5)),
-            ]
-        )
+        borderRadius: BorderRadius.only(
+          bottomLeft: Radius.circular(32),
+          bottomRight: Radius.circular(32),
+        ),
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
+            onPressed: () => Navigator.pop(context),
+          ),
+          const SizedBox(width: 20),
+          Text(
+            "History",
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 26,
+              fontWeight: FontWeight.bold,
+              letterSpacing: -0.5,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -391,7 +583,13 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(16),
-        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.03), blurRadius: 10, offset: const Offset(0, 4))],
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
       ),
       child: TextField(
         controller: _searchController,
@@ -399,17 +597,56 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
         decoration: InputDecoration(
           hintText: "Search...",
           hintStyle: TextStyle(color: Colors.grey.shade400),
-          prefixIcon: const Icon(Icons.search_rounded, color: Color(0xFF42A5F5)),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: Color(0xFF42A5F5),
+          ),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 20,
+            vertical: 15,
+          ),
           suffixIcon: _searchQuery.isNotEmpty
-              ? IconButton(icon: const Icon(Icons.close), onPressed: () {
-            _searchController.clear();
-            setState(() => _searchQuery = "");
-          })
+              ? IconButton(
+                  icon: const Icon(Icons.close),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = "");
+                  },
+                )
               : null,
         ),
       ),
+    );
+  }
+
+  Widget _buildFilter() {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.filter_list),
+      onSelected: (val) {
+        if (val == 'all') {
+          _filter = "all";
+        } else if (val == 'post') {
+          _filter = "post";
+        } else if (val == 'comment') {
+          _filter = "comment";
+        }
+        setState(() {});
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'all',
+          child: Text('All', style: TextStyle(color: Colors.black)),
+        ),
+        const PopupMenuItem(
+          value: 'post',
+          child: Text('Posts', style: TextStyle(color: Colors.black)),
+        ),
+        const PopupMenuItem(
+          value: 'comment',
+          child: Text('Comments', style: TextStyle(color: Colors.black)),
+        ),
+      ],
     );
   }
 
@@ -420,8 +657,18 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
         children: [
           Icon(Icons.done_all_rounded, size: 64, color: Colors.green.shade100),
           const SizedBox(height: 16),
-          const Text("Inbox Clear!", style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.grey)),
-          const Text("No pending reports to review.", style: TextStyle(color: Colors.grey)),
+          const Text(
+            "Inbox Clear!",
+            style: TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: Colors.grey,
+            ),
+          ),
+          const Text(
+            "No pending reports to review.",
+            style: TextStyle(color: Colors.grey),
+          ),
         ],
       ),
     );
@@ -432,12 +679,19 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
     final postId = report['postId'];
     final commentId = report['commentId'];
     final timestamp = report['timestamp'] as Timestamp?;
-    final dateStr = timestamp != null ? DateFormat('dd MMM, hh:mm a').format(timestamp.toDate()) : 'Recently';
+    final dateStr = timestamp != null
+        ? DateFormat('dd MMM, hh:mm a').format(timestamp.toDate())
+        : 'Recently';
 
     return FutureBuilder<DocumentSnapshot>(
       future: type == 'post'
           ? FirebaseFirestore.instance.collection('posts').doc(postId).get()
-          : FirebaseFirestore.instance.collection('posts').doc(postId).collection('comments').doc(commentId).get(),
+          : FirebaseFirestore.instance
+                .collection('posts')
+                .doc(postId)
+                .collection('comments')
+                .doc(commentId)
+                .get(),
       builder: (context, snapshot) {
         if (!snapshot.hasData) return const SizedBox.shrink();
         if (!snapshot.data!.exists) {
@@ -445,8 +699,12 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
         }
 
         final contentData = snapshot.data!.data() as Map<String, dynamic>;
-        final author = type == 'post' ? (contentData['username'] ?? 'Unknown') : (contentData['authorName'] ?? 'Unknown');
-        final contentText = type == 'post' ? (contentData['content'] ?? '') : (contentData['text'] ?? '');
+        final author = type == 'post'
+            ? (contentData['username'] ?? 'Unknown')
+            : (contentData['authorName'] ?? 'Unknown');
+        final contentText = type == 'post'
+            ? (contentData['content'] ?? '')
+            : (contentData['text'] ?? '');
         final titleText = type == 'post' ? (contentData['title'] ?? '') : '';
 
         return Container(
@@ -454,7 +712,13 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(24),
-            boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.02), blurRadius: 10, offset: const Offset(0, 4))],
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.02),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
           child: Padding(
             padding: const EdgeInsets.all(20),
@@ -465,24 +729,52 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
+                      ),
                       decoration: BoxDecoration(
-                        color: (type == 'post' ? Colors.purple : Colors.orange).withValues(alpha: 0.1),
+                        color: (type == 'post' ? Colors.purple : Colors.orange)
+                            .withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(12),
                       ),
                       child: Text(
                         type.toUpperCase(),
-                        style: TextStyle(color: type == 'post' ? Colors.purple : Colors.orange, fontSize: 10, fontWeight: FontWeight.bold),
+                        style: TextStyle(
+                          color: type == 'post' ? Colors.purple : Colors.orange,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                    Text(dateStr, style: TextStyle(color: Colors.grey.shade400, fontSize: 11)),
+                    Text(
+                      dateStr,
+                      style: TextStyle(
+                        color: Colors.grey.shade400,
+                        fontSize: 11,
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 16),
                 Row(
                   children: [
-                    const Text("Author: ", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
-                    Text(author, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Color(0xFF1E88E5))),
+                    const Text(
+                      "Author: ",
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
+                    Text(
+                      author,
+                      style: const TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF1E88E5),
+                      ),
+                    ),
                   ],
                 ),
                 const SizedBox(height: 8),
@@ -490,13 +782,33 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
                 if (type == 'post')
                   Row(
                     children: [
-                      const Text("Title: ", style: TextStyle(fontSize: 13, fontWeight: FontWeight.bold, color: Colors.grey)),
-                      Text(titleText, style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold)),
+                      const Text(
+                        "Title: ",
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey,
+                        ),
+                      ),
+                      Text(
+                        titleText,
+                        style: const TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
                     ],
                   ),
 
                 const SizedBox(height: 8),
-                const Text("Content:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  "Content:",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 Text(
                   contentText,
                   maxLines: 3,
@@ -504,21 +816,45 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
                   style: const TextStyle(fontSize: 14, color: Colors.black87),
                 ),
                 const Divider(height: 32),
-                const Text("Reason for report:", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                const Text(
+                  "Reason for report:",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.grey,
+                  ),
+                ),
                 Text(
-                  report['reason']?.toString().isEmpty ?? true ? "No reason provided" : report['reason'],
-                  style: const TextStyle(fontSize: 14, color: Color(0xFF2C3E50), fontStyle: FontStyle.italic),
+                  report['reason']?.toString().isEmpty ?? true
+                      ? "No reason provided"
+                      : report['reason'],
+                  style: const TextStyle(
+                    fontSize: 14,
+                    color: Color(0xFF2C3E50),
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
                 const Divider(height: 32),
                 Row(
                   children: [
-                    const Text("Resolved by: ", style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.grey)),
+                    const Text(
+                      "Resolved by: ",
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.grey,
+                      ),
+                    ),
                     Text(
                       report['resolvedByName'] ?? "Unknown",
-                      style: const TextStyle(fontSize: 13, color: Color(0xFF1E88E5), fontWeight: FontWeight.bold),
+                      style: const TextStyle(
+                        fontSize: 13,
+                        color: Color(0xFF1E88E5),
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ],
-                )
+                ),
               ],
             ),
           ),
