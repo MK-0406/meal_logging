@@ -70,7 +70,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
                 //adjusted for admin to delete the post/comment later
                 'postId': postId,
                 'type': type,
-                'commendId': (type == 'post') ? null : commentId,
+                'commentId': (type == 'post') ? null : commentId,
                 'reporterId': FirebaseAuth.instance.currentUser!.uid,
                 'reason': reasonCtrl.text.trim(),
                 'timestamp': FieldValue.serverTimestamp(),
@@ -428,7 +428,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
       child: Row(
         children: [
           IconButton(
-            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 20),
+            icon: const Icon(Icons.arrow_back, color: Colors.white, size: 24),
             onPressed: () => Navigator.pop(context, _saved),
           ),
           const SizedBox(width: 8),
