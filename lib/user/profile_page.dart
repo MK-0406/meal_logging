@@ -250,7 +250,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           child: ElevatedButton.icon(
             onPressed: () => Navigator.push(context, MaterialPageRoute(builder: (_) => ProfileFormScreen())),
             icon: const Icon(Icons.edit_note_rounded, color: Colors.white),
-            label: const Text("Update Health Data", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
+            label: const Text("Update Data", style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: Colors.white)),
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF42A5F5),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
