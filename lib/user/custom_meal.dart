@@ -471,19 +471,29 @@ class _MealFormState extends State<MealForm> {
             image = await pickImageFromGallery();
           }
           if (image != null) {
+            Map<String, dynamic>? result = {};
             final NutritionService nutritionService = NutritionService();
+            bool blurry = await nutritionService.isMotionBlurred(image.path);
 
-            String extractedText = await nutritionService.extractTextFromImage(
-              image.path,
-            );
+            if (blurry) {
+              result = {"error": "Photo is blurry. Please try again."};
+            } else {
+              String extractedText = await nutritionService.extractTextFromImage(
+                image.path,
+              );
 
-            final result = await nutritionService.analyzeNutrition(
-              extractedText,
-            );
+              result = await nutritionService.analyzeNutrition(
+                extractedText,
+              );
+            }
 
             if (result != null && result.length > 1) {
+              final nutrients = ["calories", "water_g", "protein_g", "fat_g", "carbohydrates_g", "fiber_g", "calcium_mg", "iron_mg", "potassium_mg", "sodium_mg", "phosphorus_mg", "ash_g"];
+              for (var nutrient in nutrients) {
+                result[nutrient] = result[nutrient] ?? 0;
+              }
               setState(() {
-                extractedNutrition = result;
+                extractedNutrition = result!;
               });
             }
             if (mounted) {
@@ -564,50 +574,50 @@ class _MealFormState extends State<MealForm> {
         _nutrientInputRow(
           'calorie',
           'Calories (kcal)',
-          extractedNutrition['calories'] ?? 0,
+          extractedNutrition['calories'],
           'water',
           'Water (g)',
-          extractedNutrition['water_g'] ?? 0,
+          extractedNutrition['water_g'],
         ),
         _nutrientInputRow(
           'protein',
           'Protein (g)',
-          extractedNutrition['protein_g'] ?? 0,
+          extractedNutrition['protein_g'],
           'carb',
           'Carbs (g)',
-          extractedNutrition['carbohydrates_g'] ?? 0,
+          extractedNutrition['carbohydrates_g'],
         ),
         _nutrientInputRow(
           'fat',
           'Fat (g)',
-          extractedNutrition['fat_g'] ?? 0,
+          extractedNutrition['fat_g'],
           'fibre',
           'Fibre (g)',
-          extractedNutrition['fiber_g'] ?? 0,
+          extractedNutrition['fiber_g'],
         ),
         _nutrientInputRow(
           'calcium',
           'Calcium (mg)',
-          extractedNutrition['calcium_mg'] ?? 0,
+          extractedNutrition['calcium_mg'],
           'iron',
           'Iron (mg)',
-          extractedNutrition['iron_mg'] ?? 0,
+          extractedNutrition['iron_mg'],
         ),
         _nutrientInputRow(
           'potassium',
           'Potassium (mg)',
-          extractedNutrition['potassium_mg'] ?? 0,
+          extractedNutrition['potassium_mg'],
           'sodium',
           'Sodium (mg)',
-          extractedNutrition['sodium_mg'] ?? 0,
+          extractedNutrition['sodium_mg'],
         ),
         _nutrientInputRow(
           'phosphorus',
           'Phosphorus (mg)',
-          extractedNutrition['phosphorus_mg'] ?? 0,
+          extractedNutrition['phosphorus_mg'],
           'ash',
           'Ash (g)',
-          extractedNutrition['ash_g'] ?? 0,
+          extractedNutrition['ash_g'],
         ),
       ],
     );
