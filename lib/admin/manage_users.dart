@@ -23,6 +23,8 @@ class _UsersPageState extends State<UsersPage>
   int banCount = 0;
   int activeCount = 0;
   bool isLoading = false;
+  bool ascending = true;
+  String sortBy = 'email';
 
   late TabController _tabController;
   final TextEditingController _searchController = TextEditingController();
@@ -80,7 +82,105 @@ class _UsersPageState extends State<UsersPage>
       body: Column(
         children: [
           _buildHeader(),
-          _buildSearchBar(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(flex: 5, child: _buildSearchBar()),
+              Expanded(
+                flex: 1,
+                child: IconButton(
+                  onPressed: () => showModalBottomSheet(
+                    context: context,
+                    builder: (context) => Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Name: A-Z"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'name';
+                                ascending = true;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          const SizedBox(height: 5),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Name: Z-A"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'name';
+                                ascending = false;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          const SizedBox(height: 5),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Email: A-Z"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'email';
+                                ascending = true;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          const SizedBox(height: 5),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Email: Z-A"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'email';
+                                ascending = false;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Time: Newest to Oldest"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'time';
+                                ascending = false;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Time: Oldest to Newest"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'time';
+                                ascending = true;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  icon: Icon(Icons.sort),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+          ),
           _buildTabBar(),
           Expanded(
             child: TabBarView(
@@ -149,7 +249,7 @@ class _UsersPageState extends State<UsersPage>
         controller: _searchController,
         onChanged: (val) => setState(() => _searchQuery = val),
         decoration: InputDecoration(
-          hintText: "Search for emails...",
+          hintText: "Search for name/email",
           hintStyle: TextStyle(color: Colors.grey.shade400),
           prefixIcon: const Icon(
             Icons.search_rounded,
@@ -251,11 +351,11 @@ class _UsersPageState extends State<UsersPage>
     return StreamBuilder<QuerySnapshot>(
       stream: users
           .where('role', isEqualTo: 'user')
-          .orderBy('email')
           .snapshots(),
       builder: (context, snapshot) {
-        if (snapshot.hasError)
+        if (snapshot.hasError) {
           return const Center(child: Text('Error loading users'));
+        }
         if (snapshot.connectionState == ConnectionState.waiting || isLoading) {
           return const Center(child: CircularProgressIndicator(strokeWidth: 2));
         }
@@ -264,19 +364,39 @@ class _UsersPageState extends State<UsersPage>
             .map((doc) {
               final user = doc.data() as Map<String, dynamic>;
               user['id'] = doc.id;
+              // Prefer stored name; fall back to email local-part so sorting has a stable key
+              user['name'] = usersData[doc.id]?['name'] ?? user['email'].toString().split('@')[0];
               return user;
             })
             .where((user) {
               return (user['email'].toString().toLowerCase().contains(
                     _searchQuery.toLowerCase(),
                   ) ||
-                  usersData[user['id']]?['name']
-                          ?.toString()
+                  user['name']
+                          .toString()
                           .toLowerCase()
                           .contains(_searchQuery.toLowerCase()) ==
                       true);
             })
             .toList();
+
+        // Sort the user list based on selected field and order
+        data.sort((a, b) {
+          String aKey;
+          String bKey;
+          if (sortBy == 'name') {
+            aKey = (a['name'] ?? '').toString().toLowerCase();
+            bKey = (b['name'] ?? '').toString().toLowerCase();
+          } else if (sortBy == 'time') {
+            aKey = (a['createdAt'] ?? '').toString().toLowerCase();
+            bKey = (b['createdAt'] ?? '').toString().toLowerCase();
+          } else {
+            aKey = (a['email'] ?? '').toString().toLowerCase();
+            bKey = (b['email'] ?? '').toString().toLowerCase();
+          }
+          final cmp = aKey.compareTo(bKey);
+          return ascending ? cmp : -cmp;
+        });
 
         if (data.isEmpty) return const Center(child: Text('No users found.'));
 
