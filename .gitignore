@@ -54,3 +54,4 @@ pubspec.yaml.old
 android/app/google-services.json
 android/build/reports/problems/problems-report.html
 build 2/reports/problems/problems-report.html
+.vscode/launch.json
