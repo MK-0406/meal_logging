@@ -16,6 +16,8 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
 
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = "";
+  String sortBy = 'email';
+  bool ascending = true;
   
   @override
   void initState() {
@@ -36,7 +38,79 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
       body: Column(
         children: [
           _buildHeader(),
-          _buildSearchBar(),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Expanded(flex: 5, child: _buildSearchBar()),
+              Expanded(
+                flex: 1,
+                child: IconButton(
+                  onPressed: () => showModalBottomSheet(
+                    context: context,
+                    builder: (context) => Container(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Email: A-Z"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'email';
+                                ascending = true;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          const SizedBox(height: 5),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Email: Z-A"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'email';
+                                ascending = false;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Time: Newest to Oldest"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'time';
+                                ascending = false;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                          ListTile(
+                            leading: const Icon(Icons.sort_by_alpha),
+                            title: const Text("Time: Oldest to Newest"),
+                            onTap: () {
+                              setState(() {
+                                sortBy = 'time';
+                                ascending = true;
+                              });
+                              if (context.mounted) Navigator.pop(context);
+                            },
+                            tileColor: Colors.grey.shade50,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  icon: Icon(Icons.sort),
+                ),
+              ),
+              const SizedBox(width: 16),
+            ],
+          ),
           _buildTabBar(),
           Expanded(
             child: TabBarView(
@@ -130,7 +204,7 @@ class _AdminRegPageState extends State<AdminRegPage> with SingleTickerProviderSt
   
   Widget _buildAdminList(String status) {
     return StreamBuilder<QuerySnapshot>(
-      stream: users.where('role', isEqualTo: 'admin').where('registrationStatus', isEqualTo: status).orderBy('updatedAt').snapshots(),
+      stream: users.where('role', isEqualTo: 'admin').where('registrationStatus', isEqualTo: status).orderBy(sortBy == 'email' ? 'email' : 'updatedAt', descending: !ascending).snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) return const Center(child: Text('Error loading admins'));
         if (snapshot.connectionState == ConnectionState.waiting) {
