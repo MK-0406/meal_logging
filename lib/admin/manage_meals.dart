@@ -388,7 +388,7 @@ class _MealsPageState extends State<MealsPage> {
                     const SizedBox(height: 24),
                     Row(
                       children: [
-                        Expanded(child: OutlinedButton(onPressed: () { _clearControllers(); Navigator.pop(context); }, child: const Text("Clear/Cancel"))),
+                        Expanded(child: OutlinedButton(onPressed: () { _clearControllers(); Navigator.pop(context); }, child: const Text("Cancel"))),
                         const SizedBox(width: 12),
                         Expanded(child: ElevatedButton(
                           onPressed: () => isEditing ? _handleUpdate(data!['id']) : _handleAdd(),
