@@ -7,7 +7,8 @@ class InputTextField extends StatelessWidget {
   final bool isInt;
   final bool includeZero;
 
-  const InputTextField({super.key,
+  const InputTextField({
+    super.key,
     required this.label,
     required this.controller,
     required this.isNumber,
@@ -29,7 +30,7 @@ class InputTextField extends StatelessWidget {
       validator: (value) {
         if (value == null || value.isEmpty) {
           return 'Please enter ${label.toLowerCase()}';
-        } else if (isNumber){
+        } else if (isNumber) {
           if (isInt) {
             if (int.tryParse(value) == null) {
               return '$label must be an integer';
@@ -50,7 +51,7 @@ class InputTextField extends StatelessWidget {
           }
         }
         return null;
-      }
+      },
     );
   }
 }
@@ -58,9 +59,7 @@ class InputTextField extends StatelessWidget {
 class CustomFormText extends StatelessWidget {
   final String text;
 
-  const CustomFormText({super.key,
-    required this.text,
-  });
+  const CustomFormText({super.key, required this.text});
 
   @override
   Widget build(BuildContext context) {
@@ -70,5 +69,3 @@ class CustomFormText extends StatelessWidget {
     );
   }
 }
-
-
