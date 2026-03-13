@@ -435,7 +435,7 @@ class _MealDiaryState extends State<MealDiary> {
                   onPressed: () async {
                     Navigator.pop(missingContext);
                     try {
-                      results = await _checkBoundaries({});
+                      results = await _checkBoundaries(results);
                       setState(() {
                         calculateRecommendationForEachMealPeriod();
                       });
