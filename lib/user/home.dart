@@ -11,66 +11,65 @@ class HomePage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: Colors.transparent, // Allows MainDashboard gradient to show
-      body: RefreshIndicator(
-        onRefresh: () async => loadHealthConditions(),
-        child: ListView(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-          physics: const BouncingScrollPhysics(),
-          children: [
-            // Header Section
-            _buildHeader(theme),
-            const SizedBox(height: 32),
+      body: SingleChildScrollView(
+        child: Column(
+            children: [
+              // Header Section
+              const SizedBox(height: 22),
+              _buildHeader(theme),
+              const SizedBox(height: 32),
 
-            // Health Conditions Section
-            _buildSectionLabel("HEALTH OVERVIEW"),
-            const SizedBox(height: 12),
-            FutureBuilder<List<String>>(
-              future: loadHealthConditions(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildLoadingPlaceholder();
-                }
+              // Health Conditions Section
+              _buildSectionLabel("HEALTH OVERVIEW"),
+              const SizedBox(height: 12),
+              FutureBuilder<List<String>>(
+                future: loadHealthConditions(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return _buildLoadingPlaceholder();
+                  }
 
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return const Center(child: Text("No health data found"));
-                }
+                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                    return const Center(child: Text("No health data found"));
+                  }
 
-                final conditions = snapshot.data!;
+                  final conditions = snapshot.data!;
 
-                return Container(
-                  decoration: BoxDecoration(
-                    color: Colors.white.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(28),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.blue.shade900.withValues(alpha: 0.04),
-                        blurRadius: 24,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Column(
-                      children: conditions
-                          .map((c) => _buildConditionChip(context, c))
-                          .toList(),
+                  return Container(
+                    margin: const EdgeInsets.fromLTRB(16, 5, 16, 16),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.9),
+                      borderRadius: BorderRadius.circular(28),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.shade900.withValues(alpha: 0.04),
+                          blurRadius: 24,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
                     ),
-                  ),
-                );
-              },
-            ),
-            const SizedBox(height: 32),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        children: conditions
+                            .map((c) => _buildConditionChip(context, c))
+                            .toList(),
+                      ),
+                    ),
+                  );
+                },
+              ),
+              const SizedBox(height: 32),
 
-            // Nutrient Information Section
-            _buildSectionLabel("NUTRIENT INFORMATION"),
-            const SizedBox(height: 12),
-            _buildNutrientCard(theme),
+              // Nutrient Information Section
+              _buildSectionLabel("NUTRIENT INFORMATION"),
+              const SizedBox(height: 12),
+              _buildNutrientCard(theme),
 
-            const SizedBox(height: 100), // Padding for the floating nav bar
-          ],
-        ),
-      ),
+              const SizedBox(height: 100), // Padding for the floating nav bar
+            ]
+        )
+      )
     );
   }
 
@@ -178,6 +177,7 @@ class HomePage extends StatelessWidget {
 
   Widget _buildNutrientCard(ThemeData theme) {
     return Container(
+      margin: const EdgeInsets.fromLTRB(16, 5, 16, 30),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(28),
