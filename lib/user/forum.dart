@@ -410,7 +410,7 @@ class _ForumPageState extends State<_ForumPage>
 
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('viewed_posts')
+          .collection('viewedPosts')
           .doc(uid)
           .collection('posts')
           .doc(post.id)
@@ -608,7 +608,7 @@ class _ForumPageState extends State<_ForumPage>
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
     await FirebaseFirestore.instance
-        .collection('viewed_posts')
+        .collection('viewedPosts')
         .doc(uid)
         .collection('posts')
         .doc(postId)
