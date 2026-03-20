@@ -99,7 +99,7 @@ class _MealLogPageState extends State<MealLogPage>
             .get();
         if (!mDoc.exists) {
           mDoc = await FirebaseFirestore.instance
-              .collection('custom_meal')
+              .collection('customMeal')
               .doc(uid)
               .collection('meals')
               .doc(mealID)
@@ -181,7 +181,7 @@ class _MealLogPageState extends State<MealLogPage>
       _isLoading = true;
     });
     QuerySnapshot snapshot = await FirebaseFirestore.instance
-        .collection('custom_meal')
+        .collection('customMeal')
         .doc(FirebaseAuth.instance.currentUser!.uid)
         .collection('meals')
         .where('deleted', isEqualTo: false)

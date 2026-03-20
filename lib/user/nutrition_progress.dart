@@ -58,7 +58,7 @@ class _NutritionProgressPageState extends State<NutritionProgressPage> {
         final serving = logData['servingSize'] ?? 100;
         var mealDoc = await FirebaseFirestore.instance.collection('meals').doc(logData['mealID']).get();
         if (!mealDoc.exists) {
-          mealDoc = await FirebaseFirestore.instance.collection('custom_meal').doc(uid).collection('meals').doc(logData['mealID']).get();
+          mealDoc = await FirebaseFirestore.instance.collection('customMeal').doc(uid).collection('meals').doc(logData['mealID']).get();
         }
         if (mealDoc.exists) {
           final mData = mealDoc.data()!;

@@ -779,7 +779,7 @@ class _MealFormState extends State<MealForm> {
     };
     if (widget.mealId != null) {
       await FirebaseFirestore.instance
-          .collection('custom_meal')
+          .collection('customMeal')
           .doc(uid)
           .collection('meals')
           .doc(widget.mealId)
@@ -787,7 +787,7 @@ class _MealFormState extends State<MealForm> {
     } else {
       mealData['createdAt'] = FieldValue.serverTimestamp();
       await FirebaseFirestore.instance
-          .collection('custom_meal')
+          .collection('customMeal')
           .doc(uid)
           .collection('meals')
           .add(mealData);
@@ -1170,7 +1170,7 @@ class _RecipeFormState extends State<RecipeForm> {
 
     if (widget.mealId != null) {
       await FirebaseFirestore.instance
-          .collection('custom_meal')
+          .collection('customMeal')
           .doc(uid)
           .collection('meals')
           .doc(widget.mealId)
@@ -1178,7 +1178,7 @@ class _RecipeFormState extends State<RecipeForm> {
     } else {
       recipeData['createdAt'] = FieldValue.serverTimestamp();
       await FirebaseFirestore.instance
-          .collection('custom_meal')
+          .collection('customMeal')
           .doc(uid)
           .collection('meals')
           .add(recipeData);
@@ -1229,7 +1229,7 @@ class _UserMealsList extends State<UserMealsList> {
         Expanded(
           child: StreamBuilder<QuerySnapshot>(
             stream: FirebaseFirestore.instance
-                .collection('custom_meal')
+                .collection('customMeal')
                 .doc(uid)
                 .collection('meals')
                 .where('deleted', isEqualTo: false)
@@ -1413,7 +1413,7 @@ class _UserMealsList extends State<UserMealsList> {
     );
     if (confirm == true) {
       await FirebaseFirestore.instance
-          .collection('custom_meal')
+          .collection('customMeal')
           .doc(uid)
           .collection('meals')
           .doc(id)

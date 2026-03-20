@@ -52,7 +52,7 @@ class _MealDiaryState extends State<MealDiary> {
   final CollectionReference mealLogs = FirebaseFirestore.instance.collection('mealLogs');
   final CollectionReference waterLogs = FirebaseFirestore.instance.collection('waterLogs');
   final CollectionReference mealsCol = FirebaseFirestore.instance.collection('meals');
-  final CollectionReference customMealsCol = FirebaseFirestore.instance.collection('custom_meal').doc(FirebaseAuth.instance.currentUser!.uid).collection('meals');
+  final CollectionReference customMealsCol = FirebaseFirestore.instance.collection('customMeal').doc(FirebaseAuth.instance.currentUser!.uid).collection('meals');
 
   final List<String> mealCategories = ['Breakfast', 'Lunch', 'Dinner', 'Snack'];
   final Set<String> expandedMeals = {};
@@ -189,7 +189,7 @@ class _MealDiaryState extends State<MealDiary> {
     for (final data in todayMealData) {
       var mealDoc = await Database.getDocument('meals', data['mealID']);
       if (!mealDoc.exists) {
-        CollectionReference collectionRef = FirebaseFirestore.instance.collection('custom_meal');
+        CollectionReference collectionRef = FirebaseFirestore.instance.collection('customMeal');
         mealDoc = await collectionRef.doc(FirebaseAuth.instance.currentUser!.uid).collection('meals').doc(data['mealID']).get();
       }
       final mealDataMap = mealDoc.data() as Map<String, dynamic>;
