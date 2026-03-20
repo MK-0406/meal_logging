@@ -46,7 +46,7 @@ class _ForumPageState extends State<_ForumPage>
 
   Future<void> _loadSavedPosts() async {
     final savedDoc = await FirebaseFirestore.instance
-        .collection('saved_posts')
+        .collection('savedPosts')
         .doc(FirebaseAuth.instance.currentUser!.uid)
         .collection('posts')
         .where('saved', isEqualTo: true)

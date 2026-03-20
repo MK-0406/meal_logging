@@ -613,7 +613,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
   Widget _buildSaveButton() {
     return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection("saved_posts")
+          .collection("savedPosts")
           .doc(FirebaseAuth.instance.currentUser!.uid)
           .collection("posts")
           .doc(widget.post.id)
@@ -1059,7 +1059,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
 
   Future<void> savePost(String postId, String userId) async {
     final postRef = FirebaseFirestore.instance
-        .collection('saved_posts')
+        .collection('savedPosts')
         .doc(userId);
     await postRef.collection('posts').doc(postId).set({
       'saved': true,
@@ -1070,7 +1070,7 @@ class _ForumPostDetailPage extends State<ForumPostDetailPage> {
 
   Future<void> unsavePost(String postId, String userId) async {
     final postRef = FirebaseFirestore.instance
-        .collection('saved_posts')
+        .collection('savedPosts')
         .doc(userId);
     await postRef.collection('posts').doc(postId).delete();
     _saved = false;
