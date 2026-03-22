@@ -1,11 +1,40 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image/image.dart' as img;
 import 'package:meal_logging/user/log_meals.dart';
 import '../custom_styles.dart';
 import 'meal_details.dart';
 import 'nutrition_label_extraction.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
+bool isMotionBlurredBackground(String imagePath) {
+  final bytes = File(imagePath).readAsBytesSync();
+  final image = img.decodeImage(bytes);
+
+  if (image == null) return true;
+
+  final gray = img.grayscale(image);
+  final edges = img.sobel(gray);
+
+  double total = 0;
+  int count = 0;
+
+  for (int y = 0; y < edges.height; y++) {
+    for (int x = 0; x < edges.width; x++) {
+      final pixel = edges.getPixel(x, y);
+      final value = img.getLuminance(pixel);
+      total += value;
+      count++;
+    }
+  }
+
+  double edgeStrength = total / count;
+
+  return edgeStrength < 20;
+}
 
 double toFixed(double num, int decimals) {
   return double.parse(num.toStringAsFixed(decimals));
@@ -89,8 +118,8 @@ class _CustomMealPageState extends State<CustomMealPage>
                 UserMealsList(
                   onEdit: (mealId, data, nutritionalTargets) {
                     int tabIndex =
-                        (data['type'] == 'recipe' ||
-                            data['ingredients'] != null)
+                    (data['type'] == 'recipe' ||
+                        data['ingredients'] != null)
                         ? 1
                         : 0;
                     Navigator.pushReplacement(
@@ -270,9 +299,9 @@ class _MealFormState extends State<MealForm> {
     _foodGroup = widget.initialData?['foodGroup'];
     _foodCategory =
         widget.initialData?['foodCategory'] ??
-        (widget.defaultCategory == 'Lunch' || widget.defaultCategory == 'Dinner'
-            ? 'Lunch / Dinner'
-            : widget.defaultCategory);
+            (widget.defaultCategory == 'Lunch' || widget.defaultCategory == 'Dinner'
+                ? 'Lunch / Dinner'
+                : widget.defaultCategory);
 
     if (widget.initialData?['servings'] != null) {
       for (var s in widget.initialData!['servings']) {
@@ -362,7 +391,7 @@ class _MealFormState extends State<MealForm> {
           _buildSectionCard("Portion Options", [
             ...List.generate(
               _servingNameControllers.length,
-              (i) => _buildServingRow(i),
+                  (i) => _buildServingRow(i),
             ),
             TextButton.icon(
               onPressed: () => setState(() {
@@ -460,69 +489,63 @@ class _MealFormState extends State<MealForm> {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.camera_alt),
       onSelected: (val) async {
-        try {
-          XFile? image;
-          setState(() {
-            isLoadingImage = true;
-          });
-          if (val == 'camera') {
-            image = await pickImageFromCamera();
-          } else if (val == 'gallery') {
-            image = await pickImageFromGallery();
+        setState(() {
+          isLoadingImage = true;
+        });
+        await Future.delayed(const Duration(milliseconds: 50));
+        XFile? image;
+        if (val == 'camera') {
+          image = await pickImageFromCamera();
+        } else if (val == 'gallery') {
+          image = await pickImageFromGallery();
+        }
+        if (image != null) {
+          Map<String, dynamic>? result = {};
+          final NutritionService nutritionService = NutritionService();
+          bool blurry = await compute(isMotionBlurredBackground, image.path);
+
+          if (blurry) {
+            result = {"error": "Photo is blurry. Please try again."};
+          } else {
+            String extractedText = await nutritionService.extractTextFromImage(
+              image.path,
+            );
+
+            result = await nutritionService.analyzeNutrition(extractedText);
           }
-          if (image != null) {
-            Map<String, dynamic>? result = {};
-            final NutritionService nutritionService = NutritionService();
-            bool blurry = await nutritionService.isMotionBlurred(image.path);
 
-            if (blurry) {
-              result = {"error": "Photo is blurry. Please try again."};
-            } else {
-              String extractedText = await nutritionService.extractTextFromImage(
-                image.path,
-              );
-
-              result = await nutritionService.analyzeNutrition(
-                extractedText,
-              );
+          if (result != null && result.length > 1) {
+            final nutrients = [
+              "calories",
+              "water_g",
+              "protein_g",
+              "fat_g",
+              "carbohydrates_g",
+              "fiber_g",
+              "calcium_mg",
+              "iron_mg",
+              "potassium_mg",
+              "sodium_mg",
+              "phosphorus_mg",
+              "ash_g",
+            ];
+            for (var nutrient in nutrients) {
+              result[nutrient] = result[nutrient] ?? 0;
             }
-
-            if (result != null && result.length > 1) {
-              final nutrients = ["calories", "water_g", "protein_g", "fat_g", "carbohydrates_g", "fiber_g", "calcium_mg", "iron_mg", "potassium_mg", "sodium_mg", "phosphorus_mg", "ash_g"];
-              for (var nutrient in nutrients) {
-                result[nutrient] = result[nutrient] ?? 0;
-              }
-              setState(() {
-                extractedNutrition = result!;
-              });
-            }
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    result!.length > 1
-                        ? "Please double check the values"
-                        : result["error"],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  backgroundColor: Color(0xFF1E88E5),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
-            }
+            setState(() {
+              extractedNutrition = result!;
+            });
           }
-        } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  e.toString(),
+                  result!.length > 1
+                      ? "Please double check the values"
+                      : result["error"],
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                backgroundColor: Colors.redAccent,
+                backgroundColor: Color(0xFF1E88E5),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
@@ -549,11 +572,11 @@ class _MealFormState extends State<MealForm> {
   }
 
   Widget _buildDropdown(
-    String label,
-    String? val,
-    List<String> items,
-    Function(String?) onChanged,
-  ) {
+      String label,
+      String? val,
+      List<String> items,
+      Function(String?) onChanged,
+      ) {
     return DropdownButtonFormField<String>(
       initialValue: val,
       items: items
@@ -624,13 +647,13 @@ class _MealFormState extends State<MealForm> {
   }
 
   Widget _nutrientInputRow(
-    String f1,
-    String l1,
-    dynamic val1,
-    String f2,
-    String l2,
-    dynamic val2,
-  ) {
+      String f1,
+      String l1,
+      dynamic val1,
+      String f2,
+      String l2,
+      dynamic val2,
+      ) {
     if (val1 != null) {
       _controllers[f1]!.text = val1.toString();
     }
@@ -681,7 +704,7 @@ class _MealFormState extends State<MealForm> {
                 ),
               ),
               validator: (v) =>
-                  (v == null || v.trim().isEmpty) ? 'Enter size name' : null,
+              (v == null || v.trim().isEmpty) ? 'Enter size name' : null,
             ),
           ),
           const SizedBox(width: 10),
@@ -771,7 +794,7 @@ class _MealFormState extends State<MealForm> {
       'updatedAt': FieldValue.serverTimestamp(),
       'servings': List.generate(
         _servingNameControllers.length,
-        (i) => {
+            (i) => {
           'name': _servingNameControllers[i].text,
           'grams': _servingGramControllers[i].text,
         },
@@ -861,8 +884,8 @@ class _RecipeFormState extends State<RecipeForm> {
       }
     } else {
       _foodCategory =
-          widget.defaultCategory == 'Lunch' ||
-              widget.defaultCategory == 'Dinner'
+      widget.defaultCategory == 'Lunch' ||
+          widget.defaultCategory == 'Dinner'
           ? 'Lunch / Dinner'
           : widget.defaultCategory;
     }
@@ -1005,7 +1028,7 @@ class _RecipeFormState extends State<RecipeForm> {
                     ),
                   ),
                 ..._ingredients.asMap().entries.map(
-                  (e) => ListTile(
+                      (e) => ListTile(
                     title: Text(e.value['name']),
                     subtitle: Text("${e.value['quantity']}g"),
                     trailing: IconButton(
@@ -1066,11 +1089,11 @@ class _RecipeFormState extends State<RecipeForm> {
   }
 
   Widget _buildDropdown(
-    String label,
-    String? val,
-    List<String> items,
-    Function(String?) onChanged,
-  ) {
+      String label,
+      String? val,
+      List<String> items,
+      Function(String?) onChanged,
+      ) {
     return DropdownButtonFormField<String>(
       initialValue: val,
       items: items
@@ -1254,95 +1277,95 @@ class _UserMealsList extends State<UserMealsList> {
               }
               var data = docs
                   .map((doc) {
-                    final meal = doc.data() as Map<String, dynamic>;
-                    meal['id'] = doc.id;
-                    return meal;
-                  })
+                final meal = doc.data() as Map<String, dynamic>;
+                meal['id'] = doc.id;
+                return meal;
+              })
                   .where((meal) {
-                    return meal['name'].toString().toLowerCase().contains(
-                      _searchQuery.toLowerCase(),
-                    );
-                  })
+                return meal['name'].toString().toLowerCase().contains(
+                  _searchQuery.toLowerCase(),
+                );
+              })
                   .toList();
 
               return data.isEmpty
                   ? const Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.restaurant_menu,
-                            size: 64,
-                            color: Colors.grey,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.restaurant_menu,
+                      size: 64,
+                      color: Colors.grey,
+                    ),
+                    SizedBox(height: 16),
+                    Text("No meals found"),
+                  ],
+                ),
+              )
+                  : ListView.builder(
+                padding: const EdgeInsets.all(20),
+                itemCount: data.length,
+                itemBuilder: (context, i) {
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.02),
+                          blurRadius: 10,
+                        ),
+                      ],
+                    ),
+                    child: ListTile(
+                      onTap: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => MealDetailsPage(
+                            data: data[i],
+                            mealId: data[i]['id'],
                           ),
-                          SizedBox(height: 16),
-                          Text("No meals found"),
+                        ),
+                      ),
+                      title: Text(
+                        data[i]['name'],
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      subtitle: Text(
+                        "${data[i]['calorie'].toStringAsFixed(0)} kcal per 100g",
+                      ),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          IconButton(
+                            onPressed: () => widget.onEdit(
+                              data[i]['id'],
+                              data[i],
+                              widget.nutritionalTargets,
+                            ),
+                            icon: const Icon(
+                              Icons.edit_outlined,
+                              color: Colors.blue,
+                            ),
+                          ),
+                          IconButton(
+                            onPressed: () =>
+                                _delete(context, data[i]['id'], uid),
+                            icon: const Icon(
+                              Icons.delete_outline,
+                              color: Colors.redAccent,
+                            ),
+                          ),
                         ],
                       ),
-                    )
-                  : ListView.builder(
-                      padding: const EdgeInsets.all(20),
-                      itemCount: data.length,
-                      itemBuilder: (context, i) {
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 12),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: BorderRadius.circular(20),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.02),
-                                blurRadius: 10,
-                              ),
-                            ],
-                          ),
-                          child: ListTile(
-                            onTap: () => Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => MealDetailsPage(
-                                  data: data[i],
-                                  mealId: data[i]['id'],
-                                ),
-                              ),
-                            ),
-                            title: Text(
-                              data[i]['name'],
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            subtitle: Text(
-                              "${data[i]['calorie'].toStringAsFixed(0)} kcal per 100g",
-                            ),
-                            trailing: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  onPressed: () => widget.onEdit(
-                                    data[i]['id'],
-                                    data[i],
-                                    widget.nutritionalTargets,
-                                  ),
-                                  icon: const Icon(
-                                    Icons.edit_outlined,
-                                    color: Colors.blue,
-                                  ),
-                                ),
-                                IconButton(
-                                  onPressed: () =>
-                                      _delete(context, data[i]['id'], uid),
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.redAccent,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        );
-                      },
-                    );
+                    ),
+                  );
+                },
+              );
             },
           ),
         ),
@@ -1381,12 +1404,12 @@ class _UserMealsList extends State<UserMealsList> {
           ),
           suffixIcon: _searchQuery.isNotEmpty
               ? IconButton(
-                  icon: const Icon(Icons.close),
-                  onPressed: () {
-                    _searchController.clear();
-                    setState(() => _searchQuery = "");
-                  },
-                )
+            icon: const Icon(Icons.close),
+            onPressed: () {
+              _searchController.clear();
+              setState(() => _searchQuery = "");
+            },
+          )
               : null,
         ),
       ),
@@ -1534,34 +1557,34 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
             child: _isLoading
                 ? const Center(child: CircularProgressIndicator())
                 : ListView.builder(
-                    padding: const EdgeInsets.all(20),
-                    itemCount: _filteredIngredients.length,
-                    itemBuilder: (context, i) {
-                      final data =
-                          _filteredIngredients[i].data()
-                              as Map<String, dynamic>;
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: ListTile(
-                          title: Text(
-                            data['name'],
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          onTap: () async {
-                            final qty = await _showQtyDialog(data);
-                            if (!context.mounted) return;
-                            if (qty != null) {
-                              data['quantity'] = qty;
-                              Navigator.pop(context, data);
-                            }
-                          },
-                        ),
-                      );
+              padding: const EdgeInsets.all(20),
+              itemCount: _filteredIngredients.length,
+              itemBuilder: (context, i) {
+                final data =
+                _filteredIngredients[i].data()
+                as Map<String, dynamic>;
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: ListTile(
+                    title: Text(
+                      data['name'],
+                      style: const TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    onTap: () async {
+                      final qty = await _showQtyDialog(data);
+                      if (!context.mounted) return;
+                      if (qty != null) {
+                        data['quantity'] = qty;
+                        Navigator.pop(context, data);
+                      }
                     },
                   ),
+                );
+              },
+            ),
           ),
         ],
       ),
@@ -1600,16 +1623,16 @@ class _IngredientPickerPageState extends State<IngredientPickerPage> {
                     items: servings
                         .map(
                           (s) => DropdownMenuItem<String>(
-                            value: s['name'],
-                            child: Text("${s['name']} (${s['grams']}g)"),
-                          ),
-                        )
+                        value: s['name'],
+                        child: Text("${s['name']} (${s['grams']}g)"),
+                      ),
+                    )
                         .toList(),
                     onChanged: (val) {
                       setState(() {
                         selectedServing = val;
                         final s = servings.firstWhere(
-                          (item) => item['name'] == val,
+                              (item) => item['name'] == val,
                         );
                         baseGrams =
                             double.tryParse(s['grams'].toString()) ?? 100;
