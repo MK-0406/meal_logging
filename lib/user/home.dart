@@ -384,8 +384,8 @@ void showConditionInfoDialog(BuildContext context, String condition) async {
   String current = "";
   String url = "";
 
-  if (condition.contains("Weight") || condition.contains("Obese") || condition.contains("Underweight")) {
-    url = "https://www.moh.gov.my/moh/resources/Penerbitan/CPG/Endocrine/CPG_Management_of_Obesity_(Second_Edition)_2023.pdf";
+  if (condition.contains("Weight") || condition.contains("Obese") || condition.contains("weight")) {
+    url = "https://www.moh.gov.my/images/04-penerbitan/penerbitan-klinikal/panduan-amalan-klinikal/CPG_Management_of_Obesity_Second_Edition_2023.pdf";
     current = "Your BMI: ${bmi.toStringAsFixed(1)} kg/m²";
   } else if (condition.contains("Pressure") || condition.contains("Hypertension")) {
     url = "https://www.heart.org/en/health-topics/high-blood-pressure/understanding-blood-pressure-readings";
@@ -438,7 +438,7 @@ void showConditionInfoDialog(BuildContext context, String condition) async {
 
 Widget _buildRanges(String condition) {
   // BMI Ranges
-  if (condition.contains("Weight") || condition.contains("Obese") || condition.contains("Underweight")) {
+  if (condition.contains("Weight") || condition.contains("Obese") || condition.contains("weight")) {
     return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       const Text("BMI Ranges", style: TextStyle(fontWeight: FontWeight.bold)),
       _rangeRow("Underweight", "< 18.5", Colors.blue),
