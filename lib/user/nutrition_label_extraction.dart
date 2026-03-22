@@ -43,7 +43,7 @@ class NutritionService {
   }
 
   Future<Map<String, dynamic>?> analyzeNutrition(String text) async {
-    const apiKey = "AIzaSyC3LWa0hhYgAlWJfjfVfyvrXhRNXwwCux0";
+    const apiKey = "your_api_key";
 
     final models = [
       "gemini-2.5-flash",
