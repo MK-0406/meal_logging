@@ -1,11 +1,40 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image/image.dart' as img;
 import 'package:meal_logging/user/log_meals.dart';
 import '../custom_styles.dart';
 import 'meal_details.dart';
 import 'nutrition_label_extraction.dart';
 import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+
+bool isMotionBlurredBackground(String imagePath) {
+  final bytes = File(imagePath).readAsBytesSync();
+  final image = img.decodeImage(bytes);
+
+  if (image == null) return true;
+
+  final gray = img.grayscale(image);
+  final edges = img.sobel(gray);
+
+  double total = 0;
+  int count = 0;
+
+  for (int y = 0; y < edges.height; y++) {
+    for (int x = 0; x < edges.width; x++) {
+      final pixel = edges.getPixel(x, y);
+      final value = img.getLuminance(pixel);
+      total += value;
+      count++;
+    }
+  }
+
+  double edgeStrength = total / count;
+
+  return edgeStrength < 20;
+}
 
 double toFixed(double num, int decimals) {
   return double.parse(num.toStringAsFixed(decimals));
@@ -460,69 +489,63 @@ class _MealFormState extends State<MealForm> {
     return PopupMenuButton<String>(
       icon: const Icon(Icons.camera_alt),
       onSelected: (val) async {
-        try {
-          XFile? image;
-          setState(() {
-            isLoadingImage = true;
-          });
-          if (val == 'camera') {
-            image = await pickImageFromCamera();
-          } else if (val == 'gallery') {
-            image = await pickImageFromGallery();
+        setState(() {
+          isLoadingImage = true;
+        });
+        await Future.delayed(const Duration(milliseconds: 50));
+        XFile? image;
+        if (val == 'camera') {
+          image = await pickImageFromCamera();
+        } else if (val == 'gallery') {
+          image = await pickImageFromGallery();
+        }
+        if (image != null) {
+          Map<String, dynamic>? result = {};
+          final NutritionService nutritionService = NutritionService();
+          bool blurry = await compute(isMotionBlurredBackground, image.path);
+
+          if (blurry) {
+            result = {"error": "Photo is blurry. Please try again."};
+          } else {
+            String extractedText = await nutritionService.extractTextFromImage(
+              image.path,
+            );
+
+            result = await nutritionService.analyzeNutrition(extractedText);
           }
-          if (image != null) {
-            Map<String, dynamic>? result = {};
-            final NutritionService nutritionService = NutritionService();
-            bool blurry = await nutritionService.isMotionBlurred(image.path);
 
-            if (blurry) {
-              result = {"error": "Photo is blurry. Please try again."};
-            } else {
-              String extractedText = await nutritionService.extractTextFromImage(
-                image.path,
-              );
-
-              result = await nutritionService.analyzeNutrition(
-                extractedText,
-              );
+          if (result != null && result.length > 1) {
+            final nutrients = [
+              "calories",
+              "water_g",
+              "protein_g",
+              "fat_g",
+              "carbohydrates_g",
+              "fiber_g",
+              "calcium_mg",
+              "iron_mg",
+              "potassium_mg",
+              "sodium_mg",
+              "phosphorus_mg",
+              "ash_g",
+            ];
+            for (var nutrient in nutrients) {
+              result[nutrient] = result[nutrient] ?? 0;
             }
-
-            if (result != null && result.length > 1) {
-              final nutrients = ["calories", "water_g", "protein_g", "fat_g", "carbohydrates_g", "fiber_g", "calcium_mg", "iron_mg", "potassium_mg", "sodium_mg", "phosphorus_mg", "ash_g"];
-              for (var nutrient in nutrients) {
-                result[nutrient] = result[nutrient] ?? 0;
-              }
-              setState(() {
-                extractedNutrition = result!;
-              });
-            }
-            if (mounted) {
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text(
-                    result!.length > 1
-                        ? "Please double check the values"
-                        : result["error"],
-                    style: const TextStyle(fontWeight: FontWeight.bold),
-                  ),
-                  backgroundColor: Color(0xFF1E88E5),
-                  behavior: SnackBarBehavior.floating,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-              );
-            }
+            setState(() {
+              extractedNutrition = result!;
+            });
           }
-        } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
               SnackBar(
                 content: Text(
-                  e.toString(),
+                  result!.length > 1
+                      ? "Please double check the values"
+                      : result["error"],
                   style: const TextStyle(fontWeight: FontWeight.bold),
                 ),
-                backgroundColor: Colors.redAccent,
+                backgroundColor: Color(0xFF1E88E5),
                 behavior: SnackBarBehavior.floating,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(12),
