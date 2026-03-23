@@ -29,8 +29,9 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
                   .orderBy('timestamp', descending: true)
                   .snapshots(),
               builder: (context, snapshot) {
-                if (snapshot.hasError)
+                if (snapshot.hasError) {
                   return const Center(child: Text('Error loading reports'));
+                }
                 if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(
                     child: CircularProgressIndicator(strokeWidth: 2),
@@ -134,7 +135,7 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
     final report = doc.data() as Map<String, dynamic>;
     final type = report['type'] ?? 'post';
     final postId = report['postId'];
-    final commentId = report['commendId'];
+    final commentId = report['commentId'];
     final timestamp = report['timestamp'] as Timestamp?;
     final dateStr = timestamp != null
         ? DateFormat('dd MMM, hh:mm a').format(timestamp.toDate())
@@ -377,7 +378,7 @@ class _ManageReportsPageState extends State<ManageReportsPage> {
   Future<void> _deleteContent(Map<String, dynamic> report) async {
     final postId = report['postId'];
     final type = report['type'];
-    final commentId = report['commendId'];
+    final commentId = report['commentId'];
 
     if (type == 'post') {
       await FirebaseFirestore.instance.collection('posts').doc(postId).set({
@@ -501,6 +502,9 @@ class _ReportPageHistoryState extends State<ReportPageHistory> {
                     .where((report) {
                       if (_filter == "all") return true;
                       return report['type'] == _filter;
+                    })
+                    .where((report) {
+                      return report['resolvedAt'] != null;
                     })
                     .where((report) {
                       final reason =
