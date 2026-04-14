@@ -192,7 +192,7 @@ class _MealRecommenderPageState extends State<MealRecommender> {
                                     final s = servings.firstWhere(
                                           (item) => item['name'] == val,
                                     );
-                                    amountSelect = double.parse(s['grams']);
+                                    amountSelect = s['grams'];
                                     _totalAmountController.text = (amountSelect * int.parse(_quantityController.text)).toString();
                                   }
                                 }),
