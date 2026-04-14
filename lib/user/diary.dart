@@ -243,6 +243,10 @@ class _MealDiaryState extends State<MealDiary> {
       ...?mealTargets
     };
 
+    if (results['Carbs_g'] > carbsIntake.toDouble()) {
+      results ['Carbs_g'] = carbsIntake.toDouble() - 20;
+    }
+
     await FirebaseFirestore.instance
         .collection('recommendations')
         .doc(uid)
