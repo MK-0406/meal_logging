@@ -1,6 +1,35 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:image/image.dart' as img;
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
+import '../user/nutrition_label_extraction.dart';
 
+bool isMotionBlurredBackground(String imagePath) {
+  final bytes = File(imagePath).readAsBytesSync();
+  final image = img.decodeImage(bytes);
+
+  if (image == null) return true;
+
+  final gray = img.grayscale(image);
+  final edges = img.sobel(gray);
+
+  double total = 0;
+  int count = 0;
+
+  for (int y = 0; y < edges.height; y++) {
+    for (int x = 0; x < edges.width; x++) {
+      final pixel = edges.getPixel(x, y);
+      final value = img.getLuminance(pixel);
+      total += value;
+      count++;
+    }
+  }
+
+  double edgeStrength = total / count;
+
+  return edgeStrength < 20;
+}
 
 class MealsPage extends StatefulWidget {
   const MealsPage({super.key});
@@ -23,6 +52,17 @@ class _MealsPageState extends State<MealsPage> {
   String? _filterCategory;
   final List<TextEditingController> _servingNameControllers = [];
   final List<TextEditingController> _servingGramControllers = [];
+  Map<String, dynamic> extractedNutrition = {};
+  bool isLoadingImage = false;
+  final ImagePicker _picker = ImagePicker();
+
+  Future<XFile?> pickImageFromCamera() async {
+    return await _picker.pickImage(source: ImageSource.camera);
+  }
+
+  Future<XFile?> pickImageFromGallery() async {
+    return await _picker.pickImage(source: ImageSource.gallery);
+  }
 
   final List<String> _foodGroupItems = [
     'Cooked Food / Dishes', 'Ingredients / Raw Foods', 'Vegetables', 'Processed Foods', 
@@ -351,12 +391,94 @@ class _MealsPageState extends State<MealsPage> {
     ));
   }
 
+  Widget _buildOption(void Function(void Function()) setDialogState) {
+    return PopupMenuButton<String>(
+      icon: const Icon(Icons.camera_alt),
+      onSelected: (val) async {
+        setDialogState(() {
+          isLoadingImage = true;
+        });
+        await Future.delayed(const Duration(milliseconds: 50));
+        XFile? image;
+        if (val == 'camera') {
+          image = await pickImageFromCamera();
+        } else if (val == 'gallery') {
+          image = await pickImageFromGallery();
+        }
+        if (image != null) {
+          Map<String, dynamic>? result = {};
+          final NutritionService nutritionService = NutritionService();
+
+          String extractedText = await nutritionService.extractTextFromImage(
+            image.path,
+          );
+
+          result = await nutritionService.analyzeNutrition(extractedText);
+
+          if (result != null && result.length > 1) {
+            final nutrients = [
+              "calories",
+              "water_g",
+              "protein_g",
+              "fat_g",
+              "carbohydrates_g",
+              "fiber_g",
+              "calcium_mg",
+              "iron_mg",
+              "potassium_mg",
+              "sodium_mg",
+              "phosphorus_mg",
+              "ash_g",
+            ];
+            for (var nutrient in nutrients) {
+              result[nutrient] = result[nutrient] ?? 0;
+            }
+            setDialogState(() {
+              extractedNutrition = result!;
+            });
+          }
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(
+                  result!.length > 1
+                      ? "Please double check the values"
+                      : result["error"],
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
+                backgroundColor: Color(0xFF1E88E5),
+                behavior: SnackBarBehavior.floating,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+              ),
+            );
+          }
+        }
+        setDialogState(() {
+          isLoadingImage = false;
+        });
+      },
+      itemBuilder: (context) => [
+        const PopupMenuItem(
+          value: 'camera',
+          child: Text('Camera', style: TextStyle(color: Colors.black)),
+        ),
+        const PopupMenuItem(
+          value: 'gallery',
+          child: Text('Gallery', style: TextStyle(color: Colors.black)),
+        ),
+      ],
+    );
+  }
+
   void _showMealDialog({bool isEditing = false, Map<String, dynamic>? data}) {
     if (isEditing && data != null) {
       _fillControllers(data);
     } else {
       _clearControllers();
     }
+    extractedNutrition.clear();
 
     showDialog(
       context: context,
@@ -373,11 +495,22 @@ class _MealsPageState extends State<MealsPage> {
                   children: [
                     Text(isEditing ? "Update Meal" : "Add New Meal", style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                     const SizedBox(height: 24),
-                    _buildDialogInput("Meal Name", _controllers['name']!, false),
+                    _buildDialogInput("Meal Name", _controllers['name']!, null, false),
                     _buildDialogDropdown("Food Group", _foodGroup, _foodGroupItems, (v) => setDialogState(() => _foodGroup = v)),
                     _buildDialogDropdown("Category", _foodCategory, _foodCategoryItems, (v) => setDialogState(() => _foodCategory = v)),
                     const Divider(height: 32),
-                    const Text("Nutritional Info (per 100g)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text("Nutritional Info (per 100g)", style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+                        Expanded(
+                          flex: 1,
+                          child: isLoadingImage
+                              ? Center(child: const CircularProgressIndicator())
+                              : _buildOption(setDialogState),
+                        ),
+                      ]
+                    ),
                     const SizedBox(height: 16),
                     _buildNutrientGrid(),
                     const SizedBox(height: 24),
@@ -409,12 +542,12 @@ class _MealsPageState extends State<MealsPage> {
 
   Widget _buildNutrientGrid() {
     return Column(children: [
-      Row(children: [Expanded(child: _buildDialogInput("Calories (kcal)", _controllers['calorie']!, true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Water (g)", _controllers['water']!, true))]),
-      Row(children: [Expanded(child: _buildDialogInput("Protein (g)", _controllers['protein']!, true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Carbs (g)", _controllers['carb']!, true))]),
-      Row(children: [Expanded(child: _buildDialogInput("Fat (g)", _controllers['fat']!, true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Fibre (g)", _controllers['fibre']!, true))]),
-      Row(children: [Expanded(child: _buildDialogInput("Calcium (mg)", _controllers['calcium']!, true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Iron (mg)", _controllers['iron']!, true))]),
-      Row(children: [Expanded(child: _buildDialogInput("Potassium (mg)", _controllers['potassium']!, true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Sodium (mg)", _controllers['sodium']!, true))]),
-      Row(children: [Expanded(child: _buildDialogInput("Phosphorus (mg)", _controllers['phosphorus']!, true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Ash (g)", _controllers['ash']!, true))]),
+      Row(children: [Expanded(child: _buildDialogInput("Calories (kcal)", _controllers['calorie']!, "calories", true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Water (g)", _controllers['water']!, "water_g", true))]),
+      Row(children: [Expanded(child: _buildDialogInput("Protein (g)", _controllers['protein']!, "protein_g", true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Carbs (g)", _controllers['carb']!, "carbohydrates_g", true))]),
+      Row(children: [Expanded(child: _buildDialogInput("Fat (g)", _controllers['fat']!, "fat_g", true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Fibre (g)", _controllers['fibre']!, "fiber_g", true))]),
+      Row(children: [Expanded(child: _buildDialogInput("Calcium (mg)", _controllers['calcium']!, "calcium_mg", true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Iron (mg)", _controllers['iron']!, "iron_mg", true))]),
+      Row(children: [Expanded(child: _buildDialogInput("Potassium (mg)", _controllers['potassium']!, "potassium_mg", true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Sodium (mg)", _controllers['sodium']!, "sodium_mg", true))]),
+      Row(children: [Expanded(child: _buildDialogInput("Phosphorus (mg)", _controllers['phosphorus']!, "phosphorus_mg", true)), const SizedBox(width: 12), Expanded(child: _buildDialogInput("Ash (g)", _controllers['ash']!, "ash_g", true))]),
     ]);
   }
 
@@ -427,7 +560,10 @@ class _MealsPageState extends State<MealsPage> {
     ]));
   }
 
-  Widget _buildDialogInput(String label, TextEditingController ctrl, bool isNum) {
+  Widget _buildDialogInput(String label, TextEditingController ctrl, String? extractedVal, bool isNum) {
+    if (isNum && extractedNutrition[extractedVal] != null) {
+      ctrl.text = extractedNutrition[extractedVal].toString();
+    }
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
       child: TextFormField(
@@ -437,6 +573,11 @@ class _MealsPageState extends State<MealsPage> {
           if (v == null || v.isEmpty) return "Required";
           if (isNum && double.tryParse(v) == null) return "Invalid";
           return null;
+        },
+        onChanged: (val) {
+          if (isNum) {
+            extractedNutrition[extractedVal!] = double.tryParse(val);
+          }
         },
       ),
     );
