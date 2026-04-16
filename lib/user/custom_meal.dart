@@ -1,5 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
+//import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:image/image.dart' as img;
@@ -502,7 +502,7 @@ class _MealFormState extends State<MealForm> {
         if (image != null) {
           Map<String, dynamic>? result = {};
           final NutritionService nutritionService = NutritionService();
-          bool blurry = await compute(isMotionBlurredBackground, image.path);
+          /*bool blurry = await compute(isMotionBlurredBackground, image.path);
 
           if (blurry) {
             result = {"error": "Photo is blurry. Please try again."};
@@ -512,7 +512,13 @@ class _MealFormState extends State<MealForm> {
             );
 
             result = await nutritionService.analyzeNutrition(extractedText);
-          }
+          }*/
+
+          String extractedText = await nutritionService.extractTextFromImage(
+            image.path,
+          );
+
+          result = await nutritionService.analyzeNutrition(extractedText);
 
           if (result != null && result.length > 1) {
             final nutrients = [
